@@ -288,11 +288,22 @@ async function fetchMacro() {
 
 // ── FETCH NEWS ─────────────────────────────────
 async function fetchNews() {
+  const GOOD_DOMAINS = [
+    'coindesk.com','theblock.co','decrypt.co','reuters.com','bloomberg.com',
+    'ft.com','wsj.com','cointelegraph.com','axios.com','cnbc.com','forbes.com',
+    'ainvest.com','dlnews.com','thedefiant.io','blockworks.co','protos.com'
+  ];
+  const BAD_DOMAINS = [
+    'coingecko.com','coinmarketcap.com','tradingview.com','coinbase.com',
+    'binance.com','kraken.com','investing.com','finance.yahoo.com',
+    'coinmetro.com','kucoin.com','mexc.com','chainlinktoday.com',
+    'newsnow.com','cryptopotato.com','coincarp.com','bitbo.io'
+  ];
   const queries = [
-    'Bitcoin BTC price analysis news today',
-    'Ethereum ETH news developments today',
-    'Chainlink LINK news today',
-    'crypto macro Fed inflation geopolitics today'
+    'Bitcoin BTC market analysis breaking news today',
+    'Ethereum ETH institutional developments news today',
+    'Chainlink LINK oracle partnerships news today',
+    'Federal Reserve inflation geopolitics crypto impact today'
   ];
   const results = await Promise.all(queries.map(q =>
     fetch('https://api.tavily.com/search', {
@@ -301,11 +312,12 @@ async function fetchNews() {
       body: JSON.stringify({
         api_key: TAVILY_KEY,
         query: q,
-        search_depth: 'basic',
+        search_depth: 'advanced',
         max_results: 3,
         include_answer: false,
         include_raw_content: false,
-        exclude_domains: ['coingecko.com','coinmarketcap.com','tradingview.com']
+        include_domains: GOOD_DOMAINS,
+        exclude_domains: BAD_DOMAINS
       })
     }).then(r => r.json()).catch(() => ({results:[]}))
   ));
