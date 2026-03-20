@@ -413,12 +413,20 @@ Return ONLY a raw JSON object. No markdown. No backticks. Start with { end with 
   }
   const data  = await res.json();
   const raw   = data?.choices?.[0]?.message?.content || '';
-  let clean = raw.replace(/```json|```/g,'').replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/[\u2013\u2014]/g,'-').trim();
+  // Strip reasoning model artifacts (<think>...</think>, <reasoning>...</reasoning>)
+  let clean = raw
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+    .replace(/```json|```/g, '')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .trim();
   const start = clean.indexOf('{'), end = clean.lastIndexOf('}');
   if (start === -1 || end === -1) throw new Error('No JSON in response. Try refreshing.');
-  clean = clean.slice(start, end+1);
+  clean = clean.slice(start, end + 1);
   try { return JSON.parse(clean); }
-  catch(e) { return JSON.parse(clean.replace(/,\s*([}\]])/g,'$1')); }
+  catch(e) { return JSON.parse(clean.replace(/,\s*([}\]])/g, '$1')); }
 }
 
 // ── RENDER ────────────────────────────────────
