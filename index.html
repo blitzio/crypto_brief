@@ -3,560 +3,537 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>CRYPTO DAILY BRIEF — CID-SGT</title>
+<title>Crypto Daily Brief — CID-SGT</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
 
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
 
+/*
+  DARK MODE BEST PRACTICES:
+  - Background #13151a (not pure black — avoids halation on OLED, reduces eye strain)
+  - Surfaces layered: #181b23 → #1e2230 → #232736 (depth without harsh contrast)
+  - Text #d4dbe8 (off-white ~86% brightness — pure white causes too much contrast fatigue)
+  - Secondary text #6b7a90 (meets WCAG AA at this background level)
+  - Borders #252c3a (subtle, not harsh)
+  - Accent gold desaturated slightly — warm tones less aggressive on dark screens
+  - Font: DM Sans — humanist sans, excellent screen legibility, generous spacing
+*/
 :root {
-  --bg:       #08090d;
-  --paper:    #0c0f15;
-  --surface:  #111520;
-  --border:   #1c2333;
-  --gold:     #c9941a;
-  --red:      #922020;
-  --green:    #1f8c4e;
-  --amber:    #b87a10;
-  --text:     #b0bec8;
-  --bright:   #dce6ee;
-  --dim:      #4a5a6a;
-  --neg:      #c03030;
-  --pos:      #22a05a;
-  --neu:      #c08820;
+  --bg:       #13151a;
+  --paper:    #181b23;
+  --surface:  #1e2230;
+  --raised:   #232736;
+  --border:   #252c3a;
+  --border2:  #2e3648;
+  --text:     #d4dbe8;
+  --muted:    #6b7a90;
+  --faint:    #3a4458;
+  --gold:     #c49a2a;
+  --gold-bg:  rgba(196,154,42,.08);
+  --red:      #9b2828;
+  --red-bg:   rgba(155,40,40,.1);
+  --green:    #27a060;
+  --green-bg: rgba(39,160,96,.1);
+  --neg:      #e05555;
+  --pos:      #3db87a;
+  --neu:      #d4882a;
+  --font:     'DM Sans', system-ui, sans-serif;
+  --mono:     'DM Mono', 'Fira Code', monospace;
 }
-
+html { font-size: 16px; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 15px;
+  font-family: var(--font);
+  font-size: 1rem;
   line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-.doc {
-  max-width: 980px;
-  margin: 0 auto;
-  background: var(--paper);
-  border: 1px solid var(--border);
-}
+/* ── LOADING ── */
+#loading { display:flex; min-height:100vh; align-items:center; justify-content:center; flex-direction:column; gap:18px; }
+#loading.hidden { display:none; }
+.spinner { width:40px; height:40px; border:2px solid var(--border2); border-top-color:var(--gold); border-radius:50%; animation:spin .9s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.load-title { font-size:1.1rem; font-weight:500; color:var(--text); }
+.load-sub { font-size:.78rem; color:var(--muted); font-family:var(--mono); letter-spacing:.1em; text-transform:uppercase; }
 
-/* ─── CLASSIFICATION BAR ─────────────────────── */
-.cbar {
-  background: var(--red);
-  color: #fff;
-  text-align: center;
-  padding: 6px 0;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: .5em;
-}
+/* ── SETUP ── */
+#setup { display:none; min-height:100vh; align-items:center; justify-content:center; flex-direction:column; padding:32px 20px; }
+#setup.active { display:flex; }
+.setup-card { background:var(--paper); border:1px solid var(--border2); border-top:3px solid var(--gold); padding:40px 44px; max-width:500px; width:100%; }
+.setup-logo { font-size:.72rem; font-family:var(--mono); letter-spacing:.22em; color:var(--gold); text-transform:uppercase; margin-bottom:10px; }
+.setup-title { font-size:1.6rem; font-weight:600; color:var(--text); margin-bottom:4px; line-height:1.2; }
+.setup-sub { font-size:.88rem; color:var(--muted); margin-bottom:28px; }
+.setup-steps { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:16px 18px; margin-bottom:24px; font-size:.84rem; color:var(--muted); line-height:1.95; }
+.setup-steps b { color:var(--text); font-weight:500; }
+.setup-steps a { color:var(--gold); text-decoration:none; }
+.setup-steps a:hover { text-decoration:underline; }
+.field-label { font-size:.72rem; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:8px; }
+.setup-input { width:100%; background:var(--surface); border:1px solid var(--border2); color:var(--text); font-family:var(--mono); font-size:.88rem; padding:13px 16px; outline:none; margin-bottom:10px; border-radius:4px; transition:border-color .2s; }
+.setup-input:focus { border-color:var(--gold); }
+.setup-hint { font-size:.8rem; color:var(--muted); line-height:1.75; margin-bottom:24px; }
+.err-box { display:none; background:var(--red-bg); border:1px solid rgba(155,40,40,.3); color:#e08080; font-size:.82rem; padding:11px 14px; border-radius:4px; margin-bottom:16px; line-height:1.6; }
+.err-box.active { display:block; }
+.primary-btn { width:100%; background:var(--gold); color:#0d0f14; border:none; font-family:var(--font); font-size:.88rem; font-weight:600; letter-spacing:.04em; padding:14px; cursor:pointer; border-radius:4px; transition:background .2s; }
+.primary-btn:hover { background:#d4aa30; }
 
-/* ─── MASTHEAD ───────────────────────────────── */
-.masthead {
-  padding: 24px 48px 18px;
-  border-bottom: 2px solid var(--border);
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 24px;
-  align-items: center;
-}
-.title {
-  font-family: 'Special Elite', cursive;
-  font-size: 34px;
-  color: var(--bright);
-  letter-spacing: .06em;
-  line-height: 1.1;
-}
-.subtitle {
-  margin-top: 5px;
-  font-size: 11px;
-  letter-spacing: .28em;
-  color: var(--dim);
-  text-transform: uppercase;
-}
-.meta {
-  text-align: right;
-  font-size: 12px;
-  color: var(--dim);
-  line-height: 2;
-}
-.meta .ts {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--gold);
-  letter-spacing: .04em;
-}
+/* ── BRIEF ── */
+#brief { display:none; }
+#brief.active { display:block; }
+.doc { max-width:1020px; margin:0 auto; background:var(--paper); border:1px solid var(--border); }
 
-/* ─── ROUTING ────────────────────────────────── */
-.routing {
-  padding: 7px 48px;
-  background: #090b10;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  gap: 40px;
-  font-size: 11px;
-  letter-spacing: .07em;
-  color: var(--dim);
-}
-.routing b { color: var(--red); }
+.cbar { background:var(--red); color:rgba(255,255,255,.88); text-align:center; padding:5px 0; font-size:.65rem; font-family:var(--mono); font-weight:500; letter-spacing:.45em; text-transform:uppercase; }
 
-/* ─── PRICE STRIP ────────────────────────────── */
-.price-strip {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  border-bottom: 2px solid var(--border);
-}
-.pcard {
-  padding: 20px 28px;
-  border-right: 1px solid var(--border);
-  position: relative;
-}
-.pcard:last-child { border-right: none; }
-.pcard::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 3px;
-}
-.pcard.btc::after  { background: #f7931a; }
-.pcard.eth::after  { background: #627eea; }
-.pcard.link::after { background: #2a5ada; }
+/* Refresh bar */
+.rbar { background:var(--bg); border-bottom:1px solid var(--border); padding:8px 44px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+.rbar-info { font-size:.78rem; color:var(--muted); }
+.rbar-info b { color:var(--text); font-weight:500; }
+.rbar-actions { display:flex; gap:8px; }
+.ghost-btn { background:transparent; border:1px solid var(--border2); color:var(--muted); font-family:var(--font); font-size:.74rem; padding:5px 14px; cursor:pointer; border-radius:3px; transition:color .15s, border-color .15s; }
+.ghost-btn:hover { color:var(--text); border-color:var(--muted); }
+.accent-btn { background:var(--gold-bg); border:1px solid rgba(196,154,42,.2); color:var(--gold); font-family:var(--font); font-size:.74rem; font-weight:500; padding:5px 14px; cursor:pointer; border-radius:3px; transition:background .15s; }
+.accent-btn:hover { background:rgba(196,154,42,.15); }
 
-.pcard .sym {
-  font-size: 11px;
-  letter-spacing: .3em;
-  color: var(--dim);
-  margin-bottom: 4px;
-}
-.pcard .price {
-  font-family: 'Special Elite', cursive;
-  font-size: 32px;
-  color: var(--bright);
-  line-height: 1;
-}
-.pcard .deltas {
-  margin-top: 6px;
-  display: flex;
-  gap: 14px;
-  font-size: 13px;
-  font-weight: 600;
-}
-.pcard .stats {
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--dim);
-  line-height: 1.9;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-}
-.pcard .stats span { color: #5a6a7a; }
+/* Masthead */
+.masthead { padding:28px 44px 20px; border-bottom:1px solid var(--border2); display:grid; grid-template-columns:1fr auto; gap:24px; align-items:center; }
+.m-eyebrow { font-size:.7rem; font-family:var(--mono); letter-spacing:.22em; color:var(--gold); text-transform:uppercase; margin-bottom:6px; }
+.m-title { font-size:2rem; font-weight:600; color:var(--text); letter-spacing:-.01em; line-height:1.1; }
+.m-sub { margin-top:5px; font-size:.76rem; font-family:var(--mono); letter-spacing:.14em; color:var(--muted); text-transform:uppercase; }
+.m-right { text-align:right; font-size:.78rem; color:var(--muted); line-height:2; }
+.ts-live { font-size:.95rem; font-weight:600; font-family:var(--mono); color:var(--gold); letter-spacing:.03em; margin-bottom:2px; display:block; }
 
-.neg { color: var(--neg); }
-.pos { color: var(--pos); }
-.neu { color: var(--neu); }
+/* Routing */
+.routing { padding:7px 44px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; gap:32px; font-size:.7rem; font-family:var(--mono); letter-spacing:.07em; color:var(--faint); flex-wrap:wrap; }
+.routing b { color:#8a3030; }
 
-/* ─── TWO-COL BODY ───────────────────────────── */
-.body {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-.col-l { border-right: 1px solid var(--border); }
+/* Price strip */
+.price-strip { display:grid; grid-template-columns:1fr 1fr 1fr; border-bottom:1px solid var(--border2); }
+.pcard { padding:22px 28px; border-right:1px solid var(--border); position:relative; }
+.pcard:last-child { border-right:none; }
+.pcard::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.pcard.btc::before  { background:#f7931a; }
+.pcard.eth::before  { background:#6277ea; }
+.pcard.link::before { background:#3d6aed; }
+.p-sym { font-size:.7rem; font-family:var(--mono); letter-spacing:.22em; color:var(--muted); margin-bottom:6px; }
+.p-price { font-size:1.85rem; font-weight:600; color:var(--text); letter-spacing:-.01em; line-height:1; }
+.p-deltas { margin-top:8px; display:flex; gap:14px; font-size:.84rem; font-weight:500; }
+.p-stats { margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:.78rem; color:var(--muted); line-height:2; }
+.p-stats span { color:var(--faint); }
+.neg { color:var(--neg); } .pos { color:var(--pos); } .neu { color:var(--neu); }
 
-/* ─── SECTION ────────────────────────────────── */
-.sec {
-  padding: 22px 28px;
-  border-bottom: 1px solid var(--border);
-}
-.sec:last-child { border-bottom: none; }
+/* Body grid */
+.body { display:grid; grid-template-columns:1fr 1fr; }
+.col-l { border-right:1px solid var(--border); }
+.sec { padding:22px 28px; border-bottom:1px solid var(--border); }
+.sec:last-child { border-bottom:none; }
+.sec-head { font-size:.7rem; font-family:var(--mono); font-weight:500; letter-spacing:.22em; color:var(--gold); text-transform:uppercase; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border); }
 
-.sec-head {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .35em;
-  color: var(--gold);
-  text-transform: uppercase;
-  margin-bottom: 14px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.sec-head::before {
-  content: '';
-  width: 6px; height: 6px;
-  background: var(--gold);
-  transform: rotate(45deg);
-  flex-shrink: 0;
-}
-
-/* ─── INTEL BULLETS ──────────────────────────── */
-ul.ib {
-  list-style: none;
-  padding: 0;
-}
+/* Intel bullets */
+ul.ib { list-style:none; }
 ul.ib > li {
-  padding: 8px 0 8px 20px;
-  border-bottom: 1px solid #0f1319;
-  position: relative;
-  font-size: 14px;
-  line-height: 1.65;
-  color: #98aab8;
+  padding:9px 0 9px 18px;
+  border-bottom:1px solid var(--border);
+  position:relative;
+  font-size:.92rem;
+  line-height:1.7;
+  color:var(--text);
+  font-weight:300;
 }
-ul.ib > li:last-child { border-bottom: none; }
-ul.ib > li::before {
-  content: '▸';
-  position: absolute;
-  left: 0; top: 10px;
-  color: var(--gold);
-  font-size: 10px;
-}
-ul.ib > li strong {
-  color: var(--bright);
-  font-weight: 600;
-}
+ul.ib > li:last-child { border-bottom:none; }
+ul.ib > li::before { content:'▸'; position:absolute; left:0; top:11px; color:var(--gold); font-size:.6rem; }
+ul.ib > li strong { font-weight:600; color:var(--text); }
 
-/* ─── MACRO GAUGES ───────────────────────────── */
-.gauges {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-.gauge {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 10px 14px;
-}
-.gauge .gl {
-  font-size: 10px;
-  letter-spacing: .15em;
-  color: var(--dim);
-  text-transform: uppercase;
-  margin-bottom: 3px;
-}
-.gauge .gv {
-  font-family: 'Special Elite', cursive;
-  font-size: 22px;
-  color: var(--bright);
-  line-height: 1;
-}
-.gauge .gc {
-  font-size: 11px;
-  margin-top: 3px;
-}
+/* Gauges */
+.gauges { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+.gauge { background:var(--surface); border:1px solid var(--border); padding:12px 14px; border-radius:3px; }
+.g-label { font-size:.67rem; font-family:var(--mono); letter-spacing:.12em; color:var(--muted); text-transform:uppercase; margin-bottom:4px; }
+.g-val { font-size:1.3rem; font-weight:600; color:var(--text); line-height:1; }
+.g-sub { font-size:.76rem; margin-top:4px; }
 
-/* ─── FULL-WIDTH ─────────────────────────────── */
-.full {
-  grid-column: 1 / -1;
-  border-top: 2px solid var(--border);
-  padding: 22px 48px 24px;
-}
-.full .sec-head { margin-bottom: 16px; }
+/* Full-width */
+.full { grid-column:1/-1; border-top:1px solid var(--border2); padding:22px 44px 28px; }
+.full .sec-head { margin-bottom:16px; }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:32px; }
+.col-head { font-size:.7rem; font-family:var(--mono); font-weight:500; letter-spacing:.18em; color:var(--muted); text-transform:uppercase; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--border); }
 
-.two-col-intel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px;
-}
-.ic-head {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .25em;
-  color: var(--amber);
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
+/* Assessment */
+.abox { background:var(--surface); border-left:3px solid var(--red); padding:20px 22px; margin-top:20px; border-radius:0 3px 3px 0; }
+.abox .alabel { font-size:.67rem; font-family:var(--mono); font-weight:500; letter-spacing:.22em; color:var(--neg); text-transform:uppercase; margin-bottom:12px; }
+.abox p { font-size:.92rem; line-height:1.8; color:var(--text); font-weight:300; margin-bottom:12px; }
+.abox p:last-child { margin-bottom:0; }
+.abox strong { font-weight:600; }
 
-/* ─── ASSESSMENT BOX ─────────────────────────── */
-.abox {
-  background: var(--surface);
-  border-left: 4px solid var(--red);
-  padding: 18px 20px;
-  margin-top: 18px;
-  font-size: 14px;
-  line-height: 1.8;
-  color: #98aab8;
-}
-.abox .alabel {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: .3em;
-  color: var(--red);
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-.abox strong { color: var(--bright); }
+.psep { grid-column:1/-1; text-align:center; padding:5px 0; font-size:.62rem; font-family:var(--mono); letter-spacing:.35em; color:var(--faint); border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:var(--bg); }
 
-/* ─── PAGE SEPARATOR ─────────────────────────── */
-.psep {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 6px 0;
-  font-size: 10px;
-  letter-spacing: .4em;
-  color: #1c2533;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  background: #07080c;
-}
+.badge { display:inline-block; font-size:.6rem; font-family:var(--mono); letter-spacing:.1em; padding:2px 7px; background:var(--green-bg); border:1px solid rgba(39,160,96,.25); color:var(--green); text-transform:uppercase; border-radius:2px; vertical-align:middle; margin-left:6px; }
 
-/* ─── BADGE ──────────────────────────────────── */
-.badge {
-  display: inline-block;
-  font-size: 9px;
-  letter-spacing: .12em;
-  padding: 2px 6px;
-  background: rgba(31,140,78,.12);
-  border: 1px solid rgba(31,140,78,.3);
-  color: var(--green);
-  text-transform: uppercase;
-  vertical-align: middle;
-  margin-left: 6px;
-}
-
-/* ─── FOOTER ─────────────────────────────────── */
-.footer {
-  border-top: 1px solid var(--border);
-  padding: 10px 48px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 11px;
-  color: #1e2c3a;
-  letter-spacing: .07em;
-}
-.footer .warn { color: var(--red); }
+.footer { border-top:1px solid var(--border); padding:10px 44px; display:flex; justify-content:space-between; align-items:center; font-size:.7rem; font-family:var(--mono); color:var(--faint); letter-spacing:.06em; flex-wrap:wrap; gap:8px; }
+.footer .warn { color:rgba(155,40,40,.65); }
 </style>
 </head>
 <body>
-<div class="doc">
 
-  <!-- ═══ CLASSIFICATION ═══ -->
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="load-title">Crypto Daily Brief</div>
+  <div class="load-sub" id="load-sub">Connecting to market data…</div>
+</div>
+
+<!-- SETUP -->
+<div id="setup">
+  <div class="setup-card">
+    <div class="setup-logo">CID-SGT · Crypto Intelligence Directorate</div>
+    <div class="setup-title">Daily Brief Setup</div>
+    <div class="setup-sub">One-time API key — takes under 2 minutes, completely free</div>
+    <div class="setup-steps">
+      <b>Get your free Gemini API key:</b><br/>
+      1. Go to <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a><br/>
+      2. Sign in with any Google account<br/>
+      3. Click <b>Get API Key</b> → <b>Create API Key</b><br/>
+      4. Copy and paste it below<br/><br/>
+      <b>Free tier:</b> 1,500 requests/day · No credit card · No billing
+    </div>
+    <label class="field-label" for="api-input">Gemini API Key</label>
+    <input type="password" class="setup-input" id="api-input" placeholder="AIzaSy…" autocomplete="off"/>
+    <div class="setup-hint">Saved only in your browser's local storage. Never sent anywhere except directly to Google's Gemini API.</div>
+    <div class="err-box" id="err-box"></div>
+    <button class="primary-btn" onclick="saveAndRun()">Generate Brief →</button>
+  </div>
+</div>
+
+<!-- BRIEF -->
+<div id="brief">
+<div class="doc">
   <div class="cbar">⬛ &nbsp; CRYPTO INTELLIGENCE BRIEF — FOR ADDRESSEE'S EYES ONLY &nbsp; ⬛</div>
 
-  <!-- ═══ MASTHEAD ═══ -->
-  <div class="masthead">
-    <div>
-      <div class="title">Crypto Daily Brief</div>
-      <div class="subtitle">Digital Asset Intelligence &nbsp;·&nbsp; BTC &nbsp;·&nbsp; ETH &nbsp;·&nbsp; LINK &nbsp;·&nbsp; MACRO</div>
-    </div>
-    <div class="meta">
-      <div class="ts" id="sgt-ts">——</div>
-      <div>ISSUE: DAILY-002 &nbsp;|&nbsp; 2 PAGES</div>
-      <div>CRYPTO INTELLIGENCE DIRECTORATE</div>
-      <div>BEDOK NEW TOWN, SINGAPORE</div>
+  <div class="rbar">
+    <div class="rbar-info">Generated: <b id="gen-time">—</b> &nbsp;·&nbsp; Prices via CoinGecko · Analysis via Gemini</div>
+    <div class="rbar-actions">
+      <button class="ghost-btn" onclick="resetKey()">⚙ Change Key</button>
+      <button class="accent-btn" onclick="run()">↻ Refresh Brief</button>
     </div>
   </div>
 
-  <!-- ═══ ROUTING ═══ -->
+  <div class="masthead">
+    <div>
+      <div class="m-eyebrow">Crypto Intelligence Directorate · Singapore</div>
+      <div class="m-title">Crypto Daily Brief</div>
+      <div class="m-sub">BTC &nbsp;·&nbsp; ETH &nbsp;·&nbsp; LINK &nbsp;·&nbsp; MACRO &nbsp;·&nbsp; GEOPOLITICS</div>
+    </div>
+    <div class="m-right">
+      <span class="ts-live" id="sgt-ts">—</span>
+      <div id="issue-line">ISSUE: DAILY-001</div>
+      <div>2 PAGES · EYES ONLY</div>
+      <div>BEDOK NEW TOWN, SGT (UTC+8)</div>
+    </div>
+  </div>
+
   <div class="routing">
     <div><b>CLASS:</b> PROPRIETARY — NOT FOR REDISTRIBUTION</div>
     <div><b>COVERS:</b> BTC · ETH · LINK · MACRO · GEO · REGULATORY</div>
     <div><b>TRIGGER:</b> REPORT DAILY</div>
   </div>
 
-  <!-- ═══ PRICE STRIP ═══ -->
   <div class="price-strip">
-
     <div class="pcard btc">
-      <div class="sym">BTC / USD</div>
-      <div class="price">$70,426</div>
-      <div class="deltas">
-        <span class="neg">▼ 3.96% (24h)</span>
-        <span class="neg">▼ 4.8% (7d)</span>
-      </div>
-      <div class="stats">
-        <span>Mkt Cap</span> ~$1.40T &nbsp;·&nbsp; <span>Vol</span> ~$51.6B<br/>
-        <span>Support</span> $68,000 → $63,000<br/>
-        <span>Resist</span> $72,000 → $74,400
-      </div>
+      <div class="p-sym">BTC / USD</div>
+      <div class="p-price" id="btc-price">—</div>
+      <div class="p-deltas" id="btc-deltas"></div>
+      <div class="p-stats" id="btc-stats"></div>
     </div>
-
     <div class="pcard eth">
-      <div class="sym">ETH / USD</div>
-      <div class="price">$2,145</div>
-      <div class="deltas">
-        <span class="neg">▼ 5.0% (24h)</span>
-        <span class="neg">▼ 8.1% (7d)</span>
-      </div>
-      <div class="stats">
-        <span>Mkt Cap</span> ~$233B &nbsp;·&nbsp; <span>Vol</span> ~$11.9B<br/>
-        <span>Support</span> $2,000 → $1,800<br/>
-        <span>Resist</span> $2,400 → $2,600
-      </div>
+      <div class="p-sym">ETH / USD</div>
+      <div class="p-price" id="eth-price">—</div>
+      <div class="p-deltas" id="eth-deltas"></div>
+      <div class="p-stats" id="eth-stats"></div>
     </div>
-
     <div class="pcard link">
-      <div class="sym">LINK / USD</div>
-      <div class="price">$9.30</div>
-      <div class="deltas">
-        <span class="neg">▼ 2.95% (24h)</span>
-        <span class="pos">▲ 4.0% (7d)</span>
-      </div>
-      <div class="stats">
-        <span>Mkt Cap</span> ~$6.58B &nbsp;·&nbsp; <span>Vol</span> ~$744M<br/>
-        <span>Support</span> $8.82 → $8.50<br/>
-        <span>Resist</span> $9.40 → $10.00
-      </div>
+      <div class="p-sym">LINK / USD</div>
+      <div class="p-price" id="link-price">—</div>
+      <div class="p-deltas" id="link-deltas"></div>
+      <div class="p-stats" id="link-stats"></div>
     </div>
-
   </div>
 
-  <!-- ═══ PAGE 1 — TWO-COL BODY ═══ -->
   <div class="body">
-
-    <!-- ── LEFT ── -->
     <div class="col-l">
-
-      <!-- BTC -->
       <div class="sec">
         <div class="sec-head">₿ &nbsp; Bitcoin — BTC</div>
-        <ul class="ib">
-          <li><strong>Mar 17 — Failed breakout:</strong> BTC briefly spiked to $75,912, a 6-week high, before collapsing the same session. 10x Research confirmed the move was derivatives-driven: closure of large $60K put positions forced market-maker BTC buys. No fresh spot conviction behind the rally.</li>
-          <li><strong>Post-FOMC selldown:</strong> BTC slid $72,483 → $69,370 over 24hrs following the hawkish Fed decision on Mar 18. Nasdaq closed –1.5% the same day. High correlation to equities confirmed.</li>
-          <li><strong>OG whale dump (Mar 19):</strong> Two long-term holders dumped 1,650 BTC (~$117M) hours after the Fed decision. One whale added 650 BTC to an existing 11,000 BTC sell programme. A 5-year dormant wallet exited 1,000 BTC outright.</li>
-          <li><strong>Supply milestone:</strong> Circulating supply crossed 20 million BTC (~Mar 10–11). ~1M BTC remain to be mined over ~114 years. Institutional scarcity commentary is resurfacing.</li>
-          <li><strong>Fear &amp; Greed:</strong> 26 (Fear). 53% green days past 30. BTC trades near estimated miner production cost (~$70K) — historically a capitulation / range zone.</li>
-          <li><strong>Downside scenario:</strong> Loss of $68K opens retest of Feb cycle low at $63,000.</li>
-        </ul>
+        <ul class="ib" id="btc-bullets"></ul>
       </div>
-
-      <!-- ETH -->
       <div class="sec">
         <div class="sec-head">Ξ &nbsp; Ethereum — ETH</div>
-        <ul class="ib">
-          <li><strong>Drawdown context:</strong> ETH outpacing BTC to the downside — classic high-beta altcoin behaviour in risk-off macro. Down ~56% from Aug 2025 ATH ($4,831); up +45% from Feb 2026 cycle low ($1,473).</li>
-          <li><strong>Mar 17 rally, fully reversed:</strong> ETH surged +8% to $2,360 on Mar 17 driven by bullish options demand. Full rally wiped by FOMC outcome within 48hrs.</li>
-          <li><strong>BlackRock ETHB ETF:</strong> Staked ETH product now live. Staking yield creates structural buy pressure — contingent on macro clearing. Watch daily inflow data as the leading institutional signal.</li>
-          <li><strong>Glamsterdam upgrade (May 2026):</strong> Introduces enshrined PBS, targets L2 throughput >100,000 TPS. First major protocol catalyst since the Merge. ~8 weeks out.</li>
-          <li><strong>Validator queue:</strong> 3.4M ETH staking queue, ~60-day estimated wait. Longest since the Merge. Large holders are staking into the decline — conviction signal.</li>
-          <li><strong>CME futures:</strong> ETH futures avg daily vol 24,000 contracts in Feb 2026 — +65% YoY. Institutional infrastructure growing structurally despite price weakness.</li>
-        </ul>
+        <ul class="ib" id="eth-bullets"></ul>
       </div>
-
     </div>
-
-    <!-- ── RIGHT ── -->
     <div>
-
-      <!-- MACRO -->
       <div class="sec">
         <div class="sec-head">Macro &amp; Threat Landscape</div>
-        <div class="gauges">
-          <div class="gauge">
-            <div class="gl">Fed Funds Rate</div>
-            <div class="gv">HOLD</div>
-            <div class="gc neu">4.25–4.50% · Unchanged</div>
-          </div>
-          <div class="gauge">
-            <div class="gl">Feb PPI (MoM)</div>
-            <div class="gv">+0.7%</div>
-            <div class="gc neg">Exp +0.3% · DOUBLE MISS</div>
-          </div>
-          <div class="gauge">
-            <div class="gl">Gold (USD/oz)</div>
-            <div class="gv">$4,861</div>
-            <div class="gc neg">▼ 0.71% · Near ATH</div>
-          </div>
-          <div class="gauge">
-            <div class="gl">VIX</div>
-            <div class="gv">25.09</div>
-            <div class="gc neg">+12.16% · ELEVATED</div>
-          </div>
-        </div>
-        <ul class="ib">
-          <li><strong>FOMC (Mar 17–18):</strong> Rates held at 4.25–4.50%. Dot plot revised to signal only 1 cut remaining in 2026 — hawkish surprise. Single dissent: Stephen Miran (wanted immediate 25bp cut). Markets sold into close. BTC –4% same day.</li>
-          <li><strong>PPI shock:</strong> Feb PPI +0.7% MoM vs +0.3% expected — 2.3× the consensus. Re-prices inflation trajectory meaningfully higher. Fed projections now explicitly flag Middle East energy uncertainty.</li>
-          <li><strong>Iran / Operation Epic Fury:</strong> Late-Feb US–Israel strikes wiped $128B in crypto market cap within hours. Hormuz partial blockade keeps Brent at $95–$100. Energy inflation premium is persistent and unresolved.</li>
-          <li><strong>Next cut timeline:</strong> Consensus pushed to June 2026 at earliest. Any escalation shifts this to Q3–Q4.</li>
-          <li><strong>Regime read:</strong> VIX 25+, gold near ATH, 10yr yields rising, dollar bid — textbook institutional risk-off. Crypto absorbing full de-risking beta.</li>
-        </ul>
+        <div class="gauges" id="macro-gauges"></div>
+        <ul class="ib" id="macro-bullets"></ul>
       </div>
-
-      <!-- LINK -->
       <div class="sec">
-        <div class="sec-head">⬡ &nbsp; Chainlink — LINK <span class="badge">COMMODITY CLASSIFIED</span></div>
-        <ul class="ib">
-          <li><strong>Session context:</strong> The –2.95% 24h move is pure macro beta — pulled down with BTC/ETH. No LINK-specific negative catalyst exists. The +4.0% 7-day number is the more meaningful signal.</li>
-          <li><strong>SEC/CFTC joint classification:</strong> LINK formally designated a digital commodity this week. The legal green light institutional desks required before committing capital at scale. Regulatory clarity of this type has historically preceded sustained re-rating cycles.</li>
-          <li><strong>ETF ecosystem — fully live:</strong> Grayscale GLNK: $62M+ inflows since Dec, zero outflow days. Bitwise CLNK: live on NYSE Arca. Combined >1.16% of total supply in ETF wrappers. CME futures active. Full regulated infrastructure now in place.</li>
-          <li><strong>Whale accumulation vs. price:</strong> Large holders added 3.12M LINK in 7 days; whale balance 275M → 279.68M tokens. Accumulation into declining price — not distribution.</li>
-          <li><strong>Institutional integrations:</strong> SWIFT, JP Morgan, Mastercard, Euroclear, US Dept. of Commerce (GDP/CPI on-chain). $28T+ in value secured via CCIP.</li>
-          <li><strong>Technical read:</strong> 20-day SMA at $8.82 is the line. RSI ~57 — room to recover. Break above $9.40 targets $10.00+. Loss of $8.50 exposes $7.00.</li>
-        </ul>
+        <div class="sec-head" id="link-sec-head">⬡ &nbsp; Chainlink — LINK</div>
+        <ul class="ib" id="link-bullets"></ul>
       </div>
-
     </div>
 
-    <!-- PAGE SEPARATOR -->
     <div class="psep">— END OF PAGE 1 · PAGE 2 FOLLOWS — HANDLE WITH CARE —</div>
 
-    <!-- ═══ FULL-WIDTH: ASSESSMENT ═══ -->
     <div class="full">
-      <div class="sec-head">§ IV — Directorate Assessment &amp; Forward Watch</div>
-
-      <div class="two-col-intel">
+      <div class="sec-head">§ IV &nbsp;·&nbsp; Directorate Assessment &amp; Forward Watch</div>
+      <div class="two-col">
         <div>
-          <div class="ic-head">⚠ Active Threat Stack</div>
-          <ul class="ib">
-            <li><strong>Iran / Hormuz:</strong> Unresolved. Brent at $95–$100. Every $5 above $90 adds ~1bp monthly to CPI. No ceasefire signals in open source as of this brief.</li>
-            <li><strong>Fed path:</strong> June cut is the base case but entirely conditional on oil. Stagflation scenario (crude >$100, CPI re-accelerates) pushes cuts to Q4 or beyond. Market has not fully priced this tail risk.</li>
-            <li><strong>10yr yields rising:</strong> 4.259% and climbing. Compresses risk premium across all speculative assets. Crypto is not insulated — high inverse correlation to real rates.</li>
-            <li><strong>VIX 25+:</strong> Institutional risk desks in defensive posture. Discretionary dip-buying suppressed. Systematic/quant flows dominate short-term price action.</li>
-            <li><strong>Liquidation overhang:</strong> $500M+ in leveraged longs wiped in late-Feb Iran shock. Rebuilding of leverage is cautious. Limited fuel for derivatives-led spike.</li>
-          </ul>
+          <div class="col-head">⚠ Active Threat Stack</div>
+          <ul class="ib" id="threats"></ul>
         </div>
         <div>
-          <div class="ic-head">📡 Forward Watch — Next 7 Days</div>
-          <ul class="ib">
-            <li><strong>BTC $68,000:</strong> Weekly close below this level would be the first technical confirmation of renewed downtrend. Downside target: $63,000 retest.</li>
-            <li><strong>ETH $2,000:</strong> Round-number psychological support. Loss before Glamsterdam (May) would significantly weaken the recovery thesis.</li>
-            <li><strong>LINK $8.82 SMA:</strong> The critical shelf. Whale accumulation is the counter to macro pressure. Divergence — price falling, wallets filling — is the accumulation signal.</li>
-            <li><strong>Iran / Hormuz:</strong> A ceasefire or reopening would be the single most powerful positive catalyst across all three — more impactful than any technical level or Fed commentary.</li>
-            <li><strong>FOMC speakers:</strong> Multiple members scheduled this week. Any dovish deviation from post-meeting tone could trigger a temporary relief rally.</li>
-            <li><strong>BlackRock ETHB inflows:</strong> Three consecutive strong inflow days would confirm institutional dip-buying is active and sustainable.</li>
-          </ul>
+          <div class="col-head">📡 Forward Watch — Next 7 Days</div>
+          <ul class="ib" id="watch"></ul>
         </div>
       </div>
-
       <div class="abox">
         <div class="alabel">⚠ Analyst Verdict — Eyes Only</div>
-        The market is in a <strong>macro-hostage posture</strong>. All three assets are technically capable of rallying — BTC has support at $68K, ETH has structural backing from ETHB inflows and Glamsterdam, LINK has the strongest fundamental tailwind of the three — but none of them can break out while the Iran conflict keeps crude elevated and the Fed is signalling "higher for longer." The tape is currently being written in oil futures and geopolitical cables, not on-chain.
-        <br/><br/>
-        <strong>Asset ranking by structural conviction (independent of near-term macro):</strong><br/>
-        1. <strong>LINK</strong> — SEC/CFTC commodity designation + dual ETF products with zero outflows + whale accumulation + $28T in CCIP-secured value + SWIFT/JPM/Mastercard integrations. Strongest asymmetric setup when macro clears.<br/>
-        2. <strong>BTC</strong> — 20M supply milestone intact, scarcity narrative resurfacing. Currently a pure macro proxy with limited independent alpha. Patient hold.<br/>
-        3. <strong>ETH</strong> — Highest beta to downside of the three. Glamsterdam (May) and ETHB are real catalysts but 8+ weeks out. Most patience required before re-entry.
-        <br/><br/>
-        <strong>Bull trigger:</strong> Iran ceasefire / Hormuz re-opening → Brent below $85 → CPI path re-softens → June Fed cut on table → BTC $80K+, ETH $2,600+, LINK $12+.<br/>
-        <strong>Bear trigger:</strong> Iran escalation, oil >$100 sustained → stagflation pricing → BTC $60K, ETH $1,600, LINK $7.00.
+        <div id="verdict-content"></div>
       </div>
     </div>
-
-  </div><!-- /body -->
+  </div>
 
   <div class="footer">
-    <div>CRYPTO INTELLIGENCE DIRECTORATE · BEDOK NEW TOWN, SGT · DAILY-002 · 20 MAR 2026</div>
+    <div>CRYPTO INTELLIGENCE DIRECTORATE · BEDOK NEW TOWN, SGT · <span id="footer-date">—</span></div>
     <div class="warn">NOT FINANCIAL ADVICE — INFORMATIONAL ONLY</div>
   </div>
   <div class="cbar">⬛ &nbsp; CRYPTO INTELLIGENCE BRIEF — END OF DOCUMENT &nbsp; ⬛</div>
-
-</div><!-- /doc -->
+</div>
+</div>
 
 <script>
-  function getSGT() {
-    const now  = new Date();
-    const sgt  = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Singapore' }));
-    const DAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
-    const MONS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-    const p    = n => String(n).padStart(2, '0');
-    return `${DAYS[sgt.getDay()]} ${p(sgt.getDate())} ${MONS[sgt.getMonth()]} ${sgt.getFullYear()} · ${p(sgt.getHours())}:${p(sgt.getMinutes())}:${p(sgt.getSeconds())} SGT`;
-  }
+// ── SGT CLOCK ─────────────────────────────────
+const MONS  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const WDAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const pad   = n => String(n).padStart(2,'0');
+const sgtNow = () => new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Singapore'}));
+const fmtSGT  = d => `${WDAYS[d.getDay()]} ${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} SGT`;
+const fmtDate = d => `${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYear()}`;
+
+let _clock = null;
+function startClock() {
+  if (_clock) clearInterval(_clock);
   const el = document.getElementById('sgt-ts');
-  el.textContent = getSGT();
-  setInterval(() => { el.textContent = getSGT(); }, 1000);
+  el.textContent = fmtSGT(sgtNow());
+  _clock = setInterval(() => { el.textContent = fmtSGT(sgtNow()); }, 1000);
+}
+
+// ── FORMATTERS ────────────────────────────────
+const fmtPrice = n => n >= 1000 ? '$'+n.toLocaleString('en-US',{maximumFractionDigits:0}) : n >= 10 ? '$'+n.toFixed(2) : '$'+n.toFixed(3);
+const fmtCap   = n => !n ? 'N/A' : n >= 1e12 ? '$'+(n/1e12).toFixed(2)+'T' : n >= 1e9 ? '$'+(n/1e9).toFixed(1)+'B' : '$'+(n/1e6).toFixed(0)+'M';
+const fmtPct   = n => (n==null?'0.00':(n>=0?'+':'')+n.toFixed(2))+'%';
+const arrowCls  = n => n >= 0 ? 'pos' : 'neg';
+const arrowChar = n => n >= 0 ? '▲' : '▼';
+
+// ── KEY MANAGEMENT ────────────────────────────
+const KEY_STORE = 'cid_gemini_key';
+const getKey    = () => localStorage.getItem(KEY_STORE);
+const storeKey  = k  => localStorage.setItem(KEY_STORE, k);
+function resetKey() { localStorage.removeItem(KEY_STORE); showScreen('setup'); }
+
+function saveAndRun() {
+  const k = document.getElementById('api-input').value.trim();
+  if (!k)              { showErr('Please paste your Gemini API key.'); return; }
+  if (!k.startsWith('AIza')) { showErr('Doesn\'t look right — Gemini keys start with AIza…'); return; }
+  storeKey(k);
+  run();
+}
+function showErr(m) { const b = document.getElementById('err-box'); b.textContent = m; b.classList.add('active'); }
+
+// ── SCREEN MANAGEMENT ────────────────────────
+function showScreen(s) {
+  document.getElementById('loading').classList.add('hidden');
+  ['setup','brief'].forEach(id => document.getElementById(id).classList.remove('active'));
+  if (s === 'loading') document.getElementById('loading').classList.remove('hidden');
+  else document.getElementById(s).classList.add('active');
+}
+const setStatus = t => document.getElementById('load-sub').textContent = t;
+
+// ── FETCH PRICES ─────────────────────────────
+async function fetchPrices() {
+  const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,chainlink&vs_currencies=usd&include_24hr_change=true&include_7d_change=true&include_market_cap=true&include_24hr_vol=true');
+  if (!r.ok) throw new Error('CoinGecko unavailable ('+r.status+'). Try again in a moment.');
+  return r.json();
+}
+
+// ── CALL GEMINI ──────────────────────────────
+async function callGemini(prices, key) {
+  const b = prices.bitcoin, e = prices.ethereum, l = prices.chainlink;
+  const today = fmtDate(sgtNow());
+
+  const prompt = `You are the Crypto Intelligence Directorate producing a classified daily brief for a senior investor in Singapore. Today is ${today}.
+
+LIVE PRICES:
+BTC:  ${fmtPrice(b.usd)} | 24h: ${fmtPct(b.usd_24h_change)} | 7d: ${fmtPct(b.usd_7d_change)} | MCap: ${fmtCap(b.usd_market_cap)} | Vol: ${fmtCap(b.usd_24h_vol)}
+ETH:  ${fmtPrice(e.usd)} | 24h: ${fmtPct(e.usd_24h_change)} | 7d: ${fmtPct(e.usd_7d_change)} | MCap: ${fmtCap(e.usd_market_cap)} | Vol: ${fmtCap(e.usd_24h_vol)}
+LINK: ${fmtPrice(l.usd)} | 24h: ${fmtPct(l.usd_24h_change)} | 7d: ${fmtPct(l.usd_7d_change)} | MCap: ${fmtCap(l.usd_market_cap)} | Vol: ${fmtCap(l.usd_24h_vol)}
+
+Write a sharp, authoritative intel brief using these live prices and your current knowledge of macro conditions, crypto market structure, and recent developments.
+
+Return ONLY a raw JSON object — no markdown, no backticks, no commentary. Schema:
+{
+  "btc": {
+    "support": "key support levels",
+    "resist": "key resistance levels",
+    "bullets": [
+      {"label": "Trend", "text": "..."},
+      {"label": "Key Level", "text": "..."},
+      {"label": "Recent Action", "text": "..."},
+      {"label": "On-Chain", "text": "..."},
+      {"label": "Sentiment", "text": "..."},
+      {"label": "Downside Risk", "text": "..."}
+    ]
+  },
+  "eth": {
+    "support": "...", "resist": "...",
+    "bullets": [
+      {"label": "Trend", "text": "..."},
+      {"label": "Cycle Context", "text": "..."},
+      {"label": "Catalyst", "text": "..."},
+      {"label": "Protocol", "text": "..."},
+      {"label": "Staking", "text": "..."},
+      {"label": "Downside Risk", "text": "..."}
+    ]
+  },
+  "link": {
+    "support": "...", "resist": "...",
+    "badge": "SHORT BADGE TEXT or null",
+    "bullets": [
+      {"label": "Context", "text": "..."},
+      {"label": "Regulatory", "text": "..."},
+      {"label": "ETF", "text": "..."},
+      {"label": "Whales", "text": "..."},
+      {"label": "Integrations", "text": "..."},
+      {"label": "Technical", "text": "..."}
+    ]
+  },
+  "macro": {
+    "gauges": [
+      {"label": "Fed Rate",   "value": "X.XX%", "sub": "note", "dir": "neu"},
+      {"label": "Inflation",  "value": "X.X%",  "sub": "note", "dir": "neg"},
+      {"label": "Gold",       "value": "$X,XXX","sub": "note", "dir": "neu"},
+      {"label": "VIX",        "value": "XX.X",  "sub": "note", "dir": "neg"}
+    ],
+    "bullets": [
+      {"label": "Fed",        "text": "..."},
+      {"label": "Inflation",  "text": "..."},
+      {"label": "Geopolitics","text": "..."},
+      {"label": "Risk Assets","text": "..."},
+      {"label": "Outlook",    "text": "..."}
+    ]
+  },
+  "threats":  [{"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}],
+  "watch":    [{"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}],
+  "verdict":  "2-3 sentence overall assessment.",
+  "ranking":  "One sentence ranking BTC, ETH, LINK by structural conviction.",
+  "bullTrigger": "One sentence.",
+  "bearTrigger": "One sentence."
+}`;
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents: [{parts: [{text: prompt}]}],
+        generationConfig: {temperature: 0.7, maxOutputTokens: 4096}
+      })
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err?.error?.message || 'Gemini API error '+res.status);
+  }
+  const data = await res.json();
+  const raw  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const clean = raw.replace(/```json|```/g,'').trim();
+  const match = clean.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('Unexpected response format from Gemini. Try refreshing.');
+  return JSON.parse(match[0]);
+}
+
+// ── RENDER ───────────────────────────────────
+function renderCard(id, priceData, support, resist) {
+  const p=priceData.usd, d24=priceData.usd_24h_change||0, d7=priceData.usd_7d_change||0;
+  document.getElementById(id+'-price').textContent = fmtPrice(p);
+  document.getElementById(id+'-deltas').innerHTML  =
+    `<span class="${arrowCls(d24)}">${arrowChar(d24)} ${Math.abs(d24).toFixed(2)}% (24h)</span>
+     <span class="${arrowCls(d7)}">${arrowChar(d7)} ${Math.abs(d7).toFixed(2)}% (7d)</span>`;
+  document.getElementById(id+'-stats').innerHTML   =
+    `<span>Mkt Cap</span> ${fmtCap(priceData.usd_market_cap)} &nbsp;·&nbsp; <span>Vol</span> ${fmtCap(priceData.usd_24h_vol)}<br/>
+     <span>Support</span> ${support}<br/><span>Resist</span> ${resist}`;
+}
+function renderBullets(id, arr) {
+  document.getElementById(id).innerHTML = arr.map(b=>`<li><strong>${b.label}:</strong> ${b.text}</li>`).join('');
+}
+function renderGauges(arr) {
+  document.getElementById('macro-gauges').innerHTML = arr.map(g=>
+    `<div class="gauge"><div class="g-label">${g.label}</div><div class="g-val">${g.value}</div><div class="g-sub ${g.dir}">${g.sub}</div></div>`
+  ).join('');
+}
+
+function renderBrief(brief, prices) {
+  const now = sgtNow();
+  renderCard('btc',  prices.bitcoin,   brief.btc.support,  brief.btc.resist);
+  renderCard('eth',  prices.ethereum,  brief.eth.support,  brief.eth.resist);
+  renderCard('link', prices.chainlink, brief.link.support, brief.link.resist);
+
+  const lh = document.getElementById('link-sec-head');
+  lh.innerHTML = `⬡ &nbsp; Chainlink — LINK${brief.link.badge?` <span class="badge">${brief.link.badge}</span>`:''}`;
+
+  renderBullets('btc-bullets',   brief.btc.bullets);
+  renderBullets('eth-bullets',   brief.eth.bullets);
+  renderBullets('link-bullets',  brief.link.bullets);
+  renderBullets('macro-bullets', brief.macro.bullets);
+  renderBullets('threats',       brief.threats);
+  renderBullets('watch',         brief.watch);
+  renderGauges(brief.macro.gauges);
+
+  document.getElementById('verdict-content').innerHTML =
+    `<p>${brief.verdict}</p>
+     <p><strong>Conviction Ranking:</strong> ${brief.ranking}</p>
+     <p><strong>Bull Trigger:</strong> ${brief.bullTrigger}<br/><strong>Bear Trigger:</strong> ${brief.bearTrigger}</p>`;
+
+  const doy = Math.ceil((now - new Date(now.getFullYear(),0,1)) / 86400000);
+  document.getElementById('issue-line').textContent = `ISSUE: DAILY-${String(doy).padStart(3,'0')} · 2 PAGES`;
+  document.getElementById('gen-time').textContent   = fmtSGT(now);
+  document.getElementById('footer-date').textContent= fmtDate(now);
+
+  startClock();
+  showScreen('brief');
+}
+
+// ── MAIN ─────────────────────────────────────
+async function run() {
+  const key = getKey();
+  if (!key) { showScreen('setup'); return; }
+  showScreen('loading');
+  try {
+    setStatus('Fetching live prices from CoinGecko…');
+    const prices = await fetchPrices();
+    setStatus('Generating intelligence analysis via Gemini…');
+    const brief  = await callGemini(prices, key);
+    setStatus('Rendering brief…');
+    renderBrief(brief, prices);
+  } catch(err) {
+    console.error(err);
+    showScreen('setup');
+    showErr('Error: ' + err.message);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => getKey() ? run() : showScreen('setup'));
 </script>
 </body>
 </html>
