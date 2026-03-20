@@ -270,18 +270,8 @@ const arrowCls  = n => n >= 0 ? 'pos' : 'neg';
 const arrowChar = n => n >= 0 ? '▲' : '▼';
 
 // ── KEY MANAGEMENT ────────────────────────────
-const KEY_STORE = 'cid_groq_key';
-const getKey    = () => localStorage.getItem(KEY_STORE);
-const storeKey  = k  => localStorage.setItem(KEY_STORE, k);
-function resetKey() { localStorage.removeItem(KEY_STORE); showScreen('setup'); }
-function saveAndRun() {
-  const k = document.getElementById('api-input').value.trim();
-  if (!k) { showErr('Please paste your Groq API key.'); return; }
-  if (!k.startsWith('gsk_')) { showErr('Groq keys start with gsk_ — get yours at console.groq.com'); return; }
-  storeKey(k);
-  run();
-}
-function showErr(m) { const b = document.getElementById('err-box'); b.textContent = m; b.classList.add('active'); }
+const getKey = () => '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';
+function showErr(m) { console.error(m); }
 
 // ── SCREENS ───────────────────────────────────
 function showScreen(s) {
@@ -491,24 +481,22 @@ function renderBrief(brief, prices) {
 
 // ── MAIN ─────────────────────────────────────
 async function run() {
-  const key = getKey();
-  if (!key) { showScreen('setup'); return; }
   showScreen('loading');
   try {
     setStatus('Fetching live prices from CoinGecko…');
     const prices = await fetchPrices();
     setStatus('Generating analysis via Groq / Llama…');
-    const brief  = await callGroq(prices, key);
+    const brief  = await callGroq(prices, getKey());
     setStatus('Rendering brief…');
     renderBrief(brief, prices);
   } catch(err) {
     console.error(err);
-    showScreen('setup');
-    showErr('Error: ' + err.message);
+    // Show error on loading screen
+    document.getElementById('load-sub').textContent = 'Error: ' + err.message + ' — refresh to retry.';
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => getKey() ? run() : showScreen('setup'));
+window.addEventListener('DOMContentLoaded', () => run());
 </script>
 </body>
 </html>
