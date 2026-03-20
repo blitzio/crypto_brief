@@ -398,12 +398,13 @@ IMPORTANT: Return ONLY a raw JSON object. No markdown, no backticks, no explanat
       messages: [
         {
           role: 'system',
-          content: 'You are a crypto intelligence analyst. You respond ONLY with raw JSON objects — no markdown, no backticks, no explanation text of any kind. Pure JSON only.'
+          content: 'You are a crypto intelligence analyst. You respond ONLY with a single raw JSON object. No markdown. No backticks. No code fences. No explanation. No text before or after the JSON. Start your response with { and end it with }. Every string value must use straight double quotes. Never use smart quotes or apostrophes inside strings — use plain ASCII only.'
         },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.7,
-      max_tokens: 4096
+      temperature: 0.4,
+      max_tokens: 4096,
+      response_format: { type: 'json_object' }
     })
   });
 
@@ -414,10 +415,29 @@ IMPORTANT: Return ONLY a raw JSON object. No markdown, no backticks, no explanat
 
   const data  = await res.json();
   const raw   = data?.choices?.[0]?.message?.content || '';
-  const clean = raw.replace(/```json|```/g, '').trim();
-  const match = clean.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('Unexpected response from Groq. Try refreshing.');
-  return JSON.parse(match[0]);
+
+  // Aggressively clean the response
+  let clean = raw
+    .replace(/```json/gi, '')
+    .replace(/```/g, '')
+    .replace(/[\u2018\u2019]/g, "'")   // smart single quotes → straight
+    .replace(/[\u201C\u201D]/g, '"')   // smart double quotes → straight
+    .replace(/[\u2013\u2014]/g, '-')   // em/en dashes → hyphen
+    .trim();
+
+  // Extract the JSON object
+  const start = clean.indexOf('{');
+  const end   = clean.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error('No JSON found in response. Try refreshing.');
+  clean = clean.slice(start, end + 1);
+
+  try {
+    return JSON.parse(clean);
+  } catch(e) {
+    // Last resort: try to fix trailing comma issues
+    const fixed = clean.replace(/,\s*([}\]])/g, '$1');
+    return JSON.parse(fixed);
+  }
 }
 
 // ── RENDER ────────────────────────────────────
