@@ -5,173 +5,111 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Crypto Daily Brief — CID-SGT</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap');
 
-*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
-
-/*
-  DARK MODE BEST PRACTICES:
-  - Background #13151a (not pure black — avoids halation on OLED, reduces eye strain)
-  - Surfaces layered: #181b23 → #1e2230 → #232736 (depth without harsh contrast)
-  - Text #d4dbe8 (off-white ~86% brightness — pure white causes too much contrast fatigue)
-  - Secondary text #6b7a90 (meets WCAG AA at this background level)
-  - Borders #252c3a (subtle, not harsh)
-  - Accent gold desaturated slightly — warm tones less aggressive on dark screens
-  - Font: DM Sans — humanist sans, excellent screen legibility, generous spacing
-*/
-:root {
-  --bg:       #13151a;
-  --paper:    #181b23;
-  --surface:  #1e2230;
-  --raised:   #232736;
-  --border:   #252c3a;
-  --border2:  #2e3648;
-  --text:     #d4dbe8;
-  --muted:    #6b7a90;
-  --faint:    #3a4458;
-  --gold:     #c49a2a;
-  --gold-bg:  rgba(196,154,42,.08);
-  --red:      #9b2828;
-  --red-bg:   rgba(155,40,40,.1);
-  --green:    #27a060;
-  --green-bg: rgba(39,160,96,.1);
-  --neg:      #e05555;
-  --pos:      #3db87a;
-  --neu:      #d4882a;
-  --font:     'DM Sans', system-ui, sans-serif;
-  --mono:     'DM Mono', 'Fira Code', monospace;
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#13151a; --paper:#181b23; --surface:#1e2230; --border:#252c3a; --border2:#2e3648;
+  --text:#d4dbe8; --muted:#6b7a90; --faint:#3a4458;
+  --gold:#c49a2a; --gold-bg:rgba(196,154,42,.08);
+  --red:#9b2828; --red-bg:rgba(155,40,40,.1);
+  --green:#27a060; --green-bg:rgba(39,160,96,.1);
+  --neg:#e05555; --pos:#3db87a; --neu:#d4882a;
+  --font:'DM Sans',system-ui,sans-serif; --mono:'DM Mono','Fira Code',monospace;
 }
-html { font-size: 16px; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font);
-  font-size: 1rem;
-  line-height: 1.7;
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-}
+html{font-size:16px;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1rem;line-height:1.7;-webkit-font-smoothing:antialiased;min-height:100vh;}
 
-/* ── LOADING ── */
-#loading { display:flex; min-height:100vh; align-items:center; justify-content:center; flex-direction:column; gap:18px; }
-#loading.hidden { display:none; }
-.spinner { width:40px; height:40px; border:2px solid var(--border2); border-top-color:var(--gold); border-radius:50%; animation:spin .9s linear infinite; }
-@keyframes spin { to { transform:rotate(360deg); } }
-.load-title { font-size:1.1rem; font-weight:500; color:var(--text); }
-.load-sub { font-size:.78rem; color:var(--muted); font-family:var(--mono); letter-spacing:.1em; text-transform:uppercase; }
+/* LOADING */
+#loading{display:flex;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:18px;}
+#loading.hidden{display:none;}
+.spinner{width:40px;height:40px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.load-title{font-size:1.1rem;font-weight:500;color:var(--text);}
+.load-sub{font-size:.78rem;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;}
 
-/* ── SETUP ── */
-#setup { display:none; min-height:100vh; align-items:center; justify-content:center; flex-direction:column; padding:32px 20px; }
-#setup.active { display:flex; }
-.setup-card { background:var(--paper); border:1px solid var(--border2); border-top:3px solid var(--gold); padding:40px 44px; max-width:500px; width:100%; }
-.setup-logo { font-size:.72rem; font-family:var(--mono); letter-spacing:.22em; color:var(--gold); text-transform:uppercase; margin-bottom:10px; }
-.setup-title { font-size:1.6rem; font-weight:600; color:var(--text); margin-bottom:4px; line-height:1.2; }
-.setup-sub { font-size:.88rem; color:var(--muted); margin-bottom:28px; }
-.setup-steps { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:16px 18px; margin-bottom:24px; font-size:.84rem; color:var(--muted); line-height:1.95; }
-.setup-steps b { color:var(--text); font-weight:500; }
-.setup-steps a { color:var(--gold); text-decoration:none; }
-.setup-steps a:hover { text-decoration:underline; }
-.field-label { font-size:.72rem; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); display:block; margin-bottom:8px; }
-.setup-input { width:100%; background:var(--surface); border:1px solid var(--border2); color:var(--text); font-family:var(--mono); font-size:.88rem; padding:13px 16px; outline:none; margin-bottom:10px; border-radius:4px; transition:border-color .2s; }
-.setup-input:focus { border-color:var(--gold); }
-.setup-hint { font-size:.8rem; color:var(--muted); line-height:1.75; margin-bottom:24px; }
-.err-box { display:none; background:var(--red-bg); border:1px solid rgba(155,40,40,.3); color:#e08080; font-size:.82rem; padding:11px 14px; border-radius:4px; margin-bottom:16px; line-height:1.6; }
-.err-box.active { display:block; }
-.primary-btn { width:100%; background:var(--gold); color:#0d0f14; border:none; font-family:var(--font); font-size:.88rem; font-weight:600; letter-spacing:.04em; padding:14px; cursor:pointer; border-radius:4px; transition:background .2s; }
-.primary-btn:hover { background:#d4aa30; }
+/* SETUP */
+#setup{display:none;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;padding:32px 20px;}
+#setup.active{display:flex;}
+.setup-card{background:var(--paper);border:1px solid var(--border2);border-top:3px solid var(--gold);padding:40px 44px;max-width:500px;width:100%;}
+.setup-logo{font-size:.72rem;font-family:var(--mono);letter-spacing:.22em;color:var(--gold);text-transform:uppercase;margin-bottom:10px;}
+.setup-title{font-size:1.6rem;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.2;}
+.setup-sub{font-size:.88rem;color:var(--muted);margin-bottom:28px;}
+.setup-steps{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:16px 18px;margin-bottom:24px;font-size:.84rem;color:var(--muted);line-height:1.95;}
+.setup-steps b{color:var(--text);font-weight:500;}
+.setup-steps a{color:var(--gold);text-decoration:none;}
+.setup-steps a:hover{text-decoration:underline;}
+.field-label{font-size:.72rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;}
+.setup-input{width:100%;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:.88rem;padding:13px 16px;outline:none;margin-bottom:10px;border-radius:4px;transition:border-color .2s;}
+.setup-input:focus{border-color:var(--gold);}
+.setup-hint{font-size:.8rem;color:var(--muted);line-height:1.75;margin-bottom:24px;}
+.err-box{display:none;background:var(--red-bg);border:1px solid rgba(155,40,40,.3);color:#e08080;font-size:.82rem;padding:11px 14px;border-radius:4px;margin-bottom:16px;line-height:1.6;}
+.err-box.active{display:block;}
+.primary-btn{width:100%;background:var(--gold);color:#0d0f14;border:none;font-family:var(--font);font-size:.88rem;font-weight:600;padding:14px;cursor:pointer;border-radius:4px;transition:background .2s;}
+.primary-btn:hover{background:#d4aa30;}
 
-/* ── BRIEF ── */
-#brief { display:none; }
-#brief.active { display:block; }
-.doc { max-width:1020px; margin:0 auto; background:var(--paper); border:1px solid var(--border); }
-
-.cbar { background:var(--red); color:rgba(255,255,255,.88); text-align:center; padding:5px 0; font-size:.65rem; font-family:var(--mono); font-weight:500; letter-spacing:.45em; text-transform:uppercase; }
-
-/* Refresh bar */
-.rbar { background:var(--bg); border-bottom:1px solid var(--border); padding:8px 44px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-.rbar-info { font-size:.78rem; color:var(--muted); }
-.rbar-info b { color:var(--text); font-weight:500; }
-.rbar-actions { display:flex; gap:8px; }
-.ghost-btn { background:transparent; border:1px solid var(--border2); color:var(--muted); font-family:var(--font); font-size:.74rem; padding:5px 14px; cursor:pointer; border-radius:3px; transition:color .15s, border-color .15s; }
-.ghost-btn:hover { color:var(--text); border-color:var(--muted); }
-.accent-btn { background:var(--gold-bg); border:1px solid rgba(196,154,42,.2); color:var(--gold); font-family:var(--font); font-size:.74rem; font-weight:500; padding:5px 14px; cursor:pointer; border-radius:3px; transition:background .15s; }
-.accent-btn:hover { background:rgba(196,154,42,.15); }
-
-/* Masthead */
-.masthead { padding:28px 44px 20px; border-bottom:1px solid var(--border2); display:grid; grid-template-columns:1fr auto; gap:24px; align-items:center; }
-.m-eyebrow { font-size:.7rem; font-family:var(--mono); letter-spacing:.22em; color:var(--gold); text-transform:uppercase; margin-bottom:6px; }
-.m-title { font-size:2rem; font-weight:600; color:var(--text); letter-spacing:-.01em; line-height:1.1; }
-.m-sub { margin-top:5px; font-size:.76rem; font-family:var(--mono); letter-spacing:.14em; color:var(--muted); text-transform:uppercase; }
-.m-right { text-align:right; font-size:.78rem; color:var(--muted); line-height:2; }
-.ts-live { font-size:.95rem; font-weight:600; font-family:var(--mono); color:var(--gold); letter-spacing:.03em; margin-bottom:2px; display:block; }
-
-/* Routing */
-.routing { padding:7px 44px; background:var(--bg); border-bottom:1px solid var(--border); display:flex; gap:32px; font-size:.7rem; font-family:var(--mono); letter-spacing:.07em; color:var(--faint); flex-wrap:wrap; }
-.routing b { color:#8a3030; }
-
-/* Price strip */
-.price-strip { display:grid; grid-template-columns:1fr 1fr 1fr; border-bottom:1px solid var(--border2); }
-.pcard { padding:22px 28px; border-right:1px solid var(--border); position:relative; }
-.pcard:last-child { border-right:none; }
-.pcard::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
-.pcard.btc::before  { background:#f7931a; }
-.pcard.eth::before  { background:#6277ea; }
-.pcard.link::before { background:#3d6aed; }
-.p-sym { font-size:.7rem; font-family:var(--mono); letter-spacing:.22em; color:var(--muted); margin-bottom:6px; }
-.p-price { font-size:1.85rem; font-weight:600; color:var(--text); letter-spacing:-.01em; line-height:1; }
-.p-deltas { margin-top:8px; display:flex; gap:14px; font-size:.84rem; font-weight:500; }
-.p-stats { margin-top:12px; padding-top:10px; border-top:1px solid var(--border); font-size:.78rem; color:var(--muted); line-height:2; }
-.p-stats span { color:var(--faint); }
-.neg { color:var(--neg); } .pos { color:var(--pos); } .neu { color:var(--neu); }
-
-/* Body grid */
-.body { display:grid; grid-template-columns:1fr 1fr; }
-.col-l { border-right:1px solid var(--border); }
-.sec { padding:22px 28px; border-bottom:1px solid var(--border); }
-.sec:last-child { border-bottom:none; }
-.sec-head { font-size:.7rem; font-family:var(--mono); font-weight:500; letter-spacing:.22em; color:var(--gold); text-transform:uppercase; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border); }
-
-/* Intel bullets */
-ul.ib { list-style:none; }
-ul.ib > li {
-  padding:9px 0 9px 18px;
-  border-bottom:1px solid var(--border);
-  position:relative;
-  font-size:.92rem;
-  line-height:1.7;
-  color:var(--text);
-  font-weight:300;
-}
-ul.ib > li:last-child { border-bottom:none; }
-ul.ib > li::before { content:'▸'; position:absolute; left:0; top:11px; color:var(--gold); font-size:.6rem; }
-ul.ib > li strong { font-weight:600; color:var(--text); }
-
-/* Gauges */
-.gauges { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
-.gauge { background:var(--surface); border:1px solid var(--border); padding:12px 14px; border-radius:3px; }
-.g-label { font-size:.67rem; font-family:var(--mono); letter-spacing:.12em; color:var(--muted); text-transform:uppercase; margin-bottom:4px; }
-.g-val { font-size:1.3rem; font-weight:600; color:var(--text); line-height:1; }
-.g-sub { font-size:.76rem; margin-top:4px; }
-
-/* Full-width */
-.full { grid-column:1/-1; border-top:1px solid var(--border2); padding:22px 44px 28px; }
-.full .sec-head { margin-bottom:16px; }
-.two-col { display:grid; grid-template-columns:1fr 1fr; gap:32px; }
-.col-head { font-size:.7rem; font-family:var(--mono); font-weight:500; letter-spacing:.18em; color:var(--muted); text-transform:uppercase; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid var(--border); }
-
-/* Assessment */
-.abox { background:var(--surface); border-left:3px solid var(--red); padding:20px 22px; margin-top:20px; border-radius:0 3px 3px 0; }
-.abox .alabel { font-size:.67rem; font-family:var(--mono); font-weight:500; letter-spacing:.22em; color:var(--neg); text-transform:uppercase; margin-bottom:12px; }
-.abox p { font-size:.92rem; line-height:1.8; color:var(--text); font-weight:300; margin-bottom:12px; }
-.abox p:last-child { margin-bottom:0; }
-.abox strong { font-weight:600; }
-
-.psep { grid-column:1/-1; text-align:center; padding:5px 0; font-size:.62rem; font-family:var(--mono); letter-spacing:.35em; color:var(--faint); border-top:1px solid var(--border); border-bottom:1px solid var(--border); background:var(--bg); }
-
-.badge { display:inline-block; font-size:.6rem; font-family:var(--mono); letter-spacing:.1em; padding:2px 7px; background:var(--green-bg); border:1px solid rgba(39,160,96,.25); color:var(--green); text-transform:uppercase; border-radius:2px; vertical-align:middle; margin-left:6px; }
-
-.footer { border-top:1px solid var(--border); padding:10px 44px; display:flex; justify-content:space-between; align-items:center; font-size:.7rem; font-family:var(--mono); color:var(--faint); letter-spacing:.06em; flex-wrap:wrap; gap:8px; }
-.footer .warn { color:rgba(155,40,40,.65); }
+/* BRIEF */
+#brief{display:none;}
+#brief.active{display:block;}
+.doc{max-width:1020px;margin:0 auto;background:var(--paper);border:1px solid var(--border);}
+.cbar{background:var(--red);color:rgba(255,255,255,.88);text-align:center;padding:5px 0;font-size:.65rem;font-family:var(--mono);font-weight:500;letter-spacing:.45em;text-transform:uppercase;}
+.rbar{background:var(--bg);border-bottom:1px solid var(--border);padding:8px 44px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+.rbar-info{font-size:.78rem;color:var(--muted);}
+.rbar-info b{color:var(--text);font-weight:500;}
+.rbar-actions{display:flex;gap:8px;}
+.ghost-btn{background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:var(--font);font-size:.74rem;padding:5px 14px;cursor:pointer;border-radius:3px;transition:color .15s,border-color .15s;}
+.ghost-btn:hover{color:var(--text);border-color:var(--muted);}
+.accent-btn{background:var(--gold-bg);border:1px solid rgba(196,154,42,.2);color:var(--gold);font-family:var(--font);font-size:.74rem;font-weight:500;padding:5px 14px;cursor:pointer;border-radius:3px;transition:background .15s;}
+.accent-btn:hover{background:rgba(196,154,42,.15);}
+.masthead{padding:28px 44px 20px;border-bottom:1px solid var(--border2);display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;}
+.m-eyebrow{font-size:.7rem;font-family:var(--mono);letter-spacing:.22em;color:var(--gold);text-transform:uppercase;margin-bottom:6px;}
+.m-title{font-size:2rem;font-weight:600;color:var(--text);letter-spacing:-.01em;line-height:1.1;}
+.m-sub{margin-top:5px;font-size:.76rem;font-family:var(--mono);letter-spacing:.14em;color:var(--muted);text-transform:uppercase;}
+.m-right{text-align:right;font-size:.78rem;color:var(--muted);line-height:2;}
+.ts-live{font-size:.95rem;font-weight:600;font-family:var(--mono);color:var(--gold);letter-spacing:.03em;display:block;margin-bottom:2px;}
+.routing{padding:7px 44px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;gap:32px;font-size:.7rem;font-family:var(--mono);letter-spacing:.07em;color:var(--faint);flex-wrap:wrap;}
+.routing b{color:#8a3030;}
+.price-strip{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border2);}
+.pcard{padding:22px 28px;border-right:1px solid var(--border);position:relative;}
+.pcard:last-child{border-right:none;}
+.pcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.pcard.btc::before{background:#f7931a;}
+.pcard.eth::before{background:#6277ea;}
+.pcard.link::before{background:#3d6aed;}
+.p-sym{font-size:.7rem;font-family:var(--mono);letter-spacing:.22em;color:var(--muted);margin-bottom:6px;}
+.p-price{font-size:1.85rem;font-weight:600;color:var(--text);letter-spacing:-.01em;line-height:1;}
+.p-deltas{margin-top:8px;display:flex;gap:14px;font-size:.84rem;font-weight:500;}
+.p-stats{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted);line-height:2;}
+.p-stats span{color:var(--faint);}
+.neg{color:var(--neg);}.pos{color:var(--pos);}.neu{color:var(--neu);}
+.body{display:grid;grid-template-columns:1fr 1fr;}
+.col-l{border-right:1px solid var(--border);}
+.sec{padding:22px 28px;border-bottom:1px solid var(--border);}
+.sec:last-child{border-bottom:none;}
+.sec-head{font-size:.7rem;font-family:var(--mono);font-weight:500;letter-spacing:.22em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+ul.ib{list-style:none;}
+ul.ib>li{padding:9px 0 9px 18px;border-bottom:1px solid var(--border);position:relative;font-size:.92rem;line-height:1.7;color:var(--text);font-weight:300;}
+ul.ib>li:last-child{border-bottom:none;}
+ul.ib>li::before{content:'▸';position:absolute;left:0;top:11px;color:var(--gold);font-size:.6rem;}
+ul.ib>li strong{font-weight:600;color:var(--text);}
+.gauges{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.gauge{background:var(--surface);border:1px solid var(--border);padding:12px 14px;border-radius:3px;}
+.g-label{font-size:.67rem;font-family:var(--mono);letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:4px;}
+.g-val{font-size:1.3rem;font-weight:600;color:var(--text);line-height:1;}
+.g-sub{font-size:.76rem;margin-top:4px;}
+.full{grid-column:1/-1;border-top:1px solid var(--border2);padding:22px 44px 28px;}
+.full .sec-head{margin-bottom:16px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+.col-head{font-size:.7rem;font-family:var(--mono);font-weight:500;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.abox{background:var(--surface);border-left:3px solid var(--red);padding:20px 22px;margin-top:20px;border-radius:0 3px 3px 0;}
+.abox .alabel{font-size:.67rem;font-family:var(--mono);font-weight:500;letter-spacing:.22em;color:var(--neg);text-transform:uppercase;margin-bottom:12px;}
+.abox p{font-size:.92rem;line-height:1.8;color:var(--text);font-weight:300;margin-bottom:12px;}
+.abox p:last-child{margin-bottom:0;}
+.abox strong{font-weight:600;}
+.psep{grid-column:1/-1;text-align:center;padding:5px 0;font-size:.62rem;font-family:var(--mono);letter-spacing:.35em;color:var(--faint);border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg);}
+.badge{display:inline-block;font-size:.6rem;font-family:var(--mono);letter-spacing:.1em;padding:2px 7px;background:var(--green-bg);border:1px solid rgba(39,160,96,.25);color:var(--green);text-transform:uppercase;border-radius:2px;vertical-align:middle;margin-left:6px;}
+.footer{border-top:1px solid var(--border);padding:10px 44px;display:flex;justify-content:space-between;align-items:center;font-size:.7rem;font-family:var(--mono);color:var(--faint);letter-spacing:.06em;flex-wrap:wrap;gap:8px;}
+.footer .warn{color:rgba(155,40,40,.65);}
 </style>
 </head>
 <body>
@@ -188,18 +126,18 @@ ul.ib > li strong { font-weight:600; color:var(--text); }
   <div class="setup-card">
     <div class="setup-logo">CID-SGT · Crypto Intelligence Directorate</div>
     <div class="setup-title">Daily Brief Setup</div>
-    <div class="setup-sub">One-time API key — takes under 2 minutes, completely free</div>
+    <div class="setup-sub">One-time API key — free, no credit card ever</div>
     <div class="setup-steps">
-      <b>Get your free Gemini API key:</b><br/>
-      1. Go to <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a><br/>
-      2. Sign in with any Google account<br/>
-      3. Click <b>Get API Key</b> → <b>Create API Key</b><br/>
-      4. Copy and paste it below<br/><br/>
-      <b>Free tier:</b> 1,500 requests/day · No credit card · No billing
+      <b>Get your free Groq API key (2 minutes):</b><br/>
+      1. Go to <a href="https://console.groq.com" target="_blank">console.groq.com</a><br/>
+      2. Sign up with email or Google — no card needed<br/>
+      3. Click <b>API Keys</b> in the left sidebar<br/>
+      4. Click <b>Create API Key</b> → copy it<br/><br/>
+      <b>Free tier:</b> 14,400 requests/day · No credit card · No billing ever
     </div>
-    <label class="field-label" for="api-input">Gemini API Key</label>
-    <input type="password" class="setup-input" id="api-input" placeholder="AIzaSy…" autocomplete="off"/>
-    <div class="setup-hint">Saved only in your browser's local storage. Never sent anywhere except directly to Google's Gemini API.</div>
+    <label class="field-label" for="api-input">Groq API Key</label>
+    <input type="password" class="setup-input" id="api-input" placeholder="gsk_…" autocomplete="off"/>
+    <div class="setup-hint">Saved only in your browser's local storage. Never sent anywhere except directly to Groq's API.</div>
     <div class="err-box" id="err-box"></div>
     <button class="primary-btn" onclick="saveAndRun()">Generate Brief →</button>
   </div>
@@ -209,15 +147,13 @@ ul.ib > li strong { font-weight:600; color:var(--text); }
 <div id="brief">
 <div class="doc">
   <div class="cbar">⬛ &nbsp; CRYPTO INTELLIGENCE BRIEF — FOR ADDRESSEE'S EYES ONLY &nbsp; ⬛</div>
-
   <div class="rbar">
-    <div class="rbar-info">Generated: <b id="gen-time">—</b> &nbsp;·&nbsp; Prices via CoinGecko · Analysis via Gemini</div>
+    <div class="rbar-info">Generated: <b id="gen-time">—</b> &nbsp;·&nbsp; Prices: CoinGecko · Analysis: Groq / Llama</div>
     <div class="rbar-actions">
       <button class="ghost-btn" onclick="resetKey()">⚙ Change Key</button>
       <button class="accent-btn" onclick="run()">↻ Refresh Brief</button>
     </div>
   </div>
-
   <div class="masthead">
     <div>
       <div class="m-eyebrow">Crypto Intelligence Directorate · Singapore</div>
@@ -231,7 +167,6 @@ ul.ib > li strong { font-weight:600; color:var(--text); }
       <div>BEDOK NEW TOWN, SGT (UTC+8)</div>
     </div>
   </div>
-
   <div class="routing">
     <div><b>CLASS:</b> PROPRIETARY — NOT FOR REDISTRIBUTION</div>
     <div><b>COVERS:</b> BTC · ETH · LINK · MACRO · GEO · REGULATORY</div>
@@ -319,7 +254,6 @@ const pad   = n => String(n).padStart(2,'0');
 const sgtNow = () => new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Singapore'}));
 const fmtSGT  = d => `${WDAYS[d.getDay()]} ${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} SGT`;
 const fmtDate = d => `${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYear()}`;
-
 let _clock = null;
 function startClock() {
   if (_clock) clearInterval(_clock);
@@ -336,21 +270,20 @@ const arrowCls  = n => n >= 0 ? 'pos' : 'neg';
 const arrowChar = n => n >= 0 ? '▲' : '▼';
 
 // ── KEY MANAGEMENT ────────────────────────────
-const KEY_STORE = 'cid_gemini_key';
+const KEY_STORE = 'cid_groq_key';
 const getKey    = () => localStorage.getItem(KEY_STORE);
 const storeKey  = k  => localStorage.setItem(KEY_STORE, k);
 function resetKey() { localStorage.removeItem(KEY_STORE); showScreen('setup'); }
-
 function saveAndRun() {
   const k = document.getElementById('api-input').value.trim();
-  if (!k)              { showErr('Please paste your Gemini API key.'); return; }
-  if (!k.startsWith('AIza')) { showErr('Doesn\'t look right — Gemini keys start with AIza…'); return; }
+  if (!k) { showErr('Please paste your Groq API key.'); return; }
+  if (!k.startsWith('gsk_')) { showErr('Groq keys start with gsk_ — get yours at console.groq.com'); return; }
   storeKey(k);
   run();
 }
 function showErr(m) { const b = document.getElementById('err-box'); b.textContent = m; b.classList.add('active'); }
 
-// ── SCREEN MANAGEMENT ────────────────────────
+// ── SCREENS ───────────────────────────────────
 function showScreen(s) {
   document.getElementById('loading').classList.add('hidden');
   ['setup','brief'].forEach(id => document.getElementById(id).classList.remove('active'));
@@ -359,34 +292,35 @@ function showScreen(s) {
 }
 const setStatus = t => document.getElementById('load-sub').textContent = t;
 
-// ── FETCH PRICES ─────────────────────────────
+// ── FETCH PRICES (CoinGecko — no key needed) ──
 async function fetchPrices() {
   const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,chainlink&vs_currencies=usd&include_24hr_change=true&include_7d_change=true&include_market_cap=true&include_24hr_vol=true');
-  if (!r.ok) throw new Error('CoinGecko unavailable ('+r.status+'). Try again in a moment.');
+  if (!r.ok) throw new Error('CoinGecko unavailable ('+r.status+'). Try again shortly.');
   return r.json();
 }
 
-// ── CALL GEMINI ──────────────────────────────
-async function callGemini(prices, key) {
+// ── CALL GROQ ─────────────────────────────────
+async function callGroq(prices, key) {
   const b = prices.bitcoin, e = prices.ethereum, l = prices.chainlink;
   const today = fmtDate(sgtNow());
 
   const prompt = `You are the Crypto Intelligence Directorate producing a classified daily brief for a senior investor in Singapore. Today is ${today}.
 
-LIVE PRICES:
+LIVE PRICES (just fetched from CoinGecko):
 BTC:  ${fmtPrice(b.usd)} | 24h: ${fmtPct(b.usd_24h_change)} | 7d: ${fmtPct(b.usd_7d_change)} | MCap: ${fmtCap(b.usd_market_cap)} | Vol: ${fmtCap(b.usd_24h_vol)}
 ETH:  ${fmtPrice(e.usd)} | 24h: ${fmtPct(e.usd_24h_change)} | 7d: ${fmtPct(e.usd_7d_change)} | MCap: ${fmtCap(e.usd_market_cap)} | Vol: ${fmtCap(e.usd_24h_vol)}
 LINK: ${fmtPrice(l.usd)} | 24h: ${fmtPct(l.usd_24h_change)} | 7d: ${fmtPct(l.usd_7d_change)} | MCap: ${fmtCap(l.usd_market_cap)} | Vol: ${fmtCap(l.usd_24h_vol)}
 
-Write a sharp, authoritative intel brief using these live prices and your current knowledge of macro conditions, crypto market structure, and recent developments.
+Using these live prices and your knowledge of current macro conditions, crypto market structure, and recent developments as of today, write a sharp authoritative intelligence brief.
 
-Return ONLY a raw JSON object — no markdown, no backticks, no commentary. Schema:
+IMPORTANT: Return ONLY a raw JSON object. No markdown, no backticks, no explanation before or after. Just the JSON.
+
 {
   "btc": {
-    "support": "key support levels",
-    "resist": "key resistance levels",
+    "support": "key support levels as a string",
+    "resist": "key resistance levels as a string",
     "bullets": [
-      {"label": "Trend", "text": "..."},
+      {"label": "Trend", "text": "one punchy intel sentence"},
       {"label": "Key Level", "text": "..."},
       {"label": "Recent Action", "text": "..."},
       {"label": "On-Chain", "text": "..."},
@@ -419,51 +353,74 @@ Return ONLY a raw JSON object — no markdown, no backticks, no commentary. Sche
   },
   "macro": {
     "gauges": [
-      {"label": "Fed Rate",   "value": "X.XX%", "sub": "note", "dir": "neu"},
-      {"label": "Inflation",  "value": "X.X%",  "sub": "note", "dir": "neg"},
-      {"label": "Gold",       "value": "$X,XXX","sub": "note", "dir": "neu"},
-      {"label": "VIX",        "value": "XX.X",  "sub": "note", "dir": "neg"}
+      {"label": "Fed Rate",  "value": "X.XX%", "sub": "brief note", "dir": "neu"},
+      {"label": "Inflation", "value": "X.X%",  "sub": "brief note", "dir": "neg"},
+      {"label": "Gold",      "value": "$X,XXX","sub": "brief note", "dir": "neu"},
+      {"label": "VIX",       "value": "XX.X",  "sub": "brief note", "dir": "neg"}
     ],
     "bullets": [
-      {"label": "Fed",        "text": "..."},
-      {"label": "Inflation",  "text": "..."},
-      {"label": "Geopolitics","text": "..."},
-      {"label": "Risk Assets","text": "..."},
-      {"label": "Outlook",    "text": "..."}
+      {"label": "Fed",         "text": "..."},
+      {"label": "Inflation",   "text": "..."},
+      {"label": "Geopolitics", "text": "..."},
+      {"label": "Risk Assets", "text": "..."},
+      {"label": "Outlook",     "text": "..."}
     ]
   },
-  "threats":  [{"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}],
-  "watch":    [{"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}, {"label":"...", "text":"..."}],
-  "verdict":  "2-3 sentence overall assessment.",
-  "ranking":  "One sentence ranking BTC, ETH, LINK by structural conviction.",
-  "bullTrigger": "One sentence.",
-  "bearTrigger": "One sentence."
+  "threats": [
+    {"label": "...", "text": "..."},
+    {"label": "...", "text": "..."},
+    {"label": "...", "text": "..."},
+    {"label": "...", "text": "..."},
+    {"label": "...", "text": "..."}
+  ],
+  "watch": [
+    {"label": "...", "text": "..."},
+    {"label": "...", "text": "..."},
+    {"label": "...", "text": "..."},
+    {"label": "...", "text": "..."},
+    {"label": "...", "text": "..."},
+    {"label": "...", "text": "..."}
+  ],
+  "verdict": "2-3 sentence overall market assessment. Direct and sharp.",
+  "ranking": "One sentence ranking BTC, ETH, LINK by structural conviction right now.",
+  "bullTrigger": "One sentence: what unlocks the bull case.",
+  "bearTrigger": "One sentence: what confirms the bear case."
 }`;
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-    {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        contents: [{parts: [{text: prompt}]}],
-        generationConfig: {temperature: 0.7, maxOutputTokens: 4096}
-      })
-    }
-  );
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + key
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a crypto intelligence analyst. You respond ONLY with raw JSON objects — no markdown, no backticks, no explanation text of any kind. Pure JSON only.'
+        },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 4096
+    })
+  });
+
   if (!res.ok) {
-    const err = await res.json().catch(()=>({}));
-    throw new Error(err?.error?.message || 'Gemini API error '+res.status);
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || 'Groq API error ' + res.status);
   }
-  const data = await res.json();
-  const raw  = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const clean = raw.replace(/```json|```/g,'').trim();
+
+  const data  = await res.json();
+  const raw   = data?.choices?.[0]?.message?.content || '';
+  const clean = raw.replace(/```json|```/g, '').trim();
   const match = clean.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('Unexpected response format from Gemini. Try refreshing.');
+  if (!match) throw new Error('Unexpected response from Groq. Try refreshing.');
   return JSON.parse(match[0]);
 }
 
-// ── RENDER ───────────────────────────────────
+// ── RENDER ────────────────────────────────────
 function renderCard(id, priceData, support, resist) {
   const p=priceData.usd, d24=priceData.usd_24h_change||0, d7=priceData.usd_7d_change||0;
   document.getElementById(id+'-price').textContent = fmtPrice(p);
@@ -475,14 +432,13 @@ function renderCard(id, priceData, support, resist) {
      <span>Support</span> ${support}<br/><span>Resist</span> ${resist}`;
 }
 function renderBullets(id, arr) {
-  document.getElementById(id).innerHTML = arr.map(b=>`<li><strong>${b.label}:</strong> ${b.text}</li>`).join('');
+  document.getElementById(id).innerHTML = arr.map(b => `<li><strong>${b.label}:</strong> ${b.text}</li>`).join('');
 }
 function renderGauges(arr) {
-  document.getElementById('macro-gauges').innerHTML = arr.map(g=>
+  document.getElementById('macro-gauges').innerHTML = arr.map(g =>
     `<div class="gauge"><div class="g-label">${g.label}</div><div class="g-val">${g.value}</div><div class="g-sub ${g.dir}">${g.sub}</div></div>`
   ).join('');
 }
-
 function renderBrief(brief, prices) {
   const now = sgtNow();
   renderCard('btc',  prices.bitcoin,   brief.btc.support,  brief.btc.resist);
@@ -490,7 +446,7 @@ function renderBrief(brief, prices) {
   renderCard('link', prices.chainlink, brief.link.support, brief.link.resist);
 
   const lh = document.getElementById('link-sec-head');
-  lh.innerHTML = `⬡ &nbsp; Chainlink — LINK${brief.link.badge?` <span class="badge">${brief.link.badge}</span>`:''}`;
+  lh.innerHTML = `⬡ &nbsp; Chainlink — LINK${brief.link.badge ? ` <span class="badge">${brief.link.badge}</span>` : ''}`;
 
   renderBullets('btc-bullets',   brief.btc.bullets);
   renderBullets('eth-bullets',   brief.eth.bullets);
@@ -506,10 +462,9 @@ function renderBrief(brief, prices) {
      <p><strong>Bull Trigger:</strong> ${brief.bullTrigger}<br/><strong>Bear Trigger:</strong> ${brief.bearTrigger}</p>`;
 
   const doy = Math.ceil((now - new Date(now.getFullYear(),0,1)) / 86400000);
-  document.getElementById('issue-line').textContent = `ISSUE: DAILY-${String(doy).padStart(3,'0')} · 2 PAGES`;
-  document.getElementById('gen-time').textContent   = fmtSGT(now);
-  document.getElementById('footer-date').textContent= fmtDate(now);
-
+  document.getElementById('issue-line').textContent    = `ISSUE: DAILY-${String(doy).padStart(3,'0')} · 2 PAGES`;
+  document.getElementById('gen-time').textContent      = fmtSGT(now);
+  document.getElementById('footer-date').textContent   = fmtDate(now);
   startClock();
   showScreen('brief');
 }
@@ -522,8 +477,8 @@ async function run() {
   try {
     setStatus('Fetching live prices from CoinGecko…');
     const prices = await fetchPrices();
-    setStatus('Generating intelligence analysis via Gemini…');
-    const brief  = await callGemini(prices, key);
+    setStatus('Generating analysis via Groq / Llama…');
+    const brief  = await callGroq(prices, key);
     setStatus('Rendering brief…');
     renderBrief(brief, prices);
   } catch(err) {
