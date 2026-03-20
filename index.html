@@ -27,7 +27,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1r
 .spinner{width:40px;height:40px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .9s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .load-title{font-size:1.1rem;font-weight:500;color:var(--text);}
-.load-sub{font-size:.78rem;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;text-align:center;max-width:300px;}
+.load-sub{font-size:.78rem;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;text-align:center;max-width:360px;}
 
 /* BRIEF */
 #brief{display:none;}
@@ -39,9 +39,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1r
 .rbar{background:var(--bg);border-bottom:1px solid var(--border);padding:8px 44px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
 .rbar-info{font-size:.78rem;color:var(--muted);}
 .rbar-info b{color:var(--text);font-weight:500;}
-.rbar-actions{display:flex;gap:8px;}
-.ghost-btn{background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:var(--font);font-size:.74rem;padding:5px 14px;cursor:pointer;border-radius:3px;transition:color .15s,border-color .15s;}
-.ghost-btn:hover{color:var(--text);border-color:var(--muted);}
 .accent-btn{background:var(--gold-bg);border:1px solid rgba(196,154,42,.2);color:var(--gold);font-family:var(--font);font-size:.74rem;font-weight:500;padding:5px 14px;cursor:pointer;border-radius:3px;transition:background .15s;}
 .accent-btn:hover{background:rgba(196,154,42,.15);}
 
@@ -106,15 +103,14 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 .abox p:last-child{margin-bottom:0;}
 .abox strong{font-weight:600;}
 
-/* SOURCES SECTION */
+/* Sources */
 .sources-section{grid-column:1/-1;border-top:1px solid var(--border2);padding:22px 44px 28px;background:var(--bg);}
-.sources-section .sec-head{margin-bottom:16px;color:var(--muted);}
 .sources-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
 .source-card{background:var(--paper);border:1px solid var(--border);padding:12px 14px;border-radius:3px;text-decoration:none;display:block;transition:border-color .15s,background .15s;}
 .source-card:hover{border-color:var(--blue);background:var(--blue-bg);}
 .source-tag{font-size:.65rem;font-family:var(--mono);letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:5px;}
 .source-title{font-size:.82rem;color:var(--text);line-height:1.5;font-weight:400;}
-.source-meta{margin-top:6px;font-size:.7rem;color:var(--muted);display:flex;justify-content:space-between;align-items:center;}
+.source-meta{margin-top:6px;font-size:.7rem;color:var(--muted);display:flex;justify-content:space-between;}
 .source-domain{color:var(--blue);font-family:var(--mono);}
 
 .psep{grid-column:1/-1;text-align:center;padding:5px 0;font-size:.62rem;font-family:var(--mono);letter-spacing:.35em;color:var(--faint);border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg);}
@@ -139,9 +135,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 
   <div class="rbar">
     <div class="rbar-info">Generated: <b id="gen-time">—</b> &nbsp;·&nbsp; Prices: CoinGecko · News: Tavily · Analysis: Groq/Llama</div>
-    <div class="rbar-actions">
-      <button class="accent-btn" onclick="run()">↻ Refresh Brief</button>
-    </div>
+    <button class="accent-btn" onclick="run()">↻ Refresh Brief</button>
   </div>
 
   <div class="masthead">
@@ -228,13 +222,12 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
       </div>
     </div>
 
-    <!-- SOURCES -->
     <div class="sources-section">
       <div class="sec-head">§ V &nbsp;·&nbsp; Intelligence Sources — Live News Feed</div>
       <div class="sources-grid" id="sources-grid"></div>
     </div>
 
-  </div><!-- /body -->
+  </div>
 
   <div class="footer">
     <div>CRYPTO INTELLIGENCE DIRECTORATE · BEDOK NEW TOWN, SGT · <span id="footer-date">—</span></div>
@@ -245,8 +238,8 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 </div>
 
 <script>
-// ── KEYS (hardcoded) ──────────────────────────
-const GROQ_KEY   = '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';
+// ── CONFIG — only the Worker URL and Tavily key here, no Groq key ──
+const WORKER_URL = 'https://crypto-brief-proxy.blitzio.workers.dev';
 const TAVILY_KEY = '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';
 
 // ── SGT CLOCK ─────────────────────────────────
@@ -274,19 +267,18 @@ const arrowChar = n => n >= 0 ? '▲' : '▼';
 // ── FETCH PRICES ─────────────────────────────
 async function fetchPrices() {
   const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,chainlink&vs_currencies=usd&include_24hr_change=true&include_7d_change=true&include_market_cap=true&include_24hr_vol=true');
-  if (!r.ok) throw new Error('CoinGecko unavailable ('+r.status+'). Try again shortly.');
+  if (!r.ok) throw new Error('CoinGecko unavailable. Try again shortly.');
   return r.json();
 }
 
-// ── FETCH NEWS (Tavily) ───────────────────────
+// ── FETCH NEWS ────────────────────────────────
 async function fetchNews() {
   const queries = [
     'Bitcoin BTC crypto market today',
     'Ethereum ETH news today',
     'Chainlink LINK news today',
-    'crypto macro Fed interest rates inflation'
+    'crypto macro Fed interest rates inflation today'
   ];
-
   const results = await Promise.all(queries.map(q =>
     fetch('https://api.tavily.com/search', {
       method: 'POST',
@@ -301,29 +293,23 @@ async function fetchNews() {
       })
     }).then(r => r.json()).catch(() => ({results:[]}))
   ));
-
-  // Flatten, deduplicate by URL, return top 12
   const seen = new Set();
   const all  = [];
   for (const r of results) {
     for (const item of (r.results || [])) {
-      if (!seen.has(item.url)) {
-        seen.add(item.url);
-        all.push(item);
-      }
+      if (!seen.has(item.url)) { seen.add(item.url); all.push(item); }
     }
   }
   return all.slice(0, 12);
 }
 
-// ── CALL GROQ ─────────────────────────────────
+// ── CALL GROQ VIA WORKER ──────────────────────
 async function callGroq(prices, newsItems) {
   const b = prices.bitcoin, e = prices.ethereum, l = prices.chainlink;
   const today = fmtDate(sgtNow());
 
-  // Format news for the prompt
   const newsText = newsItems.map((n, i) =>
-    `[${i+1}] ${n.title}\nSource: ${n.url}\nSummary: ${n.content ? n.content.slice(0,200) : 'N/A'}`
+    `[${i+1}] ${n.title}\nSource: ${n.url}\nSummary: ${(n.content||'').slice(0,200)}`
   ).join('\n\n');
 
   const prompt = `You are the Crypto Intelligence Directorate producing a classified daily brief for a senior investor in Singapore. Today is ${today}.
@@ -333,12 +319,12 @@ BTC:  ${fmtPrice(b.usd)} | 24h: ${fmtPct(b.usd_24h_change)} | 7d: ${fmtPct(b.usd
 ETH:  ${fmtPrice(e.usd)} | 24h: ${fmtPct(e.usd_24h_change)} | 7d: ${fmtPct(e.usd_7d_change)} | MCap: ${fmtCap(e.usd_market_cap)} | Vol: ${fmtCap(e.usd_24h_vol)}
 LINK: ${fmtPrice(l.usd)} | 24h: ${fmtPct(l.usd_24h_change)} | 7d: ${fmtPct(l.usd_7d_change)} | MCap: ${fmtCap(l.usd_market_cap)} | Vol: ${fmtCap(l.usd_24h_vol)}
 
-TODAY'S NEWS (use these to ground your analysis — reference article numbers where relevant):
+TODAY'S NEWS (ground your analysis in these — cite article numbers [N] inline):
 ${newsText}
 
-Write a sharp, authoritative intelligence brief grounded in the above news and prices. Where you reference a specific development, note the article number in brackets e.g. [1].
+Write a sharp authoritative intelligence brief based on the above live data and news.
 
-Return ONLY a raw JSON object. No markdown. No backticks. No text before or after. Start with { end with }.
+Return ONLY a raw JSON object. No markdown. No backticks. Start with { end with }. Use only straight ASCII double quotes. No smart quotes. No em dashes.
 
 {
   "btc": {
@@ -378,10 +364,10 @@ Return ONLY a raw JSON object. No markdown. No backticks. No text before or afte
   },
   "macro": {
     "gauges": [
-      {"label": "Fed Rate",  "value": "X.XX%", "sub": "brief note", "dir": "neu"},
-      {"label": "Inflation", "value": "X.X%",  "sub": "brief note", "dir": "neg"},
-      {"label": "Gold",      "value": "$X,XXX","sub": "brief note", "dir": "neu"},
-      {"label": "VIX",       "value": "XX.X",  "sub": "brief note", "dir": "neg"}
+      {"label": "Fed Rate",  "value": "X.XX%", "sub": "note from news", "dir": "neu"},
+      {"label": "Inflation", "value": "X.X%",  "sub": "note from news", "dir": "neg"},
+      {"label": "Gold",      "value": "$X,XXX","sub": "note from news", "dir": "neu"},
+      {"label": "VIX",       "value": "XX.X",  "sub": "note from news", "dir": "neg"}
     ],
     "bullets": [
       {"label": "Fed",         "text": "..."},
@@ -391,34 +377,22 @@ Return ONLY a raw JSON object. No markdown. No backticks. No text before or afte
       {"label": "Outlook",     "text": "..."}
     ]
   },
-  "threats": [
-    {"label": "...", "text": "..."},
-    {"label": "...", "text": "..."},
-    {"label": "...", "text": "..."},
-    {"label": "...", "text": "..."},
-    {"label": "...", "text": "..."}
-  ],
-  "watch": [
-    {"label": "...", "text": "..."},
-    {"label": "...", "text": "..."},
-    {"label": "...", "text": "..."},
-    {"label": "...", "text": "..."},
-    {"label": "...", "text": "..."},
-    {"label": "...", "text": "..."}
-  ],
-  "verdict": "2-3 sentence overall market assessment grounded in today's news.",
-  "ranking": "One sentence ranking BTC, ETH, LINK by structural conviction.",
+  "threats":  [{"label":"...","text":"..."},{"label":"...","text":"..."},{"label":"...","text":"..."},{"label":"...","text":"..."},{"label":"...","text":"..."}],
+  "watch":    [{"label":"...","text":"..."},{"label":"...","text":"..."},{"label":"...","text":"..."},{"label":"...","text":"..."},{"label":"...","text":"..."},{"label":"...","text":"..."}],
+  "verdict":  "2-3 sentence overall assessment grounded in today's news.",
+  "ranking":  "One sentence ranking BTC, ETH, LINK by structural conviction.",
   "bullTrigger": "One sentence.",
   "bearTrigger": "One sentence."
 }`;
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  // Call via Cloudflare Worker — Groq key never leaves the Worker
+  const res = await fetch(WORKER_URL, {
     method: 'POST',
-    headers: {'Content-Type':'application/json','Authorization':'Bearer '+GROQ_KEY},
+    headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
       model: 'llama-3.3-70b-versatile',
       messages: [
-        {role:'system', content:'You are a crypto intelligence analyst. Respond ONLY with a raw JSON object. No markdown. No backticks. No explanation. Pure JSON starting with { and ending with }. Use only straight ASCII double quotes in strings. No smart quotes. No em dashes.'},
+        {role:'system', content:'You are a crypto intelligence analyst. Respond ONLY with a raw JSON object. No markdown. No backticks. No explanation. Pure JSON starting with { and ending with }. Straight ASCII double quotes only. No smart quotes. No em dashes.'},
         {role:'user', content: prompt}
       ],
       temperature: 0.4,
@@ -429,13 +403,13 @@ Return ONLY a raw JSON object. No markdown. No backticks. No text before or afte
 
   if (!res.ok) {
     const err = await res.json().catch(()=>({}));
-    throw new Error(err?.error?.message || 'Groq error '+res.status);
+    throw new Error(err?.error?.message || 'Worker error '+res.status);
   }
   const data  = await res.json();
   const raw   = data?.choices?.[0]?.message?.content || '';
   let clean = raw.replace(/```json|```/g,'').replace(/[\u2018\u2019]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/[\u2013\u2014]/g,'-').trim();
   const start = clean.indexOf('{'), end = clean.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error('No JSON in Groq response. Try refreshing.');
+  if (start === -1 || end === -1) throw new Error('No JSON in response. Try refreshing.');
   clean = clean.slice(start, end+1);
   try { return JSON.parse(clean); }
   catch(e) { return JSON.parse(clean.replace(/,\s*([}\]])/g,'$1')); }
@@ -460,32 +434,28 @@ function renderGauges(arr) {
     `<div class="gauge"><div class="g-label">${g.label}</div><div class="g-val">${g.value}</div><div class="g-sub ${g.dir}">${g.sub}</div></div>`
   ).join('');
 }
-function renderSources(newsItems) {
+function renderSources(items) {
   const grid = document.getElementById('sources-grid');
-  if (!newsItems.length) { grid.innerHTML = '<p style="color:var(--muted);font-size:.82rem;">No sources retrieved.</p>'; return; }
-  grid.innerHTML = newsItems.map((n, i) => {
+  if (!items.length) { grid.innerHTML = '<p style="color:var(--muted);font-size:.82rem;">No sources retrieved.</p>'; return; }
+  grid.innerHTML = items.map((n,i) => {
     let domain = '';
     try { domain = new URL(n.url).hostname.replace('www.',''); } catch(e) {}
-    const title = n.title ? n.title.slice(0,80) + (n.title.length > 80 ? '…' : '') : 'Article';
+    const title = (n.title||'Article').slice(0,80) + ((n.title||'').length > 80 ? '…' : '');
     return `<a class="source-card" href="${n.url}" target="_blank" rel="noopener">
       <div class="source-tag">[${i+1}] ${domain}</div>
       <div class="source-title">${title}</div>
-      <div class="source-meta">
-        <span class="source-domain">${domain}</span>
-        <span>↗</span>
-      </div>
+      <div class="source-meta"><span class="source-domain">${domain}</span><span>↗</span></div>
     </a>`;
   }).join('');
 }
-
 function renderBrief(brief, prices, newsItems) {
   const now = sgtNow();
   renderCard('btc',  prices.bitcoin,   brief.btc.support,  brief.btc.resist);
   renderCard('eth',  prices.ethereum,  brief.eth.support,  brief.eth.resist);
   renderCard('link', prices.chainlink, brief.link.support, brief.link.resist);
 
-  const lh = document.getElementById('link-sec-head');
-  lh.innerHTML = `⬡ &nbsp; Chainlink — LINK${brief.link.badge?` <span class="badge">${brief.link.badge}</span>`:''}`;
+  document.getElementById('link-sec-head').innerHTML =
+    `⬡ &nbsp; Chainlink — LINK${brief.link.badge?` <span class="badge">${brief.link.badge}</span>`:''}`;
 
   renderBullets('btc-bullets',   brief.btc.bullets);
   renderBullets('eth-bullets',   brief.eth.bullets);
@@ -502,9 +472,9 @@ function renderBrief(brief, prices, newsItems) {
      <p><strong>Bull Trigger:</strong> ${brief.bullTrigger}<br/><strong>Bear Trigger:</strong> ${brief.bearTrigger}</p>`;
 
   const doy = Math.ceil((now - new Date(now.getFullYear(),0,1)) / 86400000);
-  document.getElementById('issue-line').textContent   = `ISSUE: DAILY-${String(doy).padStart(3,'0')} · 2 PAGES`;
-  document.getElementById('gen-time').textContent     = fmtSGT(now);
-  document.getElementById('footer-date').textContent  = fmtDate(now);
+  document.getElementById('issue-line').textContent  = `ISSUE: DAILY-${String(doy).padStart(3,'0')} · 2 PAGES`;
+  document.getElementById('gen-time').textContent    = fmtSGT(now);
+  document.getElementById('footer-date').textContent = fmtDate(now);
   startClock();
   document.getElementById('brief').classList.add('active');
   document.getElementById('loading').classList.add('hidden');
@@ -514,17 +484,13 @@ function renderBrief(brief, prices, newsItems) {
 async function run() {
   document.getElementById('brief').classList.remove('active');
   document.getElementById('loading').classList.remove('hidden');
-
   try {
     document.getElementById('load-sub').textContent = 'Fetching live prices…';
     const prices = await fetchPrices();
-
     document.getElementById('load-sub').textContent = 'Searching today\'s news…';
     const newsItems = await fetchNews();
-
-    document.getElementById('load-sub').textContent = 'Generating analysis via Groq…';
+    document.getElementById('load-sub').textContent = 'Generating analysis…';
     const brief = await callGroq(prices, newsItems);
-
     renderBrief(brief, prices, newsItems);
   } catch(err) {
     console.error(err);
