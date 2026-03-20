@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CRYPTO DAILY BRIEF — CID-SGT</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:       #08090d;
+  --paper:    #0c0f15;
+  --surface:  #111520;
+  --border:   #1c2333;
+  --gold:     #c9941a;
+  --red:      #922020;
+  --green:    #1f8c4e;
+  --amber:    #b87a10;
+  --text:     #b0bec8;
+  --bright:   #dce6ee;
+  --dim:      #4a5a6a;
+  --neg:      #c03030;
+  --pos:      #22a05a;
+  --neu:      #c08820;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.doc {
+  max-width: 980px;
+  margin: 0 auto;
+  background: var(--paper);
+  border: 1px solid var(--border);
+}
+
+/* ─── CLASSIFICATION BAR ─────────────────────── */
+.cbar {
+  background: var(--red);
+  color: #fff;
+  text-align: center;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .5em;
+}
+
+/* ─── MASTHEAD ───────────────────────────────── */
+.masthead {
+  padding: 24px 48px 18px;
+  border-bottom: 2px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+}
+.title {
+  font-family: 'Special Elite', cursive;
+  font-size: 34px;
+  color: var(--bright);
+  letter-spacing: .06em;
+  line-height: 1.1;
+}
+.subtitle {
+  margin-top: 5px;
+  font-size: 11px;
+  letter-spacing: .28em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.meta {
+  text-align: right;
+  font-size: 12px;
+  color: var(--dim);
+  line-height: 2;
+}
+.meta .ts {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: .04em;
+}
+
+/* ─── ROUTING ────────────────────────────────── */
+.routing {
+  padding: 7px 48px;
+  background: #090b10;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 40px;
+  font-size: 11px;
+  letter-spacing: .07em;
+  color: var(--dim);
+}
+.routing b { color: var(--red); }
+
+/* ─── PRICE STRIP ────────────────────────────── */
+.price-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-bottom: 2px solid var(--border);
+}
+.pcard {
+  padding: 20px 28px;
+  border-right: 1px solid var(--border);
+  position: relative;
+}
+.pcard:last-child { border-right: none; }
+.pcard::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.pcard.btc::after  { background: #f7931a; }
+.pcard.eth::after  { background: #627eea; }
+.pcard.link::after { background: #2a5ada; }
+
+.pcard .sym {
+  font-size: 11px;
+  letter-spacing: .3em;
+  color: var(--dim);
+  margin-bottom: 4px;
+}
+.pcard .price {
+  font-family: 'Special Elite', cursive;
+  font-size: 32px;
+  color: var(--bright);
+  line-height: 1;
+}
+.pcard .deltas {
+  margin-top: 6px;
+  display: flex;
+  gap: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pcard .stats {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--dim);
+  line-height: 1.9;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.pcard .stats span { color: #5a6a7a; }
+
+.neg { color: var(--neg); }
+.pos { color: var(--pos); }
+.neu { color: var(--neu); }
+
+/* ─── TWO-COL BODY ───────────────────────────── */
+.body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.col-l { border-right: 1px solid var(--border); }
+
+/* ─── SECTION ────────────────────────────────── */
+.sec {
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--border);
+}
+.sec:last-child { border-bottom: none; }
+
+.sec-head {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .35em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sec-head::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--gold);
+  transform: rotate(45deg);
+  flex-shrink: 0;
+}
+
+/* ─── INTEL BULLETS ──────────────────────────── */
+ul.ib {
+  list-style: none;
+  padding: 0;
+}
+ul.ib > li {
+  padding: 8px 0 8px 20px;
+  border-bottom: 1px solid #0f1319;
+  position: relative;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #98aab8;
+}
+ul.ib > li:last-child { border-bottom: none; }
+ul.ib > li::before {
+  content: '▸';
+  position: absolute;
+  left: 0; top: 10px;
+  color: var(--gold);
+  font-size: 10px;
+}
+ul.ib > li strong {
+  color: var(--bright);
+  font-weight: 600;
+}
+
+/* ─── MACRO GAUGES ───────────────────────────── */
+.gauges {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.gauge {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+}
+.gauge .gl {
+  font-size: 10px;
+  letter-spacing: .15em;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.gauge .gv {
+  font-family: 'Special Elite', cursive;
+  font-size: 22px;
+  color: var(--bright);
+  line-height: 1;
+}
+.gauge .gc {
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+/* ─── FULL-WIDTH ─────────────────────────────── */
+.full {
+  grid-column: 1 / -1;
+  border-top: 2px solid var(--border);
+  padding: 22px 48px 24px;
+}
+.full .sec-head { margin-bottom: 16px; }
+
+.two-col-intel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+}
+.ic-head {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .25em;
+  color: var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* ─── ASSESSMENT BOX ─────────────────────────── */
+.abox {
+  background: var(--surface);
+  border-left: 4px solid var(--red);
+  padding: 18px 20px;
+  margin-top: 18px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #98aab8;
+}
+.abox .alabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .3em;
+  color: var(--red);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.abox strong { color: var(--bright); }
+
+/* ─── PAGE SEPARATOR ─────────────────────────── */
+.psep {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 6px 0;
+  font-size: 10px;
+  letter-spacing: .4em;
+  color: #1c2533;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: #07080c;
+}
+
+/* ─── BADGE ──────────────────────────────────── */
+.badge {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: .12em;
+  padding: 2px 6px;
+  background: rgba(31,140,78,.12);
+  border: 1px solid rgba(31,140,78,.3);
+  color: var(--green);
+  text-transform: uppercase;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+/* ─── FOOTER ─────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 10px 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #1e2c3a;
+  letter-spacing: .07em;
+}
+.footer .warn { color: var(--red); }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <!-- ═══ CLASSIFICATION ═══ -->
+  <div class="cbar">⬛ &nbsp; CRYPTO INTELLIGENCE BRIEF — FOR ADDRESSEE'S EYES ONLY &nbsp; ⬛</div>
+
+  <!-- ═══ MASTHEAD ═══ -->
+  <div class="masthead">
+    <div>
+      <div class="title">Crypto Daily Brief</div>
+      <div class="subtitle">Digital Asset Intelligence &nbsp;·&nbsp; BTC &nbsp;·&nbsp; ETH &nbsp;·&nbsp; LINK &nbsp;·&nbsp; MACRO</div>
+    </div>
+    <div class="meta">
+      <div class="ts" id="sgt-ts">——</div>
+      <div>ISSUE: DAILY-002 &nbsp;|&nbsp; 2 PAGES</div>
+      <div>CRYPTO INTELLIGENCE DIRECTORATE</div>
+      <div>BEDOK NEW TOWN, SINGAPORE</div>
+    </div>
+  </div>
+
+  <!-- ═══ ROUTING ═══ -->
+  <div class="routing">
+    <div><b>CLASS:</b> PROPRIETARY — NOT FOR REDISTRIBUTION</div>
+    <div><b>COVERS:</b> BTC · ETH · LINK · MACRO · GEO · REGULATORY</div>
+    <div><b>TRIGGER:</b> REPORT DAILY</div>
+  </div>
+
+  <!-- ═══ PRICE STRIP ═══ -->
+  <div class="price-strip">
+
+    <div class="pcard btc">
+      <div class="sym">BTC / USD</div>
+      <div class="price">$70,426</div>
+      <div class="deltas">
+        <span class="neg">▼ 3.96% (24h)</span>
+        <span class="neg">▼ 4.8% (7d)</span>
+      </div>
+      <div class="stats">
+        <span>Mkt Cap</span> ~$1.40T &nbsp;·&nbsp; <span>Vol</span> ~$51.6B<br/>
+        <span>Support</span> $68,000 → $63,000<br/>
+        <span>Resist</span> $72,000 → $74,400
+      </div>
+    </div>
+
+    <div class="pcard eth">
+      <div class="sym">ETH / USD</div>
+      <div class="price">$2,145</div>
+      <div class="deltas">
+        <span class="neg">▼ 5.0% (24h)</span>
+        <span class="neg">▼ 8.1% (7d)</span>
+      </div>
+      <div class="stats">
+        <span>Mkt Cap</span> ~$233B &nbsp;·&nbsp; <span>Vol</span> ~$11.9B<br/>
+        <span>Support</span> $2,000 → $1,800<br/>
+        <span>Resist</span> $2,400 → $2,600
+      </div>
+    </div>
+
+    <div class="pcard link">
+      <div class="sym">LINK / USD</div>
+      <div class="price">$9.30</div>
+      <div class="deltas">
+        <span class="neg">▼ 2.95% (24h)</span>
+        <span class="pos">▲ 4.0% (7d)</span>
+      </div>
+      <div class="stats">
+        <span>Mkt Cap</span> ~$6.58B &nbsp;·&nbsp; <span>Vol</span> ~$744M<br/>
+        <span>Support</span> $8.82 → $8.50<br/>
+        <span>Resist</span> $9.40 → $10.00
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ PAGE 1 — TWO-COL BODY ═══ -->
+  <div class="body">
+
+    <!-- ── LEFT ── -->
+    <div class="col-l">
+
+      <!-- BTC -->
+      <div class="sec">
+        <div class="sec-head">₿ &nbsp; Bitcoin — BTC</div>
+        <ul class="ib">
+          <li><strong>Mar 17 — Failed breakout:</strong> BTC briefly spiked to $75,912, a 6-week high, before collapsing the same session. 10x Research confirmed the move was derivatives-driven: closure of large $60K put positions forced market-maker BTC buys. No fresh spot conviction behind the rally.</li>
+          <li><strong>Post-FOMC selldown:</strong> BTC slid $72,483 → $69,370 over 24hrs following the hawkish Fed decision on Mar 18. Nasdaq closed –1.5% the same day. High correlation to equities confirmed.</li>
+          <li><strong>OG whale dump (Mar 19):</strong> Two long-term holders dumped 1,650 BTC (~$117M) hours after the Fed decision. One whale added 650 BTC to an existing 11,000 BTC sell programme. A 5-year dormant wallet exited 1,000 BTC outright.</li>
+          <li><strong>Supply milestone:</strong> Circulating supply crossed 20 million BTC (~Mar 10–11). ~1M BTC remain to be mined over ~114 years. Institutional scarcity commentary is resurfacing.</li>
+          <li><strong>Fear &amp; Greed:</strong> 26 (Fear). 53% green days past 30. BTC trades near estimated miner production cost (~$70K) — historically a capitulation / range zone.</li>
+          <li><strong>Downside scenario:</strong> Loss of $68K opens retest of Feb cycle low at $63,000.</li>
+        </ul>
+      </div>
+
+      <!-- ETH -->
+      <div class="sec">
+        <div class="sec-head">Ξ &nbsp; Ethereum — ETH</div>
+        <ul class="ib">
+          <li><strong>Drawdown context:</strong> ETH outpacing BTC to the downside — classic high-beta altcoin behaviour in risk-off macro. Down ~56% from Aug 2025 ATH ($4,831); up +45% from Feb 2026 cycle low ($1,473).</li>
+          <li><strong>Mar 17 rally, fully reversed:</strong> ETH surged +8% to $2,360 on Mar 17 driven by bullish options demand. Full rally wiped by FOMC outcome within 48hrs.</li>
+          <li><strong>BlackRock ETHB ETF:</strong> Staked ETH product now live. Staking yield creates structural buy pressure — contingent on macro clearing. Watch daily inflow data as the leading institutional signal.</li>
+          <li><strong>Glamsterdam upgrade (May 2026):</strong> Introduces enshrined PBS, targets L2 throughput >100,000 TPS. First major protocol catalyst since the Merge. ~8 weeks out.</li>
+          <li><strong>Validator queue:</strong> 3.4M ETH staking queue, ~60-day estimated wait. Longest since the Merge. Large holders are staking into the decline — conviction signal.</li>
+          <li><strong>CME futures:</strong> ETH futures avg daily vol 24,000 contracts in Feb 2026 — +65% YoY. Institutional infrastructure growing structurally despite price weakness.</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- ── RIGHT ── -->
+    <div>
+
+      <!-- MACRO -->
+      <div class="sec">
+        <div class="sec-head">Macro &amp; Threat Landscape</div>
+        <div class="gauges">
+          <div class="gauge">
+            <div class="gl">Fed Funds Rate</div>
+            <div class="gv">HOLD</div>
+            <div class="gc neu">4.25–4.50% · Unchanged</div>
+          </div>
+          <div class="gauge">
+            <div class="gl">Feb PPI (MoM)</div>
+            <div class="gv">+0.7%</div>
+            <div class="gc neg">Exp +0.3% · DOUBLE MISS</div>
+          </div>
+          <div class="gauge">
+            <div class="gl">Gold (USD/oz)</div>
+            <div class="gv">$4,861</div>
+            <div class="gc neg">▼ 0.71% · Near ATH</div>
+          </div>
+          <div class="gauge">
+            <div class="gl">VIX</div>
+            <div class="gv">25.09</div>
+            <div class="gc neg">+12.16% · ELEVATED</div>
+          </div>
+        </div>
+        <ul class="ib">
+          <li><strong>FOMC (Mar 17–18):</strong> Rates held at 4.25–4.50%. Dot plot revised to signal only 1 cut remaining in 2026 — hawkish surprise. Single dissent: Stephen Miran (wanted immediate 25bp cut). Markets sold into close. BTC –4% same day.</li>
+          <li><strong>PPI shock:</strong> Feb PPI +0.7% MoM vs +0.3% expected — 2.3× the consensus. Re-prices inflation trajectory meaningfully higher. Fed projections now explicitly flag Middle East energy uncertainty.</li>
+          <li><strong>Iran / Operation Epic Fury:</strong> Late-Feb US–Israel strikes wiped $128B in crypto market cap within hours. Hormuz partial blockade keeps Brent at $95–$100. Energy inflation premium is persistent and unresolved.</li>
+          <li><strong>Next cut timeline:</strong> Consensus pushed to June 2026 at earliest. Any escalation shifts this to Q3–Q4.</li>
+          <li><strong>Regime read:</strong> VIX 25+, gold near ATH, 10yr yields rising, dollar bid — textbook institutional risk-off. Crypto absorbing full de-risking beta.</li>
+        </ul>
+      </div>
+
+      <!-- LINK -->
+      <div class="sec">
+        <div class="sec-head">⬡ &nbsp; Chainlink — LINK <span class="badge">COMMODITY CLASSIFIED</span></div>
+        <ul class="ib">
+          <li><strong>Session context:</strong> The –2.95% 24h move is pure macro beta — pulled down with BTC/ETH. No LINK-specific negative catalyst exists. The +4.0% 7-day number is the more meaningful signal.</li>
+          <li><strong>SEC/CFTC joint classification:</strong> LINK formally designated a digital commodity this week. The legal green light institutional desks required before committing capital at scale. Regulatory clarity of this type has historically preceded sustained re-rating cycles.</li>
+          <li><strong>ETF ecosystem — fully live:</strong> Grayscale GLNK: $62M+ inflows since Dec, zero outflow days. Bitwise CLNK: live on NYSE Arca. Combined >1.16% of total supply in ETF wrappers. CME futures active. Full regulated infrastructure now in place.</li>
+          <li><strong>Whale accumulation vs. price:</strong> Large holders added 3.12M LINK in 7 days; whale balance 275M → 279.68M tokens. Accumulation into declining price — not distribution.</li>
+          <li><strong>Institutional integrations:</strong> SWIFT, JP Morgan, Mastercard, Euroclear, US Dept. of Commerce (GDP/CPI on-chain). $28T+ in value secured via CCIP.</li>
+          <li><strong>Technical read:</strong> 20-day SMA at $8.82 is the line. RSI ~57 — room to recover. Break above $9.40 targets $10.00+. Loss of $8.50 exposes $7.00.</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <!-- PAGE SEPARATOR -->
+    <div class="psep">— END OF PAGE 1 · PAGE 2 FOLLOWS — HANDLE WITH CARE —</div>
+
+    <!-- ═══ FULL-WIDTH: ASSESSMENT ═══ -->
+    <div class="full">
+      <div class="sec-head">§ IV — Directorate Assessment &amp; Forward Watch</div>
+
+      <div class="two-col-intel">
+        <div>
+          <div class="ic-head">⚠ Active Threat Stack</div>
+          <ul class="ib">
+            <li><strong>Iran / Hormuz:</strong> Unresolved. Brent at $95–$100. Every $5 above $90 adds ~1bp monthly to CPI. No ceasefire signals in open source as of this brief.</li>
+            <li><strong>Fed path:</strong> June cut is the base case but entirely conditional on oil. Stagflation scenario (crude >$100, CPI re-accelerates) pushes cuts to Q4 or beyond. Market has not fully priced this tail risk.</li>
+            <li><strong>10yr yields rising:</strong> 4.259% and climbing. Compresses risk premium across all speculative assets. Crypto is not insulated — high inverse correlation to real rates.</li>
+            <li><strong>VIX 25+:</strong> Institutional risk desks in defensive posture. Discretionary dip-buying suppressed. Systematic/quant flows dominate short-term price action.</li>
+            <li><strong>Liquidation overhang:</strong> $500M+ in leveraged longs wiped in late-Feb Iran shock. Rebuilding of leverage is cautious. Limited fuel for derivatives-led spike.</li>
+          </ul>
+        </div>
+        <div>
+          <div class="ic-head">📡 Forward Watch — Next 7 Days</div>
+          <ul class="ib">
+            <li><strong>BTC $68,000:</strong> Weekly close below this level would be the first technical confirmation of renewed downtrend. Downside target: $63,000 retest.</li>
+            <li><strong>ETH $2,000:</strong> Round-number psychological support. Loss before Glamsterdam (May) would significantly weaken the recovery thesis.</li>
+            <li><strong>LINK $8.82 SMA:</strong> The critical shelf. Whale accumulation is the counter to macro pressure. Divergence — price falling, wallets filling — is the accumulation signal.</li>
+            <li><strong>Iran / Hormuz:</strong> A ceasefire or reopening would be the single most powerful positive catalyst across all three — more impactful than any technical level or Fed commentary.</li>
+            <li><strong>FOMC speakers:</strong> Multiple members scheduled this week. Any dovish deviation from post-meeting tone could trigger a temporary relief rally.</li>
+            <li><strong>BlackRock ETHB inflows:</strong> Three consecutive strong inflow days would confirm institutional dip-buying is active and sustainable.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="abox">
+        <div class="alabel">⚠ Analyst Verdict — Eyes Only</div>
+        The market is in a <strong>macro-hostage posture</strong>. All three assets are technically capable of rallying — BTC has support at $68K, ETH has structural backing from ETHB inflows and Glamsterdam, LINK has the strongest fundamental tailwind of the three — but none of them can break out while the Iran conflict keeps crude elevated and the Fed is signalling "higher for longer." The tape is currently being written in oil futures and geopolitical cables, not on-chain.
+        <br/><br/>
+        <strong>Asset ranking by structural conviction (independent of near-term macro):</strong><br/>
+        1. <strong>LINK</strong> — SEC/CFTC commodity designation + dual ETF products with zero outflows + whale accumulation + $28T in CCIP-secured value + SWIFT/JPM/Mastercard integrations. Strongest asymmetric setup when macro clears.<br/>
+        2. <strong>BTC</strong> — 20M supply milestone intact, scarcity narrative resurfacing. Currently a pure macro proxy with limited independent alpha. Patient hold.<br/>
+        3. <strong>ETH</strong> — Highest beta to downside of the three. Glamsterdam (May) and ETHB are real catalysts but 8+ weeks out. Most patience required before re-entry.
+        <br/><br/>
+        <strong>Bull trigger:</strong> Iran ceasefire / Hormuz re-opening → Brent below $85 → CPI path re-softens → June Fed cut on table → BTC $80K+, ETH $2,600+, LINK $12+.<br/>
+        <strong>Bear trigger:</strong> Iran escalation, oil >$100 sustained → stagflation pricing → BTC $60K, ETH $1,600, LINK $7.00.
+      </div>
+    </div>
+
+  </div><!-- /body -->
+
+  <div class="footer">
+    <div>CRYPTO INTELLIGENCE DIRECTORATE · BEDOK NEW TOWN, SGT · DAILY-002 · 20 MAR 2026</div>
+    <div class="warn">NOT FINANCIAL ADVICE — INFORMATIONAL ONLY</div>
+  </div>
+  <div class="cbar">⬛ &nbsp; CRYPTO INTELLIGENCE BRIEF — END OF DOCUMENT &nbsp; ⬛</div>
+
+</div><!-- /doc -->
+
+<script>
+  function getSGT() {
+    const now  = new Date();
+    const sgt  = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Singapore' }));
+    const DAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    const MONS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const p    = n => String(n).padStart(2, '0');
+    return `${DAYS[sgt.getDay()]} ${p(sgt.getDate())} ${MONS[sgt.getMonth()]} ${sgt.getFullYear()} · ${p(sgt.getHours())}:${p(sgt.getMinutes())}:${p(sgt.getSeconds())} SGT`;
+  }
+  const el = document.getElementById('sgt-ts');
+  el.textContent = getSGT();
+  setInterval(() => { el.textContent = getSGT(); }, 1000);
+</script>
+</body>
+</html>
