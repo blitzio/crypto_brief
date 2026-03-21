@@ -113,6 +113,102 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 .debug-panel.open{display:block;}
 .debug-panel h4{color:var(--gold);letter-spacing:.15em;font-size:.68rem;text-transform:uppercase;margin:14px 0 6px;}
 .debug-panel pre{white-space:pre-wrap;word-break:break-word;color:#5a7a6a;background:#0a0c10;padding:10px 14px;border:1px solid var(--border);border-radius:3px;max-height:300px;overflow-y:auto;}
+
+/* ── MOBILE RESPONSIVE ─────────────────────────────────────────────
+   Breakpoints: 768px (tablet), 480px (phone)
+────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  html { font-size: 15px; }
+
+  /* Tighten horizontal padding throughout */
+  .rbar         { padding: 8px 16px; }
+  .masthead     { padding: 18px 16px 14px; grid-template-columns: 1fr; gap: 12px; }
+  .m-right      { text-align: left; }
+  .ts-live      { font-size: .88rem; }
+  .routing      { padding: 6px 16px; gap: 10px; font-size: .62rem; }
+  .full         { padding: 18px 16px 20px; }
+  .sources-section { padding: 18px 16px 20px; }
+  .debug-panel  { padding: 16px 16px; }
+  .footer       { padding: 10px 16px; }
+
+  /* Price strip: stack vertically on mobile */
+  .price-strip  { grid-template-columns: 1fr; }
+  .pcard        { border-right: none; border-bottom: 1px solid var(--border); }
+  .pcard:last-child { border-bottom: none; }
+  .p-price      { font-size: 1.6rem; }
+
+  /* Body: single column */
+  .body         { grid-template-columns: 1fr; }
+  .col-l        { border-right: none; }
+  .sec          { padding: 18px 16px; }
+
+  /* Assessment two-col: stack */
+  .two-col      { grid-template-columns: 1fr; gap: 20px; }
+
+  /* Sources: 2 cols on tablet */
+  .sources-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Gauges: keep 2-col on tablet */
+  .gauges       { grid-template-columns: 1fr 1fr; }
+
+  /* Debug toggle positioning */
+  .debug-toggle { float: none; margin-left: 8px; }
+
+  /* Rbar: stack on small screens */
+  .rbar         { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .rbar-info    { font-size: .72rem; }
+}
+
+@media (max-width: 480px) {
+  html { font-size: 14px; }
+
+  /* Masthead: compact */
+  .m-title      { font-size: 1.6rem; }
+  .m-eyebrow    { font-size: .62rem; letter-spacing: .14em; }
+  .m-sub        { font-size: .66rem; letter-spacing: .08em; }
+
+  /* Hide routing strip on tiny screens — too cramped */
+  .routing      { display: none; }
+
+  /* Classification bar: smaller text */
+  .cbar         { font-size: .55rem; letter-spacing: .25em; padding: 4px 8px; }
+
+  /* Price strip: slightly smaller */
+  .pcard        { padding: 16px 16px; }
+  .p-price      { font-size: 1.5rem; }
+  .p-deltas     { font-size: .78rem; gap: 10px; }
+  .p-stats      { font-size: .72rem; }
+
+  /* Body sections */
+  .sec          { padding: 16px 16px; }
+  .sec-head     { font-size: .62rem; letter-spacing: .15em; }
+  ul.ib > li    { font-size: .86rem; padding: 8px 0 8px 16px; }
+
+  /* Gauges: 2-col still works at this size */
+  .gauges       { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .g-val        { font-size: 1.1rem; }
+  .g-label      { font-size: .6rem; }
+
+  /* Sources: single column on phone */
+  .sources-grid { grid-template-columns: 1fr; }
+
+  /* Assessment box */
+  .abox         { padding: 14px 14px; }
+  .abox p       { font-size: .86rem; }
+
+  /* Full width sections */
+  .full         { padding: 16px 16px 18px; }
+  .sources-section { padding: 16px 16px 18px; }
+
+  /* Footer: stack */
+  .footer       { flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 16px; }
+
+  /* Page separator */
+  .psep         { font-size: .55rem; letter-spacing: .2em; }
+
+  /* Debug panel */
+  .debug-panel  { padding: 14px 16px; }
+}
 </style>
 </head>
 <body>
