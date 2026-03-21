@@ -315,35 +315,47 @@ ul.ib>li strong{
   color:var(--text);
 }
 
-.gauges{
+.macro-grid{
   display:grid;
-  grid-template-columns:1fr 1fr;
+  grid-template-columns:repeat(3,1fr);
   gap:10px;
-  margin-bottom:16px;
+  margin-bottom:14px;
 }
-.gauge{
+.macro-card{
   background:var(--surface);
   border:1px solid var(--border);
   padding:14px 15px;
   border-radius:4px;
 }
-.g-label{
+.macro-label{
   font-size:.68rem;
   font-family:var(--mono);
   letter-spacing:.10em;
   color:var(--muted);
   text-transform:uppercase;
-  margin-bottom:5px;
+  margin-bottom:6px;
 }
-.g-val{
-  font-size:1.38rem;
+.macro-value{
+  font-size:1.5rem;
   font-weight:700;
   color:var(--text);
   line-height:1.1;
 }
-.g-sub{
+.macro-sub{
+  font-size:.82rem;
+  margin-top:6px;
+  line-height:1.5;
+}
+.macro-source{
+  font-size:.73rem;
+  color:var(--faint);
+  margin-top:7px;
+}
+.macro-note{
   font-size:.8rem;
-  margin-top:5px;
+  color:var(--muted);
+  line-height:1.65;
+  margin-bottom:14px;
 }
 
 .full{
@@ -547,7 +559,6 @@ ul.ib>li strong{
   overflow-y:auto;
 }
 
-/* ── MOBILE RESPONSIVE ───────────────────────── */
 @media (max-width: 768px) {
   html { font-size: 15.5px; }
 
@@ -571,7 +582,7 @@ ul.ib>li strong{
 
   .two-col          { grid-template-columns: 1fr; gap: 20px; }
   .sources-grid     { grid-template-columns: 1fr 1fr; }
-  .gauges           { grid-template-columns: 1fr 1fr; }
+  .macro-grid       { grid-template-columns: 1fr 1fr; }
 
   .debug-toggle     { float: none; margin-left: 8px; }
 
@@ -599,14 +610,7 @@ ul.ib>li strong{
   .sec-head         { font-size: .64rem; letter-spacing: .12em; }
   ul.ib > li        { font-size: .9rem; padding: 10px 0 10px 16px; }
 
-  .gauges           { grid-template-columns: 1fr 1fr; gap: 6px; }
-  .g-val            { font-size: 1.15rem; }
-  .g-label          { font-size: .62rem; }
-
-  .sources-grid     { grid-template-columns: 1fr; }
-
-  .abox             { padding: 15px 14px; }
-  .abox p           { font-size: .92rem; }
+  .macro-grid       { grid-template-columns: 1fr; }
 
   .full             { padding: 16px 16px 18px; }
   .sources-section  { padding: 16px 16px 18px; }
@@ -632,7 +636,7 @@ ul.ib>li strong{
   <div class="cbar">⬛ &nbsp; CRYPTO INTELLIGENCE BRIEF — FOR ADDRESSEE'S EYES ONLY &nbsp; ⬛</div>
 
   <div class="rbar">
-    <div class="rbar-info">Brief generated: <b id="gen-time">—</b> &nbsp;·&nbsp; Prices: CoinGecko · Macro: Yahoo Finance · News: Tavily · Analysis: OpenRouter</div>
+    <div class="rbar-info">Brief generated: <b id="gen-time">—</b> &nbsp;·&nbsp; Prices: CoinGecko · Macro: Worker APIs · News: Tavily · Analysis: OpenRouter</div>
     <button class="accent-btn" onclick="run()">↻ Refresh Brief</button>
   </div>
 
@@ -646,7 +650,7 @@ ul.ib>li strong{
       <div class="stamp-label">Brief Generated</div>
       <span class="ts-stamp" id="brief-generated">—</span>
       <div id="issue-line">ISSUE: DAILY-001</div>
-      <div id="snapshot-line">SNAPSHOT: —</div>
+      <div id="snapshot-line">SNAPSHOT PULLED: —</div>
       <div>TIMEZONE: SGT (UTC+8)</div>
     </div>
   </div>
@@ -654,7 +658,7 @@ ul.ib>li strong{
   <div class="routing">
     <div><b>CLASS:</b> PROPRIETARY — NOT FOR REDISTRIBUTION</div>
     <div><b>COVERS:</b> BTC · ETH · LINK · MACRO · GEO · REGULATORY</div>
-    <div><b>SOURCES:</b> LIVE SNAPSHOT — SEE REFERENCES</div>
+    <div><b>SOURCES:</b> RAW DATA + AI INTERPRETATION</div>
   </div>
 
   <div class="price-strip">
@@ -692,7 +696,8 @@ ul.ib>li strong{
     <div>
       <div class="sec">
         <div class="sec-head">Macro &amp; Threat Landscape</div>
-        <div class="gauges" id="macro-gauges"></div>
+        <div class="macro-grid" id="macro-grid"></div>
+        <div class="macro-note" id="macro-note"></div>
         <ul class="ib" id="macro-bullets"></ul>
       </div>
       <div class="sec">
@@ -744,10 +749,8 @@ ul.ib>li strong{
 </div>
 
 <script>
-// ── CONFIG ─────────────────────────────────────
 const WORKER_URL = 'https://crypto-brief-proxy.blitzio.workers.dev';
 
-// ── SGT TIME HELPERS ───────────────────────────
 const MONS  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const WDAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 const pad   = n => String(n).padStart(2,'0');
@@ -755,15 +758,55 @@ const pad   = n => String(n).padStart(2,'0');
 const sgtNow = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Singapore' }));
 const fmtSGT = d => `${WDAYS[d.getDay()]} ${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} SGT`;
 const fmtDate = d => `${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYear()}`;
+const fmtISOSGT = iso => {
+  if (!iso) return 'Unavailable';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'Unavailable';
+  return fmtSGT(new Date(d.toLocaleString('en-US', { timeZone:'Asia/Singapore' })));
+};
 
-// ── FORMATTERS ─────────────────────────────────
 const fmtPrice = n => n >= 1000 ? '$'+n.toLocaleString('en-US',{maximumFractionDigits:0}) : n >= 10 ? '$'+n.toFixed(2) : '$'+n.toFixed(3);
 const fmtCap   = n => !n ? 'N/A' : n >= 1e12 ? '$'+(n/1e12).toFixed(2)+'T' : n >= 1e9 ? '$'+(n/1e9).toFixed(1)+'B' : '$'+(n/1e6).toFixed(0)+'M';
 const fmtPct   = n => n == null ? 'N/A' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const arrowCls  = n => n >= 0 ? 'pos' : 'neg';
 const arrowChar = n => n >= 0 ? '▲' : '▼';
 
-// ── FETCH CRYPTO PRICES ────────────────────────
+const fmtMacroValue = (label, data) => {
+  if (!data) return 'UNAVAILABLE';
+  if (label === 'Fed Rate') return data.rateStr || 'UNAVAILABLE';
+  if (label === 'USD/SGD') return Number.isFinite(data.price) ? data.price.toFixed(4) : 'UNAVAILABLE';
+  if (label === 'S&P 500') return Number.isFinite(data.price) ? '$' + data.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : 'UNAVAILABLE';
+  if (label === 'Gold') return Number.isFinite(data.price) ? '$' + data.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : 'UNAVAILABLE';
+  if (label === 'DXY') return Number.isFinite(data.price) ? data.price.toFixed(2) : 'UNAVAILABLE';
+  if (label === 'Crypto Sentiment') return Number.isFinite(data.value) ? `${data.value} / 100` : 'UNAVAILABLE';
+  return 'UNAVAILABLE';
+};
+
+function dirFromPct(pct) {
+  if (!Number.isFinite(pct)) return 'neu';
+  return pct > 0 ? 'pos' : pct < 0 ? 'neg' : 'neu';
+}
+
+function dirFromSentimentValue(value) {
+  if (!Number.isFinite(value)) return 'neu';
+  if (value >= 60) return 'pos';
+  if (value <= 40) return 'neg';
+  return 'neu';
+}
+
+function unavailableMacro() {
+  return {
+    snapshotTime: null,
+    fedRate: { rate: null, rateStr: 'UNAVAILABLE', date: null, source: 'unavailable' },
+    usdsgd: { price: null, pct: null, source: 'unavailable' },
+    sp500: { price: null, pct: null, source: 'unavailable' },
+    gold: { price: null, pct: null, source: 'unavailable' },
+    dxy: { price: null, pct: null, source: 'unavailable' },
+    cryptoSentiment: { value: null, classification: 'Unavailable', dir: 'neu', source: 'unavailable' },
+    cpi: { value: null, yoy: 'N/A', period: 'Unavailable', source: 'unavailable' }
+  };
+}
+
 async function fetchPrices() {
   const r = await fetch(
     'https://api.coingecko.com/api/v3/coins/markets' +
@@ -783,22 +826,17 @@ async function fetchPrices() {
   return out;
 }
 
-// ── FETCH MACRO ────────────────────────────────
 async function fetchMacro() {
   try {
     const r = await fetch(WORKER_URL + '/macro', { cache: 'no-store' });
     if (!r.ok) throw new Error('macro failed');
-    return r.json();
+    const data = await r.json();
+    return data && typeof data === 'object' ? data : unavailableMacro();
   } catch(e) {
-    return {
-      gold:  { price: 4610,  pct: -5.84, source: 'fallback' },
-      vix:   { price: 25.75, pct:  2.63, source: 'fallback' },
-      sp500: { price: 6606,  pct: -1.36, source: 'fallback' },
-    };
+    return unavailableMacro();
   }
 }
 
-// ── FETCH NEWS ─────────────────────────────────
 async function fetchNews() {
   const r = await fetch(WORKER_URL + '/news', { cache: 'no-store' });
   if (!r.ok) throw new Error('News feed unavailable. Try again shortly.');
@@ -806,18 +844,22 @@ async function fetchNews() {
   return Array.isArray(data) ? data : [];
 }
 
-// ── CALL AI VIA WORKER ─────────────────────────
 async function callAI(prices, macro, newsItems) {
   const b = prices['bitcoin'];
   const e = prices['ethereum'];
   const l = prices['chainlink'];
   const today = fmtDate(sgtNow());
 
-  const goldStr  = macro.gold?.price  ? '$'+macro.gold.price.toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fmtPct(macro.gold.pct)+' today)' : 'data unavailable';
-  const vixStr   = macro.vix?.price   ? macro.vix.price.toFixed(2)+' ('+fmtPct(macro.vix.pct)+' today)' : 'data unavailable';
-  const sp500Str = macro.sp500?.price ? '$'+macro.sp500.price.toLocaleString('en-US',{maximumFractionDigits:0})+' ('+fmtPct(macro.sp500.pct)+' today)' : 'data unavailable';
-  const fedStr   = macro.fedRate?.rateStr && macro.fedRate.rateStr !== 'N/A' ? macro.fedRate.rateStr+' (as of '+macro.fedRate.date+', NY Fed EFFR)' : 'data unavailable';
-  const cpiStr   = macro.cpi?.yoy && macro.cpi.yoy !== 'N/A' ? macro.cpi.yoy+' YoY ('+macro.cpi.period+', BLS)' : 'data unavailable';
+  const macroLines = [
+    `Fed Funds Rate (NY Fed EFFR): ${macro.fedRate?.rateStr || 'UNAVAILABLE'}${macro.fedRate?.date ? ` (as of ${macro.fedRate.date})` : ''}`,
+    `USD/SGD: ${Number.isFinite(macro.usdsgd?.price) ? macro.usdsgd.price.toFixed(4) : 'UNAVAILABLE'}${Number.isFinite(macro.usdsgd?.pct) ? ` (${fmtPct(macro.usdsgd.pct)} today)` : ''}`,
+    `S&P 500: ${Number.isFinite(macro.sp500?.price) ? '$'+macro.sp500.price.toLocaleString('en-US',{maximumFractionDigits:0}) : 'UNAVAILABLE'}${Number.isFinite(macro.sp500?.pct) ? ` (${fmtPct(macro.sp500.pct)} today)` : ''}`,
+    `Gold: ${Number.isFinite(macro.gold?.price) ? '$'+macro.gold.price.toLocaleString('en-US',{maximumFractionDigits:0}) : 'UNAVAILABLE'}${Number.isFinite(macro.gold?.pct) ? ` (${fmtPct(macro.gold.pct)} today)` : ''}`,
+    `DXY: ${Number.isFinite(macro.dxy?.price) ? macro.dxy.price.toFixed(2) : 'UNAVAILABLE'}${Number.isFinite(macro.dxy?.pct) ? ` (${fmtPct(macro.dxy.pct)} today)` : ''}`,
+    `Crypto Sentiment (Alternative.me): ${Number.isFinite(macro.cryptoSentiment?.value) ? `${macro.cryptoSentiment.value}/100` : 'UNAVAILABLE'}${macro.cryptoSentiment?.classification ? ` (${macro.cryptoSentiment.classification})` : ''}`,
+    `CPI (BLS): ${macro.cpi?.yoy || 'N/A'}${macro.cpi?.period ? ` (${macro.cpi.period})` : ''}`
+  ].join('\n');
+
   const newsText = newsItems.map((n,i) =>
     `[${i+1}] "${n.title}" — ${n.url}\n${(n.content||'').slice(0,250)}`
   ).join('\n\n');
@@ -831,25 +873,21 @@ BTC:  ${fmtPrice(b.current_price)} | 24h: ${fmtPct(b.price_change_percentage_24h
 ETH:  ${fmtPrice(e.current_price)} | 24h: ${fmtPct(e.price_change_percentage_24h)} | 7d: ${fmtPct(e.price_change_percentage_7d_in_currency)} | MCap: ${fmtCap(e.market_cap)} | Vol: ${fmtCap(e.total_volume)}
 LINK: ${fmtPrice(l.current_price)} | 24h: ${fmtPct(l.price_change_percentage_24h)} | 7d: ${fmtPct(l.price_change_percentage_7d_in_currency)} | MCap: ${fmtCap(l.market_cap)} | Vol: ${fmtCap(l.total_volume)}
 
-MACRO (live market data):
-Fed Funds Rate (NY Fed EFFR): ${fedStr}
-Gold (GC=F): ${goldStr}
-VIX: ${vixStr}
-S&P 500: ${sp500Str}
-CPI (BLS): ${cpiStr}
+MACRO / MARKET DATA:
+${macroLines}
 
 TODAY'S NEWS (base your analysis on these real sources — cite [N] inline):
 ${newsText}
 
 INSTRUCTIONS:
-- Write sharp, specific, authoritative analysis grounded in the news above
+- Write sharp, specific, authoritative analysis grounded in the news and data above
 - DO NOT make up facts not supported by the news or data provided
-- DO NOT use placeholder text like "key support levels" — use actual price numbers from the data
+- DO NOT generate the raw macro gauge values — those are rendered separately by the application
 - Every bullet must contain specific information, not generic statements
 - Cite news articles inline using [N] where you reference them
-- Support/resist levels must be actual dollar figures derived from the price data
+- Avoid direct buy/sell instructions; frame the verdict as assessment and conditions to monitor
 
-Return ONLY a valid JSON object. No markdown. No backticks. No <think> tags. No text before or after. Start with { end with }.
+Return ONLY a valid JSON object. No markdown. No backticks. No <think> tags. No text before or after. Start with { and end with }.
 
 {
   "btc": {
@@ -859,7 +897,7 @@ Return ONLY a valid JSON object. No markdown. No backticks. No <think> tags. No 
       {"label": "Price Action", "text": "specific observation about BTC at its current exact price with context from news [N]"},
       {"label": "Key Level", "text": "specific price level and why it matters right now"},
       {"label": "Recent Action", "text": "what happened in the last 24-48hrs based on news"},
-      {"label": "On-Chain / Macro", "text": "specific on-chain or macro signal affecting BTC"},
+      {"label": "On-Chain / Macro", "text": "specific macro or market signal affecting BTC"},
       {"label": "Sentiment", "text": "current market sentiment with specific evidence"},
       {"label": "Downside Risk", "text": "specific price level and trigger for downside"}
     ]
@@ -890,36 +928,30 @@ Return ONLY a valid JSON object. No markdown. No backticks. No <think> tags. No 
     ]
   },
   "macro": {
-    "gauges": [
-      {"label": "Fed Rate", "value": "3.50-3.75%", "sub": "Held — March 18 FOMC", "dir": "neu"},
-      {"label": "Gold", "value": "EXACT_VALUE_FROM_DATA", "sub": "EXACT_PCT today", "dir": "neu"},
-      {"label": "VIX", "value": "EXACT_VALUE_FROM_DATA", "sub": "EXACT_LABEL", "dir": "neg"},
-      {"label": "S&P 500", "value": "EXACT_VALUE_FROM_DATA", "sub": "EXACT_PCT today", "dir": "neu"}
-    ],
     "bullets": [
-      {"label": "Fed", "text": "specific FOMC outcome and implications for crypto [cite news]"},
-      {"label": "Inflation", "text": "CPI as provided in live data — specific current implications"},
-      {"label": "Geopolitics", "text": "Iran conflict oil prices — specific impact on risk assets"},
-      {"label": "Risk Assets", "text": "S&P and VIX reading — specific correlation to crypto"},
-      {"label": "Outlook", "text": "forward-looking macro view for next 7 days"}
+      {"label": "Fed", "text": "specific current rate backdrop and implications for crypto"},
+      {"label": "Dollar / FX", "text": "how DXY and USD/SGD are affecting the market tone"},
+      {"label": "Risk Assets", "text": "what S&P 500 is signaling for crypto beta"},
+      {"label": "Gold / Defensive Positioning", "text": "what gold and defensive flows imply"},
+      {"label": "Sentiment", "text": "what the third-party crypto sentiment reading suggests, with proper caveats"}
     ]
   },
   "threats": [
-    {"label": "Iran/Oil", "text": "specific threat description"},
-    {"label": "Fed Path", "text": "specific threat"},
-    {"label": "Inflation", "text": "specific threat"},
+    {"label": "Macro", "text": "specific macro threat description"},
+    {"label": "Dollar", "text": "specific threat"},
     {"label": "Equity Correlation", "text": "specific threat"},
-    {"label": "Regulatory", "text": "specific threat from news"}
+    {"label": "Regulatory", "text": "specific threat from news"},
+    {"label": "Liquidity", "text": "specific threat"}
   ],
   "watch": [
     {"label": "BTC $XX,XXX", "text": "what to watch and why"},
     {"label": "ETH $X,XXX", "text": "..."},
     {"label": "LINK $X.XX", "text": "..."},
     {"label": "Macro Event", "text": "specific upcoming event"},
-    {"label": "Fed Signal", "text": "..."},
+    {"label": "Dollar / FX", "text": "what to watch in DXY or USD/SGD"},
     {"label": "Key Catalyst", "text": "..."}
   ],
-  "verdict": "2-3 sharp sentences summarising current market regime, primary driver, and positioning recommendation. Be specific and direct.",
+  "verdict": "2-3 sharp sentences summarizing market regime, primary driver, and conditions to monitor. Avoid explicit buy/sell language.",
   "ranking": "Rank BTC, ETH, LINK by structural conviction right now with one specific reason each.",
   "bullTrigger": "Specific price level or event that confirms bull case.",
   "bearTrigger": "Specific price level or event that confirms bear case."
@@ -932,7 +964,7 @@ Return ONLY a valid JSON object. No markdown. No backticks. No <think> tags. No 
       messages: [
         {
           role: 'system',
-          content: 'You are a senior crypto intelligence analyst. You write sharp, specific, data-driven briefs. You NEVER use placeholder text. You ALWAYS use the exact numbers provided. You respond ONLY with a raw JSON object — no markdown, no backticks, no <think> tags, no text before or after the JSON. Start with { and end with }.'
+          content: 'You are a senior crypto intelligence analyst. You write sharp, specific, data-driven briefs. You NEVER use placeholder text. You ALWAYS use the exact numbers provided. You NEVER invent raw macro gauge values. You respond ONLY with a raw JSON object — no markdown, no backticks, no <think> tags, no text before or after the JSON. Start with { and end with }.'
         },
         { role: 'user', content: prompt }
       ],
@@ -970,7 +1002,6 @@ Return ONLY a valid JSON object. No markdown. No backticks. No <think> tags. No 
   }
 }
 
-// ── RENDER ─────────────────────────────────────
 function renderCard(id, coin, support, resist) {
   const p   = coin.current_price;
   const d24 = coin.price_change_percentage_24h || 0;
@@ -990,14 +1021,69 @@ function renderBullets(id, arr) {
     arr.map(b => `<li><strong>${b.label}:</strong> ${b.text}</li>`).join('');
 }
 
-function renderGauges(arr) {
-  document.getElementById('macro-gauges').innerHTML = arr.map(g =>
-    `<div class="gauge">
-      <div class="g-label">${g.label}</div>
-      <div class="g-val">${g.value}</div>
-      <div class="g-sub ${g.dir}">${g.sub}</div>
-    </div>`
-  ).join('');
+function renderMacroCards(macro) {
+  const grid = document.getElementById('macro-grid');
+
+  const cards = [
+    {
+      label: 'Fed Rate',
+      value: fmtMacroValue('Fed Rate', macro.fedRate),
+      sub: macro.fedRate?.date ? `EFFR · ${macro.fedRate.date}` : 'NY Fed EFFR',
+      dir: 'neu',
+      source: macro.fedRate?.source || 'Unavailable'
+    },
+    {
+      label: 'USD/SGD',
+      value: fmtMacroValue('USD/SGD', macro.usdsgd),
+      sub: Number.isFinite(macro.usdsgd?.pct) ? `${fmtPct(macro.usdsgd.pct)} today` : 'Data unavailable',
+      dir: dirFromPct(macro.usdsgd?.pct),
+      source: macro.usdsgd?.source || 'Unavailable'
+    },
+    {
+      label: 'S&P 500',
+      value: fmtMacroValue('S&P 500', macro.sp500),
+      sub: Number.isFinite(macro.sp500?.pct) ? `${fmtPct(macro.sp500.pct)} today` : 'Data unavailable',
+      dir: dirFromPct(macro.sp500?.pct),
+      source: macro.sp500?.source || 'Unavailable'
+    },
+    {
+      label: 'Gold',
+      value: fmtMacroValue('Gold', macro.gold),
+      sub: Number.isFinite(macro.gold?.pct) ? `${fmtPct(macro.gold.pct)} today` : 'Data unavailable',
+      dir: dirFromPct(macro.gold?.pct),
+      source: macro.gold?.source || 'Unavailable'
+    },
+    {
+      label: 'DXY',
+      value: fmtMacroValue('DXY', macro.dxy),
+      sub: Number.isFinite(macro.dxy?.pct) ? `${fmtPct(macro.dxy.pct)} today` : 'Data unavailable',
+      dir: dirFromPct(macro.dxy?.pct),
+      source: macro.dxy?.source || 'Unavailable'
+    },
+    {
+      label: 'Crypto Sentiment',
+      value: fmtMacroValue('Crypto Sentiment', macro.cryptoSentiment),
+      sub: macro.cryptoSentiment?.classification || 'Unavailable',
+      dir: dirFromSentimentValue(macro.cryptoSentiment?.value),
+      source: macro.cryptoSentiment?.source || 'Unavailable'
+    }
+  ];
+
+  grid.innerHTML = cards.map(card => `
+    <div class="macro-card">
+      <div class="macro-label">${card.label}</div>
+      <div class="macro-value">${card.value}</div>
+      <div class="macro-sub ${card.dir}">${card.sub}</div>
+      <div class="macro-source">${card.source}</div>
+    </div>
+  `).join('');
+
+  const note = document.getElementById('macro-note');
+  note.innerHTML =
+    `Snapshot: <strong>${fmtISOSGT(macro.snapshotTime)}</strong><br/>` +
+    `Sources: NY Fed EFFR · Yahoo Finance · Alternative.me. ` +
+    `Crypto Sentiment is a third-party sentiment proxy, not an official benchmark. ` +
+    `If a source fails, this panel will show UNAVAILABLE rather than fallback numbers.`;
 }
 
 function renderSources(items) {
@@ -1020,7 +1106,7 @@ function renderSources(items) {
   }).join('');
 }
 
-function renderBrief(brief, prices, newsItems, snapshotTime, generatedTime) {
+function renderBrief(brief, prices, macro, newsItems, snapshotFetchedTime, generatedTime) {
   renderCard('btc',  prices['bitcoin'],   brief.btc.support,  brief.btc.resist);
   renderCard('eth',  prices['ethereum'],  brief.eth.support,  brief.eth.resist);
   renderCard('link', prices['chainlink'], brief.link.support, brief.link.resist);
@@ -1028,13 +1114,14 @@ function renderBrief(brief, prices, newsItems, snapshotTime, generatedTime) {
   document.getElementById('link-sec-head').innerHTML =
     `⬡ &nbsp; Chainlink — LINK${brief.link.badge ? ` <span class="badge">${brief.link.badge}</span>` : ''}`;
 
+  renderMacroCards(macro);
+
   renderBullets('btc-bullets',   brief.btc.bullets);
   renderBullets('eth-bullets',   brief.eth.bullets);
   renderBullets('link-bullets',  brief.link.bullets);
   renderBullets('macro-bullets', brief.macro.bullets);
   renderBullets('threats',       brief.threats);
   renderBullets('watch',         brief.watch);
-  renderGauges(brief.macro.gauges);
   renderSources(newsItems);
 
   const debugContent = newsItems.map((n, i) => {
@@ -1054,14 +1141,13 @@ function renderBrief(brief, prices, newsItems, snapshotTime, generatedTime) {
   document.getElementById('issue-line').textContent       = `ISSUE: DAILY-${String(doy).padStart(3,'0')} · 2 PAGES`;
   document.getElementById('gen-time').textContent         = fmtSGT(generatedTime);
   document.getElementById('brief-generated').textContent  = fmtSGT(generatedTime);
-  document.getElementById('snapshot-line').textContent    = `SNAPSHOT: ${fmtSGT(snapshotTime)}`;
+  document.getElementById('snapshot-line').textContent    = `SNAPSHOT PULLED: ${fmtSGT(snapshotFetchedTime)}`;
   document.getElementById('footer-date').textContent      = fmtDate(generatedTime);
 
   document.getElementById('brief').classList.add('active');
   document.getElementById('loading').classList.add('hidden');
 }
 
-// ── MAIN ───────────────────────────────────────
 async function run() {
   document.getElementById('brief').classList.remove('active');
   document.getElementById('loading').classList.remove('hidden');
@@ -1075,14 +1161,14 @@ async function run() {
       fetchNews()
     ]);
 
-    const snapshotTime = sgtNow();
+    const snapshotFetchedTime = sgtNow();
 
     document.getElementById('load-sub').textContent = 'Generating intelligence brief…';
 
     const brief = await callAI(prices, macro, newsItems);
     const generatedTime = sgtNow();
 
-    renderBrief(brief, prices, newsItems, snapshotTime, generatedTime);
+    renderBrief(brief, prices, macro, newsItems, snapshotFetchedTime, generatedTime);
 
   } catch(err) {
     console.error(err);
