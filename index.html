@@ -106,6 +106,13 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 .badge{display:inline-block;font-size:.6rem;font-family:var(--mono);letter-spacing:.1em;padding:2px 7px;background:var(--green-bg);border:1px solid rgba(39,160,96,.25);color:var(--green);text-transform:uppercase;border-radius:2px;vertical-align:middle;margin-left:6px;}
 .footer{border-top:1px solid var(--border);padding:10px 44px;display:flex;justify-content:space-between;align-items:center;font-size:.7rem;font-family:var(--mono);color:var(--faint);letter-spacing:.06em;flex-wrap:wrap;gap:8px;}
 .footer .warn{color:rgba(155,40,40,.65);}
+.source-snippet{font-size:.75rem;color:var(--muted);line-height:1.6;margin-top:6px;border-top:1px solid var(--border);padding-top:6px;font-style:italic;}
+.debug-toggle{background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;padding:4px 12px;cursor:pointer;border-radius:3px;float:right;}
+.debug-toggle:hover{color:var(--text);}
+.debug-panel{display:none;grid-column:1/-1;background:#0d0f14;border-top:1px solid var(--border);padding:20px 44px;font-family:var(--mono);font-size:.72rem;color:var(--muted);line-height:1.8;}
+.debug-panel.open{display:block;}
+.debug-panel h4{color:var(--gold);letter-spacing:.15em;font-size:.68rem;text-transform:uppercase;margin:14px 0 6px;}
+.debug-panel pre{white-space:pre-wrap;word-break:break-word;color:#5a7a6a;background:#0a0c10;padding:10px 14px;border:1px solid var(--border);border-radius:3px;max-height:300px;overflow-y:auto;}
 </style>
 </head>
 <body>
@@ -210,8 +217,16 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
     </div>
 
     <div class="sources-section">
-      <div class="sec-head">§ V &nbsp;·&nbsp; Intelligence Sources — Live News Feed</div>
+      <div class="sec-head">
+        § V &nbsp;·&nbsp; Intelligence Sources — Live News Feed
+        <button class="debug-toggle" onclick="toggleDebug()">⚙ Show Raw Feed</button>
+      </div>
       <div class="sources-grid" id="sources-grid"></div>
+    </div>
+    <div class="debug-panel" id="debug-panel">
+      <h4>Raw News Content Fed to AI</h4>
+      <p style="font-size:.72rem;color:var(--muted);margin-bottom:8px;">This is the exact text Tavily retrieved and passed to the AI model. The analysis above is the AI synthesis of this raw material.</p>
+      <pre id="debug-content">Loading...</pre>
     </div>
   </div>
 
@@ -533,10 +548,12 @@ function renderSources(items) {
   grid.innerHTML = items.map((n, i) => {
     let domain = '';
     try { domain = new URL(n.url).hostname.replace('www.',''); } catch(e) {}
-    const title = (n.title||'Article').slice(0, 80) + ((n.title||'').length > 80 ? '…' : '');
+    const title   = (n.title||'Article').slice(0, 80) + ((n.title||'').length > 80 ? '…' : '');
+    const snippet = (n.content||'').slice(0, 120) + ((n.content||'').length > 120 ? '…' : '');
     return `<a class="source-card" href="${n.url}" target="_blank" rel="noopener">
       <div class="source-tag">[${i+1}] ${domain}</div>
       <div class="source-title">${title}</div>
+      ${snippet ? `<div class="source-snippet">${snippet}</div>` : ''}
       <div class="source-meta"><span class="source-domain">${domain}</span><span>↗</span></div>
     </a>`;
   }).join('');
@@ -560,6 +577,15 @@ function renderBrief(brief, prices, newsItems) {
   renderBullets('watch',         brief.watch);
   renderGauges(brief.macro.gauges);
   renderSources(newsItems);
+
+  // Populate debug panel with raw news content fed to AI
+  const debugContent = newsItems.map((n, i) => {
+    let domain = '';
+    try { domain = new URL(n.url).hostname.replace('www.',''); } catch(e) {}
+    return `[${i+1}] ${n.title}\nSource: ${n.url}\nContent: ${n.content || 'No content extracted'}`;
+  }).join('\n\n' + '─'.repeat(60) + '\n\n');
+  const debugEl = document.getElementById('debug-content');
+  if (debugEl) debugEl.textContent = debugContent || 'No news items retrieved.';
 
   document.getElementById('verdict-content').innerHTML =
     `<p>${brief.verdict}</p>
@@ -599,6 +625,13 @@ async function run() {
     console.error(err);
     document.getElementById('load-sub').textContent = 'Error: ' + err.message + ' — refresh to retry.';
   }
+}
+
+function toggleDebug() {
+  const panel = document.getElementById('debug-panel');
+  const btn   = document.querySelector('.debug-toggle');
+  panel.classList.toggle('open');
+  btn.textContent = panel.classList.contains('open') ? '⚙ Hide Raw Feed' : '⚙ Show Raw Feed';
 }
 
 window.addEventListener('DOMContentLoaded', run);
