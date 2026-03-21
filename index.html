@@ -120,7 +120,6 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 @media (max-width: 768px) {
   html { font-size: 15px; }
 
-  /* Tighten horizontal padding throughout */
   .rbar         { padding: 8px 16px; }
   .masthead     { padding: 18px 16px 14px; grid-template-columns: 1fr; gap: 12px; }
   .m-right      { text-align: left; }
@@ -131,30 +130,21 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   .debug-panel  { padding: 16px 16px; }
   .footer       { padding: 10px 16px; }
 
-  /* Price strip: stack vertically on mobile */
   .price-strip  { grid-template-columns: 1fr; }
   .pcard        { border-right: none; border-bottom: 1px solid var(--border); }
   .pcard:last-child { border-bottom: none; }
   .p-price      { font-size: 1.6rem; }
 
-  /* Body: single column */
   .body         { grid-template-columns: 1fr; }
   .col-l        { border-right: none; }
   .sec          { padding: 18px 16px; }
 
-  /* Assessment two-col: stack */
   .two-col      { grid-template-columns: 1fr; gap: 20px; }
-
-  /* Sources: 2 cols on tablet */
   .sources-grid { grid-template-columns: 1fr 1fr; }
-
-  /* Gauges: keep 2-col on tablet */
   .gauges       { grid-template-columns: 1fr 1fr; }
 
-  /* Debug toggle positioning */
   .debug-toggle { float: none; margin-left: 8px; }
 
-  /* Rbar: stack on small screens */
   .rbar         { flex-direction: column; align-items: flex-start; gap: 8px; }
   .rbar-info    { font-size: .72rem; }
 }
@@ -162,51 +152,39 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 @media (max-width: 480px) {
   html { font-size: 14px; }
 
-  /* Masthead: compact */
   .m-title      { font-size: 1.6rem; }
   .m-eyebrow    { font-size: .62rem; letter-spacing: .14em; }
   .m-sub        { font-size: .66rem; letter-spacing: .08em; }
 
-  /* Hide routing strip on tiny screens — too cramped */
   .routing      { display: none; }
 
-  /* Classification bar: smaller text */
   .cbar         { font-size: .55rem; letter-spacing: .25em; padding: 4px 8px; }
 
-  /* Price strip: slightly smaller */
   .pcard        { padding: 16px 16px; }
   .p-price      { font-size: 1.5rem; }
   .p-deltas     { font-size: .78rem; gap: 10px; }
   .p-stats      { font-size: .72rem; }
 
-  /* Body sections */
   .sec          { padding: 16px 16px; }
   .sec-head     { font-size: .62rem; letter-spacing: .15em; }
   ul.ib > li    { font-size: .86rem; padding: 8px 0 8px 16px; }
 
-  /* Gauges: 2-col still works at this size */
   .gauges       { grid-template-columns: 1fr 1fr; gap: 6px; }
   .g-val        { font-size: 1.1rem; }
   .g-label      { font-size: .6rem; }
 
-  /* Sources: single column on phone */
   .sources-grid { grid-template-columns: 1fr; }
 
-  /* Assessment box */
   .abox         { padding: 14px 14px; }
   .abox p       { font-size: .86rem; }
 
-  /* Full width sections */
   .full         { padding: 16px 16px 18px; }
   .sources-section { padding: 16px 16px 18px; }
 
-  /* Footer: stack */
   .footer       { flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 16px; }
 
-  /* Page separator */
   .psep         { font-size: .55rem; letter-spacing: .2em; }
 
-  /* Debug panel */
   .debug-panel  { padding: 14px 16px; }
 }
 </style>
@@ -337,7 +315,6 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 <script>
 // ── CONFIG ─────────────────────────────────────
 const WORKER_URL = 'https://crypto-brief-proxy.blitzio.workers.dev';
-const TAVILY_KEY = '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';
 
 // ── SGT CLOCK ──────────────────────────────────
 const MONS  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
@@ -362,7 +339,6 @@ const arrowCls  = n => n >= 0 ? 'pos' : 'neg';
 const arrowChar = n => n >= 0 ? '▲' : '▼';
 
 // ── FETCH CRYPTO PRICES ────────────────────────
-// Using coins/markets endpoint which includes price_change_percentage_7d
 async function fetchPrices() {
   const r = await fetch(
     'https://api.coingecko.com/api/v3/coins/markets' +
@@ -376,7 +352,6 @@ async function fetchPrices() {
   );
   if (!r.ok) throw new Error('CoinGecko unavailable. Try again shortly.');
   const arr = await r.json();
-  // Convert array to object keyed by id for easy access
   const out = {};
   for (const c of arr) out[c.id] = c;
   return out;
@@ -399,44 +374,9 @@ async function fetchMacro() {
 
 // ── FETCH NEWS ─────────────────────────────────
 async function fetchNews() {
-  const GOOD_DOMAINS = [
-    'coindesk.com','theblock.co','decrypt.co','reuters.com','bloomberg.com',
-    'ft.com','wsj.com','cointelegraph.com','axios.com','cnbc.com','forbes.com',
-    'ainvest.com','dlnews.com','thedefiant.io','blockworks.co','protos.com'
-  ];
-  const BAD_DOMAINS = [
-    'coingecko.com','coinmarketcap.com','tradingview.com','coinbase.com',
-    'binance.com','kraken.com','investing.com','finance.yahoo.com',
-    'coinmetro.com','kucoin.com','mexc.com','chainlinktoday.com',
-    'newsnow.com','cryptopotato.com','coincarp.com','bitbo.io'
-  ];
-  const queries = [
-    'Bitcoin BTC market analysis breaking news today',
-    'Ethereum ETH institutional developments news today',
-    'Chainlink LINK oracle partnerships news today',
-    'Federal Reserve inflation geopolitics crypto impact today'
-  ];
-  const results = await Promise.all(queries.map(q =>
-    fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        api_key: TAVILY_KEY,
-        query: q,
-        search_depth: 'advanced',
-        max_results: 3,
-        include_answer: false,
-        include_raw_content: false,
-        include_domains: GOOD_DOMAINS,
-        exclude_domains: BAD_DOMAINS
-      })
-    }).then(r => r.json()).catch(() => ({results:[]}))
-  ));
-  const seen = new Set(), all = [];
-  for (const r of results)
-    for (const item of (r.results || []))
-      if (!seen.has(item.url) && item.title) { seen.add(item.url); all.push(item); }
-  return all.slice(0, 12);
+  const r = await fetch(WORKER_URL + '/news');
+  if (!r.ok) throw new Error('News feed unavailable. Try again shortly.');
+  return r.json();
 }
 
 // ── CALL AI VIA WORKER ─────────────────────────
@@ -583,7 +523,6 @@ Return ONLY a valid JSON object. No markdown. No backticks. No <think> tags. No 
   const data = await res.json();
   const raw  = data?.choices?.[0]?.message?.content || '';
 
-  // Strip reasoning model tags and clean up
   let clean = raw
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
     .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
@@ -674,7 +613,6 @@ function renderBrief(brief, prices, newsItems) {
   renderGauges(brief.macro.gauges);
   renderSources(newsItems);
 
-  // Populate debug panel with raw news content fed to AI
   const debugContent = newsItems.map((n, i) => {
     let domain = '';
     try { domain = new URL(n.url).hostname.replace('www.',''); } catch(e) {}
