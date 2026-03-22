@@ -194,7 +194,7 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
 
   <div class="rbar">
     <div class="rbar-info">
-      <b>Data:</b> CoinGecko · Yahoo Finance · NY Fed · BLS · Alternative.me
+      <b>Data:</b> CoinGecko · Yahoo Finance · NY Fed · BLS · Alternative.me · DefiLlama
       &nbsp;·&nbsp;
       <b>News:</b> CoinDesk · The Block · Reuters · Decrypt · more
       &nbsp;·&nbsp;
@@ -392,8 +392,8 @@ async function callAI(prices, macro, newsItems = []) {
     Number.isFinite(macro.gold?.price)
       ? `Gold: $${macro.gold.price.toLocaleString('en-US', { maximumFractionDigits: 0 })} (${fmtPct(macro.gold.pct)} today)`
       : null,
-    Number.isFinite(macro.dxy?.price)
-      ? `DXY Dollar Index: ${macro.dxy.price.toFixed(2)} (${fmtPct(macro.dxy.pct)} today)`
+    macro.stablecoins?.total && macro.stablecoins.total !== 'N/A'
+      ? `Stablecoin Supply (DefiLlama): Total ${macro.stablecoins.total} — USDT ${macro.stablecoins.usdt}, USDC ${macro.stablecoins.usdc} (rising supply = dry powder accumulating; falling = capital leaving crypto)`
       : null,
     Number.isFinite(macro.cryptoSentiment?.value)
       ? `Crypto Fear & Greed: ${macro.cryptoSentiment.value}/100 (${macro.cryptoSentiment.classification})`
@@ -414,20 +414,21 @@ LINK: ${fmtPrice(l.current_price)} | 24h: ${fmtPct(l.price_change_percentage_24h
 LIVE MACRO DATA (use exact figures below, do not substitute):
 ${macroLines || 'Macro data temporarily unavailable.'}
 
-TODAY'S NEWS — FULL ARTICLE CONTENT (from CoinDesk, The Block, Reuters, Decrypt, CoinTelegraph):
+TODAY'S VERIFIED SOURCES — CITE BY doc id FOR EVERY CLAIM:
 ${newsItems.length
-  ? newsItems.map((n,i) => `[${i+1}] SOURCE: ${n.source}\nHEADLINE: ${n.title}\nCONTENT: ${n.content || n.description || 'No content available'}`).join('\n\n---\n\n')
+  ? newsItems.map((n,i) => `<doc id="${i+1}">\nSOURCE: ${n.source}\nHEADLINE: ${n.title}\nCONTENT: ${n.content || n.description || 'No content available'}\n</doc>`).join('\n\n')
   : 'No news retrieved — rely only on the live price and macro data above. Do not invent events.'}
 
 ANALYSIS INSTRUCTIONS:
-- Read the full article content above carefully before writing any bullet
-- For each asset section: identify the 2-3 most significant real developments from the news, then synthesize into sharp bullets
-- Cite the article number [N] for every claim derived from the news — if you cannot cite a source, do not include the claim
-- DO NOT hallucinate events, dates, prices, or developments not present in the news or data above
-- DO NOT use placeholder text — every bullet must be specific and verifiable
-- DO NOT invent or substitute macro gauge values — use only the exact figures provided above
-- Support and resistance levels must be actual dollar figures derived from the current price data
-- Avoid explicit buy/sell instructions; frame the verdict as market conditions and levels to monitor`;
+- Every claim in your analysis MUST reference a <doc id> — write it as [N] inline
+- If no <doc> supports a claim, DO NOT include that claim — omit it entirely
+- For each asset: identify the 2-3 most significant real developments from the docs, synthesize into sharp bullets
+- DO NOT hallucinate events, dates, prices, or developments not present in the docs above
+- DO NOT use placeholder text — every bullet must be specific and traceable to a doc
+- DO NOT invent or substitute macro gauge values — use only the exact figures provided
+- Support and resistance levels must be actual dollar figures from the current price data
+- Rising stablecoin supply = capital accumulating (bullish dry powder); falling = capital leaving (bearish signal)
+- Avoid explicit buy/sell language; frame verdict as market conditions and levels to monitor`;
 
   const res = await fetch(WORKER_URL, {
     method:  'POST',
@@ -531,10 +532,10 @@ function renderMacroCards(macro) {
       Number.isFinite(macro.gold?.price) ? '$' + macro.gold.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—',
       Number.isFinite(macro.gold?.pct)   ? fmtPct(macro.gold.pct) + ' today' : 'Unavailable',
       dirFromPct(macro.gold?.pct)),
-    card('DXY',
-      Number.isFinite(macro.dxy?.price) ? macro.dxy.price.toFixed(2) : '—',
-      Number.isFinite(macro.dxy?.pct)   ? fmtPct(macro.dxy.pct) + ' today' : 'Unavailable',
-      dirFromPct(macro.dxy?.pct)),
+    card('Stablecoins',
+      macro.stablecoins?.total ?? '—',
+      macro.stablecoins?.usdt ? `USDT ${macro.stablecoins.usdt} · USDC ${macro.stablecoins.usdc}` : 'Unavailable',
+      'neu'),
     card('Fear & Greed',
       Number.isFinite(macro.cryptoSentiment?.value) ? macro.cryptoSentiment.value + ' / 100' : '—',
       macro.cryptoSentiment?.classification ?? 'Unavailable',
