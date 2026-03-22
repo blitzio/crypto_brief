@@ -214,7 +214,7 @@ export default {
           if (text.length > 60) paragraphs.push(text); // skip nav/footer noise
         }
 
-        return paragraphs.slice(0, 5).join(' ').slice(0, 800); // first 5 paragraphs, max 800 chars
+        return paragraphs.slice(0, 3).join(' ').slice(0, 400); // first 3 paragraphs, max 400 chars
       } catch {
         clearTimeout(timeout);
         return '';
@@ -291,7 +291,7 @@ export default {
         }
       }
 
-      const topItems = items.slice(0, 12);
+      const topItems = items.slice(0, 8);
 
       // 3. Fetch full article content in parallel — allSettled so blocked sites don't crash
       const contentResults = await Promise.allSettled(
