@@ -200,7 +200,7 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
       &nbsp;·&nbsp;
       <b>Analysis:</b> Gemini 2.5 Flash
     </div>
-    <button class="accent-btn" onclick="run()">↻ Refresh Brief</button>
+    <button class="accent-btn" onclick="run(true)">↻ Refresh Brief</button>
   </div>
 
   <div class="masthead">
@@ -414,17 +414,20 @@ LINK: ${fmtPrice(l.current_price)} | 24h: ${fmtPct(l.price_change_percentage_24h
 LIVE MACRO DATA (use exact figures below, do not substitute):
 ${macroLines || 'Macro data temporarily unavailable.'}
 
-TODAY'S NEWS FROM REAL SOURCES (base your analysis on these — cite [N] inline):
-${newsItems.length ? newsItems.map((n,i) => `[${i+1}] ${n.title} (${n.source})\n${n.description||''}`).join('\n\n') : 'No news available — use your training knowledge carefully.'}
+TODAY'S NEWS — FULL ARTICLE CONTENT (from CoinDesk, The Block, Reuters, Decrypt, CoinTelegraph):
+${newsItems.length
+  ? newsItems.map((n,i) => `[${i+1}] SOURCE: ${n.source}\nHEADLINE: ${n.title}\nCONTENT: ${n.content || n.description || 'No content available'}`).join('\n\n---\n\n')
+  : 'No news retrieved — rely only on the live price and macro data above. Do not invent events.'}
 
-INSTRUCTIONS:
-- Ground your analysis in the news articles provided above
-- Cite articles inline using [N] — do NOT invent events not in the news above
-- Write sharp, specific, authoritative bullets grounded in real current events
-- DO NOT use placeholder text — every bullet must contain specific, verifiable information
-- DO NOT invent or substitute macro gauge values — use only what is provided above
-- Avoid explicit buy/sell instructions; frame the verdict as conditions to monitor
-- Support and resistance levels must be actual dollar figures derived from the current price`;
+ANALYSIS INSTRUCTIONS:
+- Read the full article content above carefully before writing any bullet
+- For each asset section: identify the 2-3 most significant real developments from the news, then synthesize into sharp bullets
+- Cite the article number [N] for every claim derived from the news — if you cannot cite a source, do not include the claim
+- DO NOT hallucinate events, dates, prices, or developments not present in the news or data above
+- DO NOT use placeholder text — every bullet must be specific and verifiable
+- DO NOT invent or substitute macro gauge values — use only the exact figures provided above
+- Support and resistance levels must be actual dollar figures derived from the current price data
+- Avoid explicit buy/sell instructions; frame the verdict as market conditions and levels to monitor`;
 
   const res = await fetch(WORKER_URL, {
     method:  'POST',
@@ -610,11 +613,34 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
 }
 
 // ─── MAIN ────────────────────────────────────────────────────────────
-async function run() {
+async function run(forceRefresh = false) {
   document.getElementById('brief').classList.remove('active');
   document.getElementById('loading').classList.remove('hidden');
 
   try {
+    // Try to load cached brief first (avoids 20s wait for repeat visitors)
+    if (!forceRefresh) {
+      document.getElementById('load-sub').textContent = 'Checking for cached brief…';
+      try {
+        const cacheRes = await fetch(WORKER_URL + '/brief', { cache: 'no-store' });
+        const cacheData = await cacheRes.json();
+        if (cacheData.cached && cacheData.brief && cacheData.prices && cacheData.macro) {
+          document.getElementById('load-sub').textContent = 'Loading cached brief…';
+          const generatedTime = new Date(cacheData.generatedAt);
+          renderBrief(
+            cacheData.brief,
+            cacheData.prices,
+            cacheData.macro,
+            cacheData.newsItems || [],
+            new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Singapore' }))
+          );
+          // Show cached indicator
+          document.getElementById('load-sub').textContent = '';
+          return;
+        }
+      } catch { /* no cache available, generate fresh */ }
+    }
+
     document.getElementById('load-sub').textContent = 'Fetching live prices, macro and news…';
     const [prices, macro, newsItems] = await Promise.all([fetchPrices(), fetchMacro(), fetchNews()]);
 
@@ -623,6 +649,13 @@ async function run() {
     const generatedTime = sgtNow();
 
     renderBrief(brief, prices, macro, newsItems, generatedTime);
+
+    // Save to cache in background — doesn't block render
+    fetch(WORKER_URL + '/brief/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brief, prices, macro, newsItems }),
+    }).catch(() => {}); // fire and forget
 
   } catch (err) {
     console.error(err);
