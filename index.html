@@ -166,7 +166,7 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
   .macro-value{font-size:1.25rem;}
   .full{padding:16px 16px 18px;}
   .sources-section{padding:16px;}
-  .sources-grid{grid-template-columns:1fr;}
+  .sources-grid{grid-column:1fr;}
   .footer{flex-direction:column;align-items:flex-start;gap:4px;padding:10px 16px;}
   .psep{font-size:.56rem;letter-spacing:.18em;}
   .debug-panel{padding:14px 16px;}
@@ -253,7 +253,7 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
         <ul class="ib" id="macro-bullets"></ul>
       </div>
       <div class="sec">
-        <div class="sec-head" id="link-sec-head">⬡ &nbsp; Chainlink — LINK</div>
+        <div class="sec-head">⬡ &nbsp; Chainlink — LINK</div>
         <ul class="ib" id="link-bullets"></ul>
       </div>
     </div>
@@ -426,9 +426,9 @@ MACRO BULLETS — CRITICAL:
 - The macro gauge values (Fed Rate, S&P 500, Gold, Stablecoins, Fear & Greed, CPI) are ALREADY shown as data cards above these bullets — do NOT restate them
 - Every macro bullet must synthesize 2 or more signals into a single cross-asset inference — what does this combination of conditions MEAN for crypto this week?
 - Flag divergences and confluences: e.g. rising stablecoins while prices fall = dry powder accumulating despite fear; equities selling off while stablecoins rise = possible rotation signal
-- Frame each bullet as an actionable observation: what should the investor watch, and why does it matter right now?
-- GOOD example: "Simultaneous equity selloff and Fear & Greed at extreme fear historically precede either capitulation bottoms or sharp relief rallies — $263B stablecoin supply suggests sideline capital is positioned to re-enter fast on any positive macro catalyst"
-- BAD example (forbidden): "The Fed Funds Rate stands at 3.64%, indicating restrictive monetary policy" — pure restatement, zero inference, never do this`;
+- Frame each bullet as an actionable observation the investor needs to watch and why it matters right now
+- GOOD: "Simultaneous equity selloff and extreme fear historically precede either capitulation bottoms or sharp relief rallies — $263B stablecoin supply suggests sideline capital is positioned to re-enter fast on any positive macro catalyst"
+- BAD (forbidden): "The Fed Funds Rate stands at 3.64%, indicating restrictive monetary policy" — pure restatement, zero inference`;
 
   const res = await fetch(WORKER_URL, {
     method:  'POST',
@@ -479,7 +479,6 @@ MACRO BULLETS — CRITICAL:
     }
   }
 
-  // If Gemini wrapped everything in a top-level key, unwrap it
   const keys = Object.keys(brief);
   if (keys.length === 1 && typeof brief[keys[0]] === 'object' && brief[keys[0]].btc) {
     brief = brief[keys[0]];
@@ -563,9 +562,9 @@ function renderSources(items) {
 }
 
 function renderBrief(brief, prices, macro, newsItems, generatedTime) {
-  brief.btc  = brief.btc  || { support: '—', resist: '—', bullets: [] };
-  brief.eth  = brief.eth  || { support: '—', resist: '—', bullets: [] };
-  brief.link = brief.link || { support: '—', resist: '—', badge: '', bullets: [] };
+  brief.btc      = brief.btc      || { support: '—', resist: '—', bullets: [] };
+  brief.eth      = brief.eth      || { support: '—', resist: '—', bullets: [] };
+  brief.link     = brief.link     || { support: '—', resist: '—', bullets: [] };
   brief.macro    = brief.macro    || { bullets: [] };
   brief.threats  = brief.threats  || [];
   brief.watch    = brief.watch    || [];
@@ -577,18 +576,6 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
   renderCard('btc',  prices['bitcoin'],   brief.btc.support,  brief.btc.resist);
   renderCard('eth',  prices['ethereum'],  brief.eth.support,  brief.eth.resist);
   renderCard('link', prices['chainlink'], brief.link.support, brief.link.resist);
-
-  // Only show LINK badge if it's a meaningful non-generic value
-  const badgeVal  = (brief.link.badge || '').trim();
-  const showBadge = badgeVal !== '' &&
-                    badgeVal.toLowerCase() !== 'neutral' &&
-                    badgeVal.toLowerCase() !== 'none' &&
-                    badgeVal.toLowerCase() !== 'n/a';
-
-  document.getElementById('link-sec-head').innerHTML =
-    `⬡ &nbsp; Chainlink — LINK${showBadge
-      ? ` <span style="display:inline-block;font-size:.6rem;font-family:var(--mono);letter-spacing:.1em;padding:2px 7px;background:var(--green-bg);border:1px solid rgba(56,177,114,.25);color:var(--green);text-transform:uppercase;border-radius:2px;vertical-align:middle;margin-left:6px;">${badgeVal}</span>`
-      : ''}`;
 
   renderMacroCards(macro);
   renderBullets('btc-bullets',   brief.btc.bullets);
