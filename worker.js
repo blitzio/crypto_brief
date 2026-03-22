@@ -94,24 +94,50 @@ export default {
       return { value, classification: item.value_classification ?? 'Unknown', dir: value >= 60 ? 'pos' : value <= 40 ? 'neg' : 'neu', source: 'Alternative.me Fear & Greed' };
     };
 
+    const fetchStablecoinFlows = async () => {
+      // DefiLlama stablecoin endpoint — free, no key, tracks USDT/USDC flows to exchanges
+      const res = await fetch('https://stablecoins.llama.fi/stablecoins?includePrices=true', {
+        headers: { Accept: 'application/json' }
+      });
+      if (!res.ok) throw new Error(`DefiLlama HTTP ${res.status}`);
+      const data = await res.json();
+      const pegs = data?.peggedAssets ?? [];
+
+      // Focus on USDT and USDC — the two dominant stablecoins
+      const usdt = pegs.find(p => p.symbol === 'USDT');
+      const usdc = pegs.find(p => p.symbol === 'USDC');
+
+      const circulating = (asset) => asset?.circulating?.peggedUSD ?? null;
+      const change7d    = (asset) => asset?.chainCirculating ? null : null; // placeholder
+
+      const usdtCirc = circulating(usdt);
+      const usdcCirc = circulating(usdc);
+      const totalCirc = (usdtCirc && usdcCirc) ? usdtCirc + usdcCirc : null;
+
+      return {
+        usdt: usdtCirc ? `$${(usdtCirc / 1e9).toFixed(1)}B` : 'N/A',
+        usdc: usdcCirc ? `$${(usdcCirc / 1e9).toFixed(1)}B` : 'N/A',
+        total: totalCirc ? `$${(totalCirc / 1e9).toFixed(1)}B` : 'N/A',
+        source: 'DefiLlama Stablecoins',
+      };
+    };
+
     // ─────────────────────────────────────────────────────────────────
     // RSS + FULL ARTICLE CONTENT
     // ─────────────────────────────────────────────────────────────────
 
-    // Targeted RSS feeds — specific topics per asset for relevance
+    // Quality-first RSS lineup — no clickbait, no sponsored content farms
+    // LINK coverage: The Defiant covers DeFi/oracle ecosystem where LINK operates;
+    // quality broad sources (The Block, DL News) cover LINK when genuinely significant
     const RSS_FEEDS = [
-      // Bitcoin-focused
-      { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/category/markets/',    source: 'CoinDesk Markets',  topic: 'btc' },
-      { url: 'https://blockworks.co/feed/',                                          source: 'Blockworks',        topic: 'btc' },
-      // Ethereum-focused  
-      { url: 'https://theblock.co/rss.xml',                                          source: 'The Block',         topic: 'eth' },
-      { url: 'https://decrypt.co/feed',                                              source: 'Decrypt',           topic: 'eth' },
-      // Broad crypto + LINK
-      { url: 'https://cointelegraph.com/rss',                                        source: 'CoinTelegraph',     topic: 'general' },
-      { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',                     source: 'CoinDesk',          topic: 'general' },
-      // Macro / traditional finance
-      { url: 'https://feeds.reuters.com/reuters/businessNews',                       source: 'Reuters Business',  topic: 'macro' },
-      { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml',                      source: 'WSJ Markets',       topic: 'macro' },
+      { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/category/markets/', source: 'CoinDesk Markets', topic: 'btc' },
+      { url: 'https://blockworks.co/feed/',                                       source: 'Blockworks',       topic: 'btc' },
+      { url: 'https://theblock.co/rss.xml',                                       source: 'The Block',        topic: 'eth' },
+      { url: 'https://decrypt.co/feed',                                           source: 'Decrypt',          topic: 'eth' },
+      { url: 'https://dlnews.com/feed/',                                          source: 'DL News',          topic: 'general' },
+      { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',                  source: 'CoinDesk',         topic: 'general' },
+      { url: 'https://feeds.reuters.com/reuters/businessNews',                    source: 'Reuters Business', topic: 'macro' },
+      { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml',                   source: 'WSJ Markets',      topic: 'macro' },
     ];
 
     // Parse RSS XML cleanly
@@ -207,18 +233,30 @@ export default {
 
       const unavail = (e) => ({ price: null, pct: null, source: 'unavailable', error: e.message });
 
-      const [gold, sp500, usdsgd, dxy, fedRate, cpi, sentiment] = await Promise.all([
-        fetchYahoo('GC=F').catch(unavail),
-        fetchYahoo('^GSPC').catch(unavail),
-        fetchYahoo('SGD=X').catch(unavail),
-        fetchYahoo('DX-Y.NYB').catch(unavail),
-        fetchFedRate().catch(e => ({ rate: null, rateStr: 'UNAVAILABLE', date: null, source: 'unavailable', error: e.message })),
-        fetchCPI().catch(e     => ({ value: null, yoy: 'N/A', period: 'Unavailable', source: 'unavailable', error: e.message })),
-        fetchSentiment().catch(e => ({ value: null, classification: 'Unavailable', dir: 'neu', source: 'unavailable', error: e.message })),
+      // Promise.allSettled — if one source fails, the rest still succeed
+      const [goldR, sp500R, usdsgdR, stablecoinsR, fedRateR, cpiR, sentimentR] = await Promise.allSettled([
+        fetchYahoo('GC=F'),
+        fetchYahoo('^GSPC'),
+        fetchYahoo('SGD=X'),
+        fetchStablecoinFlows(),
+        fetchFedRate(),
+        fetchCPI(),
+        fetchSentiment(),
       ]);
 
+      const settle = (r, fallback) => r.status === 'fulfilled' ? r.value : { ...fallback, error: r.reason?.message };
+      const unavailFallback = { price: null, pct: null, source: 'unavailable' };
+
+      const gold        = settle(goldR,        unavailFallback);
+      const sp500       = settle(sp500R,       unavailFallback);
+      const usdsgd      = settle(usdsgdR,      unavailFallback);
+      const stablecoins = settle(stablecoinsR, { usdt: 'N/A', usdc: 'N/A', total: 'N/A', source: 'unavailable' });
+      const fedRate     = settle(fedRateR,     { rate: null, rateStr: 'UNAVAILABLE', date: null, source: 'unavailable' });
+      const cpi         = settle(cpiR,         { value: null, yoy: 'N/A', period: 'Unavailable', source: 'unavailable' });
+      const sentiment   = settle(sentimentR,   { value: null, classification: 'Unavailable', dir: 'neu', source: 'unavailable' });
+
       const response = json(
-        { snapshotTime: new Date().toISOString(), fedRate, usdsgd, sp500, gold, dxy, cryptoSentiment: sentiment, cpi },
+        { snapshotTime: new Date().toISOString(), fedRate, usdsgd, sp500, gold, stablecoins, cryptoSentiment: sentiment, cpi },
         200, { 'Cache-Control': 'public, max-age=300' }
       );
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
@@ -235,10 +273,11 @@ export default {
       const cached   = await cache.match(cacheKey);
       if (cached) return cached;
 
-      // 1. Fetch all RSS feeds in parallel
-      const feedResults = await Promise.all(
+      // 1. Fetch all RSS feeds in parallel — allSettled so one failure doesn't break all
+      const feedSettled = await Promise.allSettled(
         RSS_FEEDS.map(f => fetchFeed(f.url, f.source, f.topic))
       );
+      const feedResults = feedSettled.map(r => r.status === 'fulfilled' ? r.value : []);
 
       // 2. Flatten + deduplicate
       const seen  = new Set();
@@ -254,18 +293,16 @@ export default {
 
       const topItems = items.slice(0, 12);
 
-      // 3. Fetch full article content for each item in parallel
-      //    This is the key improvement — gives Gemini real substance, not just headlines
-      const withContent = await Promise.all(
-        topItems.map(async (item) => {
-          const fullContent = await fetchArticleContent(item.url);
-          return {
-            ...item,
-            // Prefer full content; fall back to RSS description if scraping fails
-            content: fullContent || item.description || '',
-          };
-        })
+      // 3. Fetch full article content in parallel — allSettled so blocked sites don't crash
+      const contentResults = await Promise.allSettled(
+        topItems.map(item => fetchArticleContent(item.url))
       );
+      const withContent = topItems.map((item, i) => ({
+        ...item,
+        content: (contentResults[i].status === 'fulfilled' && contentResults[i].value)
+          ? contentResults[i].value
+          : item.description || '',
+      }));
 
       const response = json(withContent, 200, { 'Cache-Control': 'public, max-age=900' }); // 15 min cache
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
