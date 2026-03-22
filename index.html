@@ -14,576 +14,169 @@
   --surface:#272f3e;
   --border:#323d52;
   --border2:#3b4860;
-
   --text:#e7edf7;
   --muted:#a3b0c3;
   --faint:#73829a;
-
   --gold:#d7ab3a;
   --gold-bg:rgba(215,171,58,.10);
-
   --red:#b33c3c;
   --red-bg:rgba(179,60,60,.12);
-
   --green:#38b172;
   --green-bg:rgba(56,177,114,.12);
-
   --blue:#5a8dee;
   --blue-bg:rgba(90,141,238,.10);
-
   --neg:#f06a6a;
   --pos:#48c783;
   --neu:#e0a43c;
-
   --font:'Inter',system-ui,sans-serif;
   --mono:'JetBrains Mono','SFMono-Regular',monospace;
 }
-
 html{font-size:17px;}
-body{
-  background:var(--bg);
-  color:var(--text);
-  font-family:var(--font);
-  font-size:1rem;
-  line-height:1.75;
-  -webkit-font-smoothing:antialiased;
-  min-height:100vh;
-}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1rem;line-height:1.75;-webkit-font-smoothing:antialiased;min-height:100vh;}
 
-#loading{
-  display:flex;
-  min-height:100vh;
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  gap:18px;
-}
+/* ── LOADING ── */
+#loading{display:flex;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:18px;}
 #loading.hidden{display:none;}
-
-.spinner{
-  width:42px;
-  height:42px;
-  border:2px solid var(--border2);
-  border-top-color:var(--gold);
-  border-radius:50%;
-  animation:spin .9s linear infinite;
-}
+.spinner{width:42px;height:42px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .9s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
+.load-title{font-size:1.15rem;font-weight:600;color:var(--text);}
+.load-sub{font-size:.82rem;color:var(--muted);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;text-align:center;max-width:420px;}
 
-.load-title{
-  font-size:1.15rem;
-  font-weight:600;
-  color:var(--text);
-}
-.load-sub{
-  font-size:.82rem;
-  color:var(--muted);
-  font-family:var(--mono);
-  letter-spacing:.08em;
-  text-transform:uppercase;
-  text-align:center;
-  max-width:420px;
-}
-
+/* ── BRIEF ── */
 #brief{display:none;}
 #brief.active{display:block;}
+.doc{max-width:1080px;margin:0 auto;background:var(--paper);border:1px solid var(--border);}
 
-.doc{
-  max-width:1080px;
-  margin:0 auto;
-  background:var(--paper);
-  border:1px solid var(--border);
-}
+.cbar{background:var(--red);color:rgba(255,255,255,.92);text-align:center;padding:6px 12px;font-size:.66rem;font-family:var(--mono);font-weight:500;letter-spacing:.35em;text-transform:uppercase;}
 
-.cbar{
-  background:var(--red);
-  color:rgba(255,255,255,.92);
-  text-align:center;
-  padding:6px 12px;
-  font-size:.66rem;
-  font-family:var(--mono);
-  font-weight:500;
-  letter-spacing:.35em;
-  text-transform:uppercase;
-}
+.rbar{background:var(--bg);border-bottom:1px solid var(--border);padding:10px 44px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+.rbar-info{font-size:.82rem;color:var(--muted);}
+.rbar-info b{color:var(--text);font-weight:600;}
+.accent-btn{background:var(--gold-bg);border:1px solid rgba(215,171,58,.28);color:var(--gold);font-family:var(--font);font-size:.8rem;font-weight:600;padding:7px 14px;cursor:pointer;border-radius:4px;transition:background .15s,border-color .15s;}
+.accent-btn:hover{background:rgba(215,171,58,.16);border-color:rgba(215,171,58,.42);}
 
-.rbar{
-  background:var(--bg);
-  border-bottom:1px solid var(--border);
-  padding:10px 44px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:12px;
-  flex-wrap:wrap;
-}
-.rbar-info{
-  font-size:.82rem;
-  color:var(--muted);
-}
-.rbar-info b{
-  color:var(--text);
-  font-weight:600;
-}
-.accent-btn{
-  background:var(--gold-bg);
-  border:1px solid rgba(215,171,58,.28);
-  color:var(--gold);
-  font-family:var(--font);
-  font-size:.8rem;
-  font-weight:600;
-  padding:7px 14px;
-  cursor:pointer;
-  border-radius:4px;
-  transition:background .15s,border-color .15s;
-}
-.accent-btn:hover{
-  background:rgba(215,171,58,.16);
-  border-color:rgba(215,171,58,.42);
-}
+.masthead{padding:30px 44px 22px;border-bottom:1px solid var(--border2);display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;}
+.m-title{font-size:2.15rem;font-weight:700;color:var(--text);letter-spacing:-.02em;line-height:1.08;}
+.m-sub{margin-top:10px;font-size:.8rem;font-family:var(--mono);letter-spacing:.10em;color:var(--muted);text-transform:uppercase;}
+.m-right{text-align:right;font-size:.82rem;color:var(--muted);line-height:1.8;}
+.stamp-label{font-size:.66rem;font-family:var(--mono);letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:3px;}
+.ts-stamp{font-size:.98rem;font-weight:600;font-family:var(--mono);color:var(--text);letter-spacing:.02em;display:block;margin-bottom:4px;}
 
-.masthead{
-  padding:30px 44px 22px;
-  border-bottom:1px solid var(--border2);
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:24px;
-  align-items:center;
-}
-.m-title{
-  font-size:2.15rem;
-  font-weight:700;
-  color:var(--text);
-  letter-spacing:-.02em;
-  line-height:1.08;
-}
-.m-sub{
-  margin-top:10px;
-  font-size:.8rem;
-  font-family:var(--mono);
-  letter-spacing:.10em;
-  color:var(--muted);
-  text-transform:uppercase;
-}
-.m-right{
-  text-align:right;
-  font-size:.82rem;
-  color:var(--muted);
-  line-height:1.8;
-}
-.stamp-label{
-  font-size:.66rem;
-  font-family:var(--mono);
-  letter-spacing:.14em;
-  color:var(--gold);
-  text-transform:uppercase;
-  margin-bottom:3px;
-}
-.ts-stamp{
-  font-size:.98rem;
-  font-weight:600;
-  font-family:var(--mono);
-  color:var(--text);
-  letter-spacing:.02em;
-  display:block;
-  margin-bottom:4px;
-}
-
-.routing{
-  padding:8px 44px;
-  background:var(--bg);
-  border-bottom:1px solid var(--border);
-  display:flex;
-  gap:28px;
-  font-size:.72rem;
-  font-family:var(--mono);
-  letter-spacing:.05em;
-  color:var(--faint);
-  flex-wrap:wrap;
-}
+.routing{padding:8px 44px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;gap:28px;font-size:.72rem;font-family:var(--mono);letter-spacing:.05em;color:var(--faint);flex-wrap:wrap;}
 .routing b{color:#b86d6d;}
 
-.price-strip{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  border-bottom:1px solid var(--border2);
-}
-.pcard{
-  padding:24px 28px;
-  border-right:1px solid var(--border);
-  position:relative;
-}
+/* ── PRICE STRIP ── */
+.price-strip{display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1px solid var(--border2);}
+.pcard{padding:24px 28px;border-right:1px solid var(--border);position:relative;}
 .pcard:last-child{border-right:none;}
-.pcard::before{
-  content:'';
-  position:absolute;
-  top:0;left:0;right:0;
-  height:2px;
-}
+.pcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
 .pcard.btc::before{background:#f7931a;}
 .pcard.eth::before{background:#6277ea;}
 .pcard.link::before{background:#3d6aed;}
-
-.p-sym{
-  font-size:.72rem;
-  font-family:var(--mono);
-  letter-spacing:.18em;
-  color:var(--muted);
-  margin-bottom:8px;
-}
-.p-price{
-  font-size:2rem;
-  font-weight:700;
-  color:var(--text);
-  letter-spacing:-.02em;
-  line-height:1;
-}
-.p-deltas{
-  margin-top:10px;
-  display:flex;
-  gap:14px;
-  font-size:.88rem;
-  font-weight:600;
-  flex-wrap:wrap;
-}
-.p-stats{
-  margin-top:14px;
-  padding-top:12px;
-  border-top:1px solid var(--border);
-  font-size:.82rem;
-  color:var(--muted);
-  line-height:2;
-}
+.p-sym{font-size:.72rem;font-family:var(--mono);letter-spacing:.18em;color:var(--muted);margin-bottom:8px;}
+.p-price{font-size:2rem;font-weight:700;color:var(--text);letter-spacing:-.02em;line-height:1;}
+.p-deltas{margin-top:10px;display:flex;gap:14px;font-size:.88rem;font-weight:600;flex-wrap:wrap;}
+.p-stats{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:.82rem;color:var(--muted);line-height:2;}
 .p-stats span{color:var(--faint);}
-.neg{color:var(--neg);}
-.pos{color:var(--pos);}
-.neu{color:var(--neu);}
+.neg{color:var(--neg);}.pos{color:var(--pos);}.neu{color:var(--neu);}
 
-.body{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-}
+/* ── BODY ── */
+.body{display:grid;grid-template-columns:1fr 1fr;}
 .col-l{border-right:1px solid var(--border);}
-
-.sec{
-  padding:24px 30px;
-  border-bottom:1px solid var(--border);
-}
+.sec{padding:24px 30px;border-bottom:1px solid var(--border);}
 .sec:last-child{border-bottom:none;}
-
-.sec-head{
-  font-size:.72rem;
-  font-family:var(--mono);
-  font-weight:500;
-  letter-spacing:.18em;
-  color:var(--gold);
-  text-transform:uppercase;
-  margin-bottom:16px;
-  padding-bottom:10px;
-  border-bottom:1px solid var(--border);
-}
+.sec-head{font-size:.72rem;font-family:var(--mono);font-weight:500;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);}
 
 ul.ib{list-style:none;}
-ul.ib>li{
-  padding:12px 0 12px 18px;
-  border-bottom:1px solid var(--border);
-  position:relative;
-  font-size:.97rem;
-  line-height:1.75;
-  color:var(--text);
-  font-weight:400;
-}
+ul.ib>li{padding:12px 0 12px 18px;border-bottom:1px solid var(--border);position:relative;font-size:.97rem;line-height:1.75;color:var(--text);font-weight:400;}
 ul.ib>li:last-child{border-bottom:none;}
-ul.ib>li::before{
-  content:'▸';
-  position:absolute;
-  left:0;
-  top:14px;
-  color:var(--gold);
-  font-size:.62rem;
-}
-ul.ib>li strong{
-  font-weight:700;
-  color:var(--text);
-}
+ul.ib>li::before{content:'▸';position:absolute;left:0;top:14px;color:var(--gold);font-size:.62rem;}
+ul.ib>li strong{font-weight:700;color:var(--text);}
 
-.macro-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-  margin-bottom:14px;
-}
-.macro-card{
-  background:var(--surface);
-  border:1px solid var(--border);
-  padding:14px 15px;
-  border-radius:4px;
-}
-.macro-label{
-  font-size:.68rem;
-  font-family:var(--mono);
-  letter-spacing:.10em;
-  color:var(--muted);
-  text-transform:uppercase;
-  margin-bottom:6px;
-}
-.macro-value{
-  font-size:1.5rem;
-  font-weight:700;
-  color:var(--text);
-  line-height:1.1;
-}
-.macro-sub{
-  font-size:.82rem;
-  margin-top:6px;
-  line-height:1.5;
-}
+/* ── MACRO CARDS ── */
+.macro-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.macro-card{background:var(--surface);border:1px solid var(--border);padding:14px 15px;border-radius:4px;}
+.macro-label{font-size:.68rem;font-family:var(--mono);letter-spacing:.10em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;}
+.macro-value{font-size:1.5rem;font-weight:700;color:var(--text);line-height:1.1;}
+.macro-sub{font-size:.82rem;margin-top:6px;line-height:1.5;}
 
-.full{
-  grid-column:1/-1;
-  border-top:1px solid var(--border2);
-  padding:24px 44px 30px;
-}
+/* ── FULL WIDTH ── */
+.full{grid-column:1/-1;border-top:1px solid var(--border2);padding:24px 44px 30px;}
 .full .sec-head{margin-bottom:16px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:34px;}
+.col-head{font-size:.72rem;font-family:var(--mono);font-weight:500;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
 
-.two-col{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:34px;
-}
-.col-head{
-  font-size:.72rem;
-  font-family:var(--mono);
-  font-weight:500;
-  letter-spacing:.14em;
-  color:var(--muted);
-  text-transform:uppercase;
-  margin-bottom:10px;
-  padding-bottom:8px;
-  border-bottom:1px solid var(--border);
-}
-
-.abox{
-  background:var(--surface);
-  border-left:3px solid var(--red);
-  padding:22px 22px;
-  margin-top:22px;
-  border-radius:0 4px 4px 0;
-}
-.abox .alabel{
-  font-size:.68rem;
-  font-family:var(--mono);
-  font-weight:500;
-  letter-spacing:.18em;
-  color:var(--neg);
-  text-transform:uppercase;
-  margin-bottom:12px;
-}
-.abox p{
-  font-size:.98rem;
-  line-height:1.85;
-  color:var(--text);
-  font-weight:400;
-  margin-bottom:12px;
-}
+.abox{background:var(--surface);border-left:3px solid var(--red);padding:22px;margin-top:22px;border-radius:0 4px 4px 0;}
+.abox .alabel{font-size:.68rem;font-family:var(--mono);font-weight:500;letter-spacing:.18em;color:var(--neg);text-transform:uppercase;margin-bottom:12px;}
+.abox p{font-size:.98rem;line-height:1.85;color:var(--text);font-weight:400;margin-bottom:12px;}
 .abox p:last-child{margin-bottom:0;}
 .abox strong{font-weight:700;}
 
-.sources-section{
-  grid-column:1/-1;
-  border-top:1px solid var(--border2);
-  padding:24px 44px 30px;
-  background:var(--bg);
-}
-.sources-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr 1fr;
-  gap:12px;
-}
-.source-card{
-  background:var(--paper);
-  border:1px solid var(--border);
-  padding:14px 15px;
-  border-radius:4px;
-  text-decoration:none;
-  display:block;
-  transition:border-color .15s,background .15s,transform .15s;
-}
-.source-card:hover{
-  border-color:var(--blue);
-  background:var(--blue-bg);
-  transform:translateY(-1px);
-}
-.source-tag{
-  font-size:.66rem;
-  font-family:var(--mono);
-  letter-spacing:.10em;
-  color:var(--muted);
-  text-transform:uppercase;
-  margin-bottom:6px;
-}
-.source-title{
-  font-size:.9rem;
-  color:var(--text);
-  line-height:1.55;
-  font-weight:600;
-}
-.source-meta{
-  margin-top:8px;
-  font-size:.74rem;
-  color:var(--muted);
-  display:flex;
-  justify-content:space-between;
-}
-.source-domain{
-  color:var(--blue);
-  font-family:var(--mono);
-}
-.source-snippet{
-  font-size:.81rem;
-  color:var(--muted);
-  line-height:1.65;
-  margin-top:8px;
-  border-top:1px solid var(--border);
-  padding-top:8px;
-  font-style:italic;
-}
+/* ── SOURCES ── */
+.sources-section{grid-column:1/-1;border-top:1px solid var(--border2);padding:24px 44px 30px;background:var(--bg);}
+.sources-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.source-card{background:var(--paper);border:1px solid var(--border);padding:14px 15px;border-radius:4px;text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .15s;}
+.source-card:hover{border-color:var(--blue);background:var(--blue-bg);transform:translateY(-1px);}
+.source-tag{font-size:.66rem;font-family:var(--mono);letter-spacing:.10em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;}
+.source-title{font-size:.9rem;color:var(--text);line-height:1.55;font-weight:600;}
+.source-meta{margin-top:8px;font-size:.74rem;color:var(--muted);display:flex;justify-content:space-between;}
+.source-domain{color:var(--blue);font-family:var(--mono);}
 
-.psep{
-  grid-column:1/-1;
-  text-align:center;
-  padding:6px 0;
-  font-size:.64rem;
-  font-family:var(--mono);
-  letter-spacing:.28em;
-  color:var(--faint);
-  border-top:1px solid var(--border);
-  border-bottom:1px solid var(--border);
-  background:var(--bg);
-}
+/* ── DEBUG ── */
+.psep{grid-column:1/-1;text-align:center;padding:6px 0;font-size:.64rem;font-family:var(--mono);letter-spacing:.28em;color:var(--faint);border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg);}
+.debug-toggle{background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;padding:5px 12px;cursor:pointer;border-radius:4px;float:right;}
+.debug-toggle:hover{color:var(--text);border-color:var(--blue);}
+.debug-panel{display:none;grid-column:1/-1;background:#121721;border-top:1px solid var(--border);padding:20px 44px;font-family:var(--mono);font-size:.76rem;color:var(--muted);line-height:1.8;}
+.debug-panel.open{display:block;}
+.debug-panel h4{color:var(--gold);letter-spacing:.12em;font-size:.7rem;text-transform:uppercase;margin:14px 0 6px;}
+.debug-panel pre{white-space:pre-wrap;word-break:break-word;color:#87a18f;background:#0f141c;padding:12px 14px;border:1px solid var(--border);border-radius:4px;max-height:320px;overflow-y:auto;}
 
-.footer{
-  border-top:1px solid var(--border);
-  padding:12px 44px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  font-size:.72rem;
-  font-family:var(--mono);
-  color:var(--faint);
-  letter-spacing:.04em;
-  flex-wrap:wrap;
-  gap:8px;
-}
+.footer{border-top:1px solid var(--border);padding:12px 44px;display:flex;justify-content:space-between;align-items:center;font-size:.72rem;font-family:var(--mono);color:var(--faint);letter-spacing:.04em;flex-wrap:wrap;gap:8px;}
 .footer .warn{color:rgba(179,60,60,.78);}
 
-.debug-toggle{
-  background:transparent;
-  border:1px solid var(--border2);
-  color:var(--muted);
-  font-family:var(--mono);
-  font-size:.7rem;
-  letter-spacing:.08em;
-  padding:5px 12px;
-  cursor:pointer;
-  border-radius:4px;
-  float:right;
+/* ── MOBILE ── */
+@media(max-width:768px){
+  html{font-size:15.5px;}
+  .rbar,.routing,.full,.sources-section,.footer{padding-left:16px;padding-right:16px;}
+  .masthead{padding:20px 16px 16px;grid-template-columns:1fr;gap:14px;}
+  .m-right{text-align:left;}
+  .routing{gap:10px;font-size:.64rem;}
+  .price-strip{grid-template-columns:1fr;}
+  .pcard{border-right:none;border-bottom:1px solid var(--border);}
+  .pcard:last-child{border-bottom:none;}
+  .p-price{font-size:1.72rem;}
+  .body{grid-template-columns:1fr;}
+  .col-l{border-right:none;}
+  .sec{padding:18px 16px;}
+  .two-col{grid-template-columns:1fr;gap:20px;}
+  .sources-grid{grid-template-columns:1fr 1fr;}
+  .macro-grid{grid-template-columns:1fr 1fr;}
+  .debug-panel{padding:16px;}
+  .debug-toggle{float:none;margin-left:8px;}
+  .rbar{flex-direction:column;align-items:flex-start;gap:8px;}
+  .rbar-info{font-size:.75rem;}
 }
-.debug-toggle:hover{
-  color:var(--text);
-  border-color:var(--blue);
-}
-
-.debug-panel{
-  display:none;
-  grid-column:1/-1;
-  background:#121721;
-  border-top:1px solid var(--border);
-  padding:20px 44px;
-  font-family:var(--mono);
-  font-size:.76rem;
-  color:var(--muted);
-  line-height:1.8;
-}
-.debug-panel.open{display:block;}
-.debug-panel h4{
-  color:var(--gold);
-  letter-spacing:.12em;
-  font-size:.7rem;
-  text-transform:uppercase;
-  margin:14px 0 6px;
-}
-.debug-panel pre{
-  white-space:pre-wrap;
-  word-break:break-word;
-  color:#87a18f;
-  background:#0f141c;
-  padding:12px 14px;
-  border:1px solid var(--border);
-  border-radius:4px;
-  max-height:320px;
-  overflow-y:auto;
-}
-
-@media (max-width: 768px) {
-  html { font-size: 15.5px; }
-
-  .rbar             { padding: 10px 16px; }
-  .masthead         { padding: 20px 16px 16px; grid-template-columns: 1fr; gap: 14px; }
-  .m-right          { text-align: left; }
-  .routing          { padding: 7px 16px; gap: 10px; font-size: .64rem; }
-  .full             { padding: 18px 16px 22px; }
-  .sources-section  { padding: 18px 16px 22px; }
-  .debug-panel      { padding: 16px 16px; }
-  .footer           { padding: 10px 16px; }
-
-  .price-strip      { grid-template-columns: 1fr; }
-  .pcard            { border-right: none; border-bottom: 1px solid var(--border); }
-  .pcard:last-child { border-bottom: none; }
-  .p-price          { font-size: 1.72rem; }
-
-  .body             { grid-template-columns: 1fr; }
-  .col-l            { border-right: none; }
-  .sec              { padding: 18px 16px; }
-
-  .two-col          { grid-template-columns: 1fr; gap: 20px; }
-  .sources-grid     { grid-template-columns: 1fr 1fr; }
-  .macro-grid       { grid-template-columns: 1fr 1fr; }
-
-  .debug-toggle     { float: none; margin-left: 8px; }
-
-  .rbar             { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .rbar-info        { font-size: .75rem; }
-}
-
-@media (max-width: 480px) {
-  html { font-size: 14.5px; }
-
-  .m-title          { font-size: 1.78rem; }
-  .m-sub            { font-size: .68rem; letter-spacing: .06em; }
-  .routing          { display: none; }
-
-  .cbar             { font-size: .54rem; letter-spacing: .22em; padding: 5px 8px; }
-
-  .pcard            { padding: 16px 16px; }
-  .p-price          { font-size: 1.55rem; }
-  .p-deltas         { font-size: .8rem; gap: 10px; }
-  .p-stats          { font-size: .75rem; }
-
-  .sec              { padding: 16px 16px; }
-  .sec-head         { font-size: .64rem; letter-spacing: .12em; }
-  ul.ib > li        { font-size: .9rem; padding: 10px 0 10px 16px; }
-
-  .macro-grid       { grid-template-columns: 1fr; }
-
-  .full             { padding: 16px 16px 18px; }
-  .sources-section  { padding: 16px 16px 18px; }
-
-  .footer           { flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 16px; }
-
-  .psep             { font-size: .56rem; letter-spacing: .18em; }
-
-  .debug-panel      { padding: 14px 16px; }
+@media(max-width:480px){
+  html{font-size:14.5px;}
+  .m-title{font-size:1.78rem;}
+  .m-sub{font-size:.68rem;letter-spacing:.06em;}
+  .routing{display:none;}
+  .cbar{font-size:.54rem;letter-spacing:.22em;padding:5px 8px;}
+  .pcard{padding:16px;}
+  .p-price{font-size:1.55rem;}
+  .p-deltas{font-size:.8rem;gap:10px;}
+  .p-stats{font-size:.75rem;}
+  .sec{padding:16px;}
+  .sec-head{font-size:.64rem;letter-spacing:.12em;}
+  ul.ib>li{font-size:.9rem;padding:10px 0 10px 16px;}
+  .macro-grid{grid-template-columns:1fr 1fr;}
+  .macro-value{font-size:1.25rem;}
+  .full{padding:16px 16px 18px;}
+  .sources-section{padding:16px;}
+  .sources-grid{grid-template-columns:1fr;}
+  .footer{flex-direction:column;align-items:flex-start;gap:4px;padding:10px 16px;}
+  .psep{font-size:.56rem;letter-spacing:.18em;}
+  .debug-panel{padding:14px 16px;}
 }
 </style>
 </head>
@@ -592,7 +185,7 @@ ul.ib>li strong{
 <div id="loading">
   <div class="spinner"></div>
   <div class="load-title">Crypto Daily Brief</div>
-  <div class="load-sub" id="load-sub">Fetching live market snapshot…</div>
+  <div class="load-sub" id="load-sub">Fetching live market data…</div>
 </div>
 
 <div id="brief">
@@ -600,7 +193,11 @@ ul.ib>li strong{
   <div class="cbar">⬛ &nbsp; CRYPTO INTELLIGENCE BRIEF — FOR ADDRESSEE'S EYES ONLY &nbsp; ⬛</div>
 
   <div class="rbar">
-    <div class="rbar-info"><b>Data:</b> CoinGecko · Worker APIs · Tavily · Gemini 2.5 Flash</div>
+    <div class="rbar-info">
+      <b>Data:</b> CoinGecko · Yahoo Finance · NY Fed · BLS · Alternative.me
+      &nbsp;·&nbsp;
+      <b>Analysis:</b> Gemini + Google Search
+    </div>
     <button class="accent-btn" onclick="run()">↻ Refresh Brief</button>
   </div>
 
@@ -619,7 +216,7 @@ ul.ib>li strong{
   <div class="routing">
     <div><b>CLASS:</b> PROPRIETARY — NOT FOR DISTRIBUTION</div>
     <div><b>COVERS:</b> BTC · ETH · LINK · MACRO · GEO · REGULATORY</div>
-    <div><b>SOURCES:</b> RAW DATA + AI INTERPRETATION</div>
+    <div><b>SOURCES:</b> LIVE — SEE REFERENCES</div>
   </div>
 
   <div class="price-strip">
@@ -688,17 +285,19 @@ ul.ib>li strong{
 
     <div class="sources-section">
       <div class="sec-head">
-        § V &nbsp;·&nbsp; Intelligence Sources — Live News Feed
-        <button class="debug-toggle" onclick="toggleDebug()">⚙ Show Raw Feed</button>
+        § V &nbsp;·&nbsp; Intelligence Sources — Google Search Grounding
+        <button class="debug-toggle" onclick="toggleDebug()">⚙ Show Raw Sources</button>
       </div>
       <div class="sources-grid" id="sources-grid"></div>
     </div>
+
     <div class="debug-panel" id="debug-panel">
-      <h4>Raw News Content Fed to AI</h4>
-      <p style="font-size:.76rem;color:var(--muted);margin-bottom:8px;">This is the exact text retrieved and passed to the AI model. The analysis above is the AI synthesis of this raw material.</p>
-      <pre id="debug-content">Loading...</pre>
+      <h4>Raw Grounding Sources from Gemini</h4>
+      <p style="font-size:.76rem;color:var(--muted);margin-bottom:8px;">These are the exact web sources Gemini retrieved via Google Search to ground the analysis above.</p>
+      <pre id="debug-content">Loading…</pre>
     </div>
-  </div>
+
+  </div><!-- /body -->
 
   <div class="footer">
     <div>CRYPTO DAILY BRIEF · SGT (UTC+8) · <span id="footer-date">—</span></div>
@@ -709,230 +308,132 @@ ul.ib>li strong{
 </div>
 
 <script>
+'use strict';
+
+// ─── CONFIG ────────────────────────────────────────────────────────
 const WORKER_URL = 'https://crypto-brief-proxy.blitzio.workers.dev';
 
+// ─── SGT UTILITIES ─────────────────────────────────────────────────
 const MONS  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const WDAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
-const pad   = n => String(n).padStart(2,'0');
+const pad   = n => String(n).padStart(2, '0');
+const sgtNow  = ()  => new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Singapore' }));
+const fmtSGT  = d   => `${WDAYS[d.getDay()]} ${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} SGT`;
+const fmtDate = d   => `${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYear()}`;
 
-const sgtNow = () => new Date(new Date().toLocaleString('en-US', { timeZone:'Asia/Singapore' }));
-const fmtSGT = d => `${WDAYS[d.getDay()]} ${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} SGT`;
-const fmtDate = d => `${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYear()}`;
-
-const fmtPrice = n => n >= 1000 ? '$'+n.toLocaleString('en-US',{maximumFractionDigits:0}) : n >= 10 ? '$'+n.toFixed(2) : '$'+n.toFixed(3);
-const fmtCap   = n => !n ? 'N/A' : n >= 1e12 ? '$'+(n/1e12).toFixed(2)+'T' : n >= 1e9 ? '$'+(n/1e9).toFixed(1)+'B' : '$'+(n/1e6).toFixed(0)+'M';
-const fmtPct   = n => n == null ? 'N/A' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+// ─── NUMBER FORMATTERS ──────────────────────────────────────────────
+const fmtPrice = n  => n >= 1000  ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 })
+                     : n >= 10    ? '$' + n.toFixed(2)
+                     : '$' + n.toFixed(3);
+const fmtCap   = n  => !n        ? 'N/A'
+                     : n >= 1e12 ? '$' + (n / 1e12).toFixed(2) + 'T'
+                     : n >= 1e9  ? '$' + (n / 1e9).toFixed(1)  + 'B'
+                     : '$' + (n / 1e6).toFixed(0) + 'M';
+const fmtPct   = n  => n == null  ? 'N/A' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const arrowCls  = n => n >= 0 ? 'pos' : 'neg';
 const arrowChar = n => n >= 0 ? '▲' : '▼';
+const dirFromPct = p => Number.isFinite(p) ? (p > 0 ? 'pos' : p < 0 ? 'neg' : 'neu') : 'neu';
 
-const fmtMacroValue = (label, data) => {
-  if (!data) return 'UNAVAILABLE';
-  if (label === 'Fed Rate') return data.rateStr || 'UNAVAILABLE';
-  if (label === 'USD/SGD') return Number.isFinite(data.price) ? data.price.toFixed(4) : 'UNAVAILABLE';
-  if (label === 'S&P 500') return Number.isFinite(data.price) ? '$' + data.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : 'UNAVAILABLE';
-  if (label === 'Gold') return Number.isFinite(data.price) ? '$' + data.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : 'UNAVAILABLE';
-  if (label === 'DXY') return Number.isFinite(data.price) ? data.price.toFixed(2) : 'UNAVAILABLE';
-  if (label === 'Crypto Sentiment') return Number.isFinite(data.value) ? `${data.value} / 100` : 'UNAVAILABLE';
-  return 'UNAVAILABLE';
-};
-
-function dirFromPct(pct) {
-  if (!Number.isFinite(pct)) return 'neu';
-  return pct > 0 ? 'pos' : pct < 0 ? 'neg' : 'neu';
-}
-
-function dirFromSentimentValue(value) {
-  if (!Number.isFinite(value)) return 'neu';
-  if (value >= 60) return 'pos';
-  if (value <= 40) return 'neg';
-  return 'neu';
-}
-
-function unavailableMacro() {
-  return {
-    snapshotTime: null,
-    fedRate: { rate: null, rateStr: 'UNAVAILABLE', date: null, source: 'unavailable' },
-    usdsgd: { price: null, pct: null, source: 'unavailable' },
-    sp500: { price: null, pct: null, source: 'unavailable' },
-    gold: { price: null, pct: null, source: 'unavailable' },
-    dxy: { price: null, pct: null, source: 'unavailable' },
-    cryptoSentiment: { value: null, classification: 'Unavailable', dir: 'neu', source: 'unavailable' },
-    cpi: { value: null, yoy: 'N/A', period: 'Unavailable', source: 'unavailable' }
-  };
-}
-
+// ─── DATA FETCHERS ──────────────────────────────────────────────────
 async function fetchPrices() {
-  const r = await fetch(
+  const res = await fetch(
     'https://api.coingecko.com/api/v3/coins/markets' +
-    '?vs_currency=usd' +
-    '&ids=bitcoin,ethereum,chainlink' +
-    '&order=market_cap_desc' +
-    '&per_page=3' +
-    '&page=1' +
-    '&sparkline=false' +
+    '?vs_currency=usd&ids=bitcoin,ethereum,chainlink' +
+    '&order=market_cap_desc&per_page=3&page=1&sparkline=false' +
     '&price_change_percentage=24h,7d',
     { cache: 'no-store' }
   );
-  if (!r.ok) throw new Error('CoinGecko unavailable. Try again shortly.');
-  const arr = await r.json();
-  const out = {};
-  for (const c of arr) out[c.id] = c;
-  return out;
+  if (!res.ok) throw new Error('CoinGecko unavailable — try again shortly.');
+  const arr = await res.json();
+  return Object.fromEntries(arr.map(c => [c.id, c]));
 }
 
 async function fetchMacro() {
   try {
-    const r = await fetch(WORKER_URL + '/macro', { cache: 'no-store' });
-    if (!r.ok) throw new Error('macro failed');
-    const data = await r.json();
-    return data && typeof data === 'object' ? data : unavailableMacro();
-  } catch(e) {
-    return unavailableMacro();
+    const res  = await fetch(WORKER_URL + '/macro', { cache: 'no-store' });
+    const data = await res.json();
+    return (data && typeof data === 'object') ? data : {};
+  } catch {
+    return {};
   }
 }
 
-async function fetchNews() {
-  const r = await fetch(WORKER_URL + '/news', { cache: 'no-store' });
-  if (!r.ok) throw new Error('News feed unavailable. Try again shortly.');
-  const data = await r.json();
-  return Array.isArray(data) ? data : [];
-}
-
-async function callAI(prices, macro, newsItems) {
+// ─── AI CALL ────────────────────────────────────────────────────────
+async function callAI(prices, macro) {
   const b = prices['bitcoin'];
   const e = prices['ethereum'];
   const l = prices['chainlink'];
   const today = fmtDate(sgtNow());
 
+  // Build macro context string — only include fields that have real data
   const macroLines = [
-    `Fed Funds Rate (NY Fed EFFR): ${macro.fedRate?.rateStr || 'UNAVAILABLE'}${macro.fedRate?.date ? ` (as of ${macro.fedRate.date})` : ''}`,
-    `USD/SGD: ${Number.isFinite(macro.usdsgd?.price) ? macro.usdsgd.price.toFixed(4) : 'UNAVAILABLE'}${Number.isFinite(macro.usdsgd?.pct) ? ` (${fmtPct(macro.usdsgd.pct)} today)` : ''}`,
-    `S&P 500: ${Number.isFinite(macro.sp500?.price) ? '$'+macro.sp500.price.toLocaleString('en-US',{maximumFractionDigits:0}) : 'UNAVAILABLE'}${Number.isFinite(macro.sp500?.pct) ? ` (${fmtPct(macro.sp500.pct)} today)` : ''}`,
-    `Gold: ${Number.isFinite(macro.gold?.price) ? '$'+macro.gold.price.toLocaleString('en-US',{maximumFractionDigits:0}) : 'UNAVAILABLE'}${Number.isFinite(macro.gold?.pct) ? ` (${fmtPct(macro.gold.pct)} today)` : ''}`,
-    `DXY: ${Number.isFinite(macro.dxy?.price) ? macro.dxy.price.toFixed(2) : 'UNAVAILABLE'}${Number.isFinite(macro.dxy?.pct) ? ` (${fmtPct(macro.dxy.pct)} today)` : ''}`,
-    `Crypto Sentiment (Alternative.me): ${Number.isFinite(macro.cryptoSentiment?.value) ? `${macro.cryptoSentiment.value}/100` : 'UNAVAILABLE'}${macro.cryptoSentiment?.classification ? ` (${macro.cryptoSentiment.classification})` : ''}`,
-    `CPI (BLS): ${macro.cpi?.yoy || 'N/A'}${macro.cpi?.period ? ` (${macro.cpi.period})` : ''}`
-  ].join('\n');
+    macro.fedRate?.rateStr && macro.fedRate.rateStr !== 'UNAVAILABLE'
+      ? `Fed Funds Rate (NY Fed EFFR): ${macro.fedRate.rateStr}${macro.fedRate.date ? ` as of ${macro.fedRate.date}` : ''}`
+      : null,
+    Number.isFinite(macro.usdsgd?.price)
+      ? `USD/SGD: ${macro.usdsgd.price.toFixed(4)} (${fmtPct(macro.usdsgd.pct)} today)`
+      : null,
+    Number.isFinite(macro.sp500?.price)
+      ? `S&P 500: $${macro.sp500.price.toLocaleString('en-US', { maximumFractionDigits: 0 })} (${fmtPct(macro.sp500.pct)} today)`
+      : null,
+    Number.isFinite(macro.gold?.price)
+      ? `Gold: $${macro.gold.price.toLocaleString('en-US', { maximumFractionDigits: 0 })} (${fmtPct(macro.gold.pct)} today)`
+      : null,
+    Number.isFinite(macro.dxy?.price)
+      ? `DXY Dollar Index: ${macro.dxy.price.toFixed(2)} (${fmtPct(macro.dxy.pct)} today)`
+      : null,
+    Number.isFinite(macro.cryptoSentiment?.value)
+      ? `Crypto Fear & Greed: ${macro.cryptoSentiment.value}/100 (${macro.cryptoSentiment.classification})`
+      : null,
+    macro.cpi?.yoy && macro.cpi.yoy !== 'N/A'
+      ? `CPI Inflation (BLS): ${macro.cpi.yoy} YoY — ${macro.cpi.period}`
+      : null,
+  ].filter(Boolean).join('\n');
 
-  const newsText = newsItems.map((n,i) =>
-    `[${i+1}] "${n.title}" — ${n.url}\n${(n.content||'').slice(0,250)}`
-  ).join('\n\n');
+  const prompt =
+`You are a senior crypto intelligence analyst producing a classified daily brief for a sophisticated investor in Singapore. Today is ${today}.
 
-  const prompt = `You are a senior crypto intelligence analyst producing a classified daily brief for a sophisticated investor in Singapore. Today is ${today}.
-
-LIVE DATA — USE THESE EXACT NUMBERS, DO NOT SUBSTITUTE:
-
-CRYPTO PRICES (CoinGecko live):
+LIVE PRICES (CoinGecko — use exact figures below, do not substitute):
 BTC:  ${fmtPrice(b.current_price)} | 24h: ${fmtPct(b.price_change_percentage_24h)} | 7d: ${fmtPct(b.price_change_percentage_7d_in_currency)} | MCap: ${fmtCap(b.market_cap)} | Vol: ${fmtCap(b.total_volume)}
 ETH:  ${fmtPrice(e.current_price)} | 24h: ${fmtPct(e.price_change_percentage_24h)} | 7d: ${fmtPct(e.price_change_percentage_7d_in_currency)} | MCap: ${fmtCap(e.market_cap)} | Vol: ${fmtCap(e.total_volume)}
 LINK: ${fmtPrice(l.current_price)} | 24h: ${fmtPct(l.price_change_percentage_24h)} | 7d: ${fmtPct(l.price_change_percentage_7d_in_currency)} | MCap: ${fmtCap(l.market_cap)} | Vol: ${fmtCap(l.total_volume)}
 
-MACRO / MARKET DATA:
-${macroLines}
-
-TODAY'S NEWS (base your analysis on these real sources — cite [N] inline):
-${newsText}
+LIVE MACRO DATA (use exact figures below, do not substitute):
+${macroLines || 'Macro data temporarily unavailable.'}
 
 INSTRUCTIONS:
-- Write sharp, specific, authoritative analysis grounded in the news and data above
-- DO NOT make up facts not supported by the news or data provided
-- DO NOT generate the raw macro gauge values — those are rendered separately by the application
-- Every bullet must contain specific information, not generic statements
-- Cite news articles inline using [N] where you reference them
-- Avoid direct buy/sell instructions; frame the verdict as assessment and conditions to monitor
-
-Return ONLY a valid JSON object. No markdown. No backticks. No <think> tags. No text before or after. Start with { end with }.
-
-{
-  "btc": {
-    "support": "$XX,XXX → $XX,XXX",
-    "resist": "$XX,XXX → $XX,XXX",
-    "bullets": [
-      {"label": "Price Action", "text": "specific observation about BTC at its current exact price with context from news [N]"},
-      {"label": "Key Level", "text": "specific price level and why it matters right now"},
-      {"label": "Recent Action", "text": "what happened in the last 24-48hrs based on news"},
-      {"label": "On-Chain / Macro", "text": "specific macro or market signal affecting BTC"},
-      {"label": "Sentiment", "text": "current market sentiment with specific evidence"},
-      {"label": "Downside Risk", "text": "specific price level and trigger for downside"}
-    ]
-  },
-  "eth": {
-    "support": "$X,XXX → $X,XXX",
-    "resist": "$X,XXX → $X,XXX",
-    "bullets": [
-      {"label": "Price Action", "text": "..."},
-      {"label": "Cycle Context", "text": "..."},
-      {"label": "Catalyst", "text": "specific upcoming or recent catalyst with source [N]"},
-      {"label": "Protocol", "text": "..."},
-      {"label": "Staking", "text": "..."},
-      {"label": "Downside Risk", "text": "..."}
-    ]
-  },
-  "link": {
-    "support": "$X.XX → $X.XX",
-    "resist": "$X.XX → $X.XX",
-    "bullets": [
-      {"label": "Price Action", "text": "..."},
-      {"label": "Regulatory", "text": "..."},
-      {"label": "Ecosystem", "text": "specific integration or development from news [N]"},
-      {"label": "Whales", "text": "..."},
-      {"label": "Technical", "text": "specific levels and pattern"},
-      {"label": "Outlook", "text": "..."}
-    ]
-  },
-  "macro": {
-    "bullets": [
-      {"label": "Fed", "text": "specific current rate backdrop and implications for crypto"},
-      {"label": "Dollar / FX", "text": "how DXY and USD/SGD are affecting the market tone"},
-      {"label": "Risk Assets", "text": "what S&P 500 is signaling for crypto beta"},
-      {"label": "Gold / Defensive Positioning", "text": "what gold and defensive flows imply"},
-      {"label": "Sentiment", "text": "what the third-party crypto sentiment reading suggests, with proper caveats"}
-    ]
-  },
-  "threats": [
-    {"label": "Macro", "text": "specific macro threat description"},
-    {"label": "Dollar", "text": "specific threat"},
-    {"label": "Equity Correlation", "text": "specific threat"},
-    {"label": "Regulatory", "text": "specific threat from news"},
-    {"label": "Liquidity", "text": "specific threat"}
-  ],
-  "watch": [
-    {"label": "BTC $XX,XXX", "text": "what to watch and why"},
-    {"label": "ETH $X,XXX", "text": "..."},
-    {"label": "LINK $X.XX", "text": "..."},
-    {"label": "Macro Event", "text": "specific upcoming event"},
-    {"label": "Dollar / FX", "text": "what to watch in DXY or USD/SGD"},
-    {"label": "Key Catalyst", "text": "..."}
-  ],
-  "verdict": "2-3 sharp sentences summarizing market regime, primary driver, and conditions to monitor. Avoid explicit buy/sell language.",
-  "ranking": "Rank BTC, ETH, LINK by structural conviction right now with one specific reason each.",
-  "bullTrigger": "Specific price level or event that confirms bull case.",
-  "bearTrigger": "Specific price level or event that confirms bear case."
-}`;
+- Use your Google Search access to find the most relevant news and developments for today
+- Write sharp, specific, authoritative bullets grounded in real current events
+- Cite your sources inline using [1], [2] etc — these correspond to what you actually searched
+- DO NOT use placeholder text — every bullet must contain specific, verifiable information
+- DO NOT invent or substitute macro gauge values — use only what is provided above
+- Avoid explicit buy/sell instructions; frame the verdict as conditions to monitor
+- Support and resistance levels must be actual dollar figures derived from the current price`;
 
   const res = await fetch(WORKER_URL, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       messages: [
         {
-          role: 'system',
-          content: 'You are a senior crypto intelligence analyst. You write sharp, specific, data-driven briefs. You NEVER use placeholder text. You ALWAYS use the exact numbers provided. You NEVER invent raw macro gauge values. You respond ONLY with a raw JSON object — no markdown, no backticks, no <think> tags, no text before or after the JSON. Start with { and end with }.'
+          role:    'system',
+          content: 'You are a senior crypto intelligence analyst. Write sharp, specific, data-driven briefs grounded in real current events you search for. Never use placeholder text. Never substitute macro values. Respond with a raw JSON object only.',
         },
-        { role: 'user', content: prompt }
+        { role: 'user', content: prompt },
       ],
       temperature: 0.3,
-      max_tokens: 4000
-    })
+      max_tokens:  4000,
+    }),
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(()=>({}));
-    throw new Error(err?.error?.message || 'Worker error ' + res.status);
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message ?? `Worker error ${res.status}`);
   }
 
-  const data = await res.json();
-  const raw  = data?.choices?.[0]?.message?.content || '';
+  const data             = await res.json();
+  const raw              = data?.choices?.[0]?.message?.content ?? '';
+  const groundingSources = data?.groundingSources ?? [];
 
   let clean = raw
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
@@ -945,129 +446,111 @@ Return ONLY a valid JSON object. No markdown. No backticks. No <think> tags. No 
 
   const start = clean.indexOf('{');
   const end   = clean.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error('No JSON in response. Try refreshing.');
+  if (start === -1 || end === -1) throw new Error('No JSON in response — try refreshing.');
   clean = clean.slice(start, end + 1);
 
   try {
-    return JSON.parse(clean);
-  } catch(e) {
-    return JSON.parse(clean.replace(/,\s*([}\]])/g, '$1'));
+    return { brief: JSON.parse(clean), groundingSources };
+  } catch {
+    return { brief: JSON.parse(clean.replace(/,\s*([}\]])/g, '$1')), groundingSources };
   }
 }
 
+// ─── RENDER HELPERS ─────────────────────────────────────────────────
 function renderCard(id, coin, support, resist) {
-  const p   = coin.current_price;
-  const d24 = coin.price_change_percentage_24h || 0;
-  const d7  = coin.price_change_percentage_7d_in_currency || 0;
-
-  document.getElementById(id+'-price').textContent = fmtPrice(p);
-  document.getElementById(id+'-deltas').innerHTML =
+  const d24 = coin.price_change_percentage_24h ?? 0;
+  const d7  = coin.price_change_percentage_7d_in_currency ?? 0;
+  document.getElementById(id + '-price').textContent = fmtPrice(coin.current_price);
+  document.getElementById(id + '-deltas').innerHTML  =
     `<span class="${arrowCls(d24)}">${arrowChar(d24)} ${Math.abs(d24).toFixed(2)}% (24h)</span>
      <span class="${arrowCls(d7)}">${arrowChar(d7)} ${Math.abs(d7).toFixed(2)}% (7d)</span>`;
-  document.getElementById(id+'-stats').innerHTML =
+  document.getElementById(id + '-stats').innerHTML   =
     `<span>Mkt Cap</span> ${fmtCap(coin.market_cap)} &nbsp;·&nbsp; <span>Vol</span> ${fmtCap(coin.total_volume)}<br/>
      <span>Support</span> ${support}<br/><span>Resist</span> ${resist}`;
 }
 
 function renderBullets(id, arr) {
   document.getElementById(id).innerHTML =
-    arr.map(b => `<li><strong>${b.label}:</strong> ${b.text}</li>`).join('');
+    (arr ?? []).map(b => `<li><strong>${b.label}:</strong> ${b.text}</li>`).join('');
 }
 
 function renderMacroCards(macro) {
-  const grid = document.getElementById('macro-grid');
+  const card = (label, value, sub, dir) =>
+    `<div class="macro-card">
+       <div class="macro-label">${label}</div>
+       <div class="macro-value">${value}</div>
+       <div class="macro-sub ${dir}">${sub}</div>
+     </div>`;
 
-  const cards = [
-    {
-      label: 'Fed Rate',
-      value: fmtMacroValue('Fed Rate', macro.fedRate),
-      sub: macro.fedRate?.date ? `EFFR · ${macro.fedRate.date}` : 'NY Fed EFFR',
-      dir: 'neu'
-    },
-    {
-      label: 'USD/SGD',
-      value: fmtMacroValue('USD/SGD', macro.usdsgd),
-      sub: Number.isFinite(macro.usdsgd?.pct) ? `${fmtPct(macro.usdsgd.pct)} today` : 'Data unavailable',
-      dir: dirFromPct(macro.usdsgd?.pct)
-    },
-    {
-      label: 'S&P 500',
-      value: fmtMacroValue('S&P 500', macro.sp500),
-      sub: Number.isFinite(macro.sp500?.pct) ? `${fmtPct(macro.sp500.pct)} today` : 'Data unavailable',
-      dir: dirFromPct(macro.sp500?.pct)
-    },
-    {
-      label: 'Gold',
-      value: fmtMacroValue('Gold', macro.gold),
-      sub: Number.isFinite(macro.gold?.pct) ? `${fmtPct(macro.gold.pct)} today` : 'Data unavailable',
-      dir: dirFromPct(macro.gold?.pct)
-    },
-    {
-      label: 'DXY',
-      value: fmtMacroValue('DXY', macro.dxy),
-      sub: Number.isFinite(macro.dxy?.pct) ? `${fmtPct(macro.dxy.pct)} today` : 'Data unavailable',
-      dir: dirFromPct(macro.dxy?.pct)
-    },
-    {
-      label: 'Crypto Sentiment',
-      value: fmtMacroValue('Crypto Sentiment', macro.cryptoSentiment),
-      sub: macro.cryptoSentiment?.classification || 'Unavailable',
-      dir: dirFromSentimentValue(macro.cryptoSentiment?.value)
-    }
-  ];
-
-  grid.innerHTML = cards.map(card => `
-    <div class="macro-card">
-      <div class="macro-label">${card.label}</div>
-      <div class="macro-value">${card.value}</div>
-      <div class="macro-sub ${card.dir}">${card.sub}</div>
-    </div>
-  `).join('');
+  document.getElementById('macro-grid').innerHTML = [
+    card('Fed Rate',
+      macro.fedRate?.rateStr && macro.fedRate.rateStr !== 'UNAVAILABLE' ? macro.fedRate.rateStr : '—',
+      macro.fedRate?.date ? `NY Fed EFFR · ${macro.fedRate.date}` : 'NY Fed EFFR',
+      'neu'),
+    card('USD / SGD',
+      Number.isFinite(macro.usdsgd?.price) ? macro.usdsgd.price.toFixed(4) : '—',
+      Number.isFinite(macro.usdsgd?.pct)   ? fmtPct(macro.usdsgd.pct) + ' today' : 'Unavailable',
+      dirFromPct(macro.usdsgd?.pct)),
+    card('S&P 500',
+      Number.isFinite(macro.sp500?.price) ? '$' + macro.sp500.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—',
+      Number.isFinite(macro.sp500?.pct)   ? fmtPct(macro.sp500.pct) + ' today' : 'Unavailable',
+      dirFromPct(macro.sp500?.pct)),
+    card('Gold',
+      Number.isFinite(macro.gold?.price) ? '$' + macro.gold.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—',
+      Number.isFinite(macro.gold?.pct)   ? fmtPct(macro.gold.pct) + ' today' : 'Unavailable',
+      dirFromPct(macro.gold?.pct)),
+    card('DXY',
+      Number.isFinite(macro.dxy?.price) ? macro.dxy.price.toFixed(2) : '—',
+      Number.isFinite(macro.dxy?.pct)   ? fmtPct(macro.dxy.pct) + ' today' : 'Unavailable',
+      dirFromPct(macro.dxy?.pct)),
+    card('Fear & Greed',
+      Number.isFinite(macro.cryptoSentiment?.value) ? macro.cryptoSentiment.value + ' / 100' : '—',
+      macro.cryptoSentiment?.classification ?? 'Unavailable',
+      macro.cryptoSentiment?.dir ?? 'neu'),
+  ].join('');
 }
 
-function renderSources(items) {
+function renderSources(sources) {
   const grid = document.getElementById('sources-grid');
-  if (!items.length) {
-    grid.innerHTML = '<p style="color:var(--muted);font-size:.9rem;">No sources retrieved.</p>';
+  if (!sources?.length) {
+    grid.innerHTML = '<p style="color:var(--muted);font-size:.9rem;grid-column:1/-1;">No grounding sources returned for this generation.</p>';
     return;
   }
-  grid.innerHTML = items.map((n, i) => {
-    let domain = '';
-    try { domain = new URL(n.url).hostname.replace('www.',''); } catch(e) {}
-    const title   = (n.title||'Article').slice(0, 90) + ((n.title||'').length > 90 ? '…' : '');
-    const snippet = (n.content||'').slice(0, 150) + ((n.content||'').length > 150 ? '…' : '');
-    return `<a class="source-card" href="${n.url}" target="_blank" rel="noopener">
-      <div class="source-tag">[${i+1}] ${domain}</div>
+  grid.innerHTML = sources.map((s, i) => {
+    const domain = s.domain || (() => { try { return new URL(s.url).hostname.replace('www.', ''); } catch { return ''; } })();
+    const title  = (s.title ?? 'Article').slice(0, 90) + ((s.title ?? '').length > 90 ? '…' : '');
+    return `<a class="source-card" href="${s.url}" target="_blank" rel="noopener noreferrer">
+      <div class="source-tag">[${i + 1}] ${domain}</div>
       <div class="source-title">${title}</div>
-      ${snippet ? `<div class="source-snippet">${snippet}</div>` : ''}
       <div class="source-meta"><span class="source-domain">${domain}</span><span>↗</span></div>
     </a>`;
   }).join('');
 }
 
-function renderBrief(brief, prices, macro, newsItems, generatedTime) {
+function renderBrief(brief, prices, macro, groundingSources, generatedTime) {
   renderCard('btc',  prices['bitcoin'],   brief.btc.support,  brief.btc.resist);
   renderCard('eth',  prices['ethereum'],  brief.eth.support,  brief.eth.resist);
   renderCard('link', prices['chainlink'], brief.link.support, brief.link.resist);
 
-  document.getElementById('link-sec-head').innerHTML = '⬡ &nbsp; Chainlink — LINK';
+  document.getElementById('link-sec-head').innerHTML =
+    `⬡ &nbsp; Chainlink — LINK${brief.link.badge ? ` <span style="display:inline-block;font-size:.6rem;font-family:var(--mono);letter-spacing:.1em;padding:2px 7px;background:var(--green-bg);border:1px solid rgba(56,177,114,.25);color:var(--green);text-transform:uppercase;border-radius:2px;vertical-align:middle;margin-left:6px;">${brief.link.badge}</span>` : ''}`;
 
   renderMacroCards(macro);
-
   renderBullets('btc-bullets',   brief.btc.bullets);
   renderBullets('eth-bullets',   brief.eth.bullets);
   renderBullets('link-bullets',  brief.link.bullets);
   renderBullets('macro-bullets', brief.macro.bullets);
   renderBullets('threats',       brief.threats);
   renderBullets('watch',         brief.watch);
-  renderSources(newsItems);
+  renderSources(groundingSources);
 
-  const debugContent = newsItems.map((n, i) => {
-    return `[${i+1}] ${n.title}\nSource: ${n.url}\nContent: ${n.content || 'No content extracted'}`;
-  }).join('\n\n' + '─'.repeat(60) + '\n\n');
-
+  // Debug panel
   const debugEl = document.getElementById('debug-content');
-  if (debugEl) debugEl.textContent = debugContent || 'No news items retrieved.';
+  if (debugEl) {
+    debugEl.textContent = groundingSources.length
+      ? groundingSources.map((s, i) => `[${i + 1}] ${s.title}\n    ${s.url}`).join('\n\n')
+      : 'No grounding sources returned.';
+  }
 
   document.getElementById('verdict-content').innerHTML =
     `<p>${brief.verdict}</p>
@@ -1082,27 +565,21 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
   document.getElementById('loading').classList.add('hidden');
 }
 
+// ─── MAIN ────────────────────────────────────────────────────────────
 async function run() {
   document.getElementById('brief').classList.remove('active');
   document.getElementById('loading').classList.remove('hidden');
 
   try {
-    document.getElementById('load-sub').textContent = 'Fetching live prices, macro, and news…';
+    document.getElementById('load-sub').textContent = 'Fetching live prices and macro data…';
+    const [prices, macro] = await Promise.all([fetchPrices(), fetchMacro()]);
 
-    const [prices, macro, newsItems] = await Promise.all([
-      fetchPrices(),
-      fetchMacro(),
-      fetchNews()
-    ]);
+    document.getElementById('load-sub').textContent = 'Generating brief via Gemini + Google Search…';
+    const { brief, groundingSources } = await callAI(prices, macro);
 
-    document.getElementById('load-sub').textContent = 'Generating intelligence brief…';
+    renderBrief(brief, prices, macro, groundingSources, sgtNow());
 
-    const brief = await callAI(prices, macro, newsItems);
-    const generatedTime = sgtNow();
-
-    renderBrief(brief, prices, macro, newsItems, generatedTime);
-
-  } catch(err) {
+  } catch (err) {
     console.error(err);
     document.getElementById('load-sub').textContent = 'Error: ' + err.message + ' — refresh to retry.';
   }
@@ -1112,7 +589,7 @@ function toggleDebug() {
   const panel = document.getElementById('debug-panel');
   const btn   = document.querySelector('.debug-toggle');
   panel.classList.toggle('open');
-  btn.textContent = panel.classList.contains('open') ? '⚙ Hide Raw Feed' : '⚙ Show Raw Feed';
+  btn.textContent = panel.classList.contains('open') ? '⚙ Hide Raw Sources' : '⚙ Show Raw Sources';
 }
 
 window.addEventListener('DOMContentLoaded', run);
