@@ -437,7 +437,7 @@ ANALYSIS INSTRUCTIONS:
       messages: [
         {
           role:    'system',
-          content: 'You are a senior crypto intelligence analyst. Write sharp, specific, data-driven briefs grounded in real current events you search for. Never use placeholder text. Never substitute macro values. Respond with a raw JSON object only.',
+          content: 'You are a senior crypto intelligence analyst. You MUST complete ALL sections of the JSON — btc (6 bullets), eth (6 bullets), link (6 bullets), macro (5 bullets), threats (5 items), watch (6 items), verdict, ranking, bullTrigger, bearTrigger. Every section must be fully populated. Never leave any section empty or truncated. Never use placeholder text. Never substitute macro values. Be concise — each bullet should be 1-2 sentences maximum.',
         },
         { role: 'user', content: prompt },
       ],
