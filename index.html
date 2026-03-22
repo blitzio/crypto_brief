@@ -196,7 +196,9 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
     <div class="rbar-info">
       <b>Data:</b> CoinGecko · Yahoo Finance · NY Fed · BLS · Alternative.me
       &nbsp;·&nbsp;
-      <b>Analysis:</b> Gemini + Google Search
+      <b>News:</b> CoinDesk · The Block · Reuters · Decrypt · more
+      &nbsp;·&nbsp;
+      <b>Analysis:</b> Gemini 2.5 Flash
     </div>
     <button class="accent-btn" onclick="run()">↻ Refresh Brief</button>
   </div>
@@ -285,15 +287,15 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
 
     <div class="sources-section">
       <div class="sec-head">
-        § V &nbsp;·&nbsp; Intelligence Sources — Google Search Grounding
+        § V &nbsp;·&nbsp; Intelligence Sources — Live RSS News Feed
         <button class="debug-toggle" onclick="toggleDebug()">⚙ Show Raw Sources</button>
       </div>
       <div class="sources-grid" id="sources-grid"></div>
     </div>
 
     <div class="debug-panel" id="debug-panel">
-      <h4>Raw Grounding Sources from Gemini</h4>
-      <p style="font-size:.76rem;color:var(--muted);margin-bottom:8px;">These are the exact web sources Gemini retrieved via Google Search to ground the analysis above.</p>
+      <h4>Raw News Articles Fed to Gemini</h4>
+      <p style="font-size:.76rem;color:var(--muted);margin-bottom:8px;">These are the exact RSS news articles fetched from CoinDesk, The Block, Reuters, Decrypt, and Cointelegraph — passed to Gemini as context for the analysis above.</p>
       <pre id="debug-content">Loading…</pre>
     </div>
 
@@ -358,8 +360,19 @@ async function fetchMacro() {
   }
 }
 
+async function fetchNews() {
+  try {
+    const res  = await fetch(WORKER_URL + '/news', { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
 // ─── AI CALL ────────────────────────────────────────────────────────
-async function callAI(prices, macro) {
+async function callAI(prices, macro, newsItems = []) {
   const b = prices['bitcoin'];
   const e = prices['ethereum'];
   const l = prices['chainlink'];
@@ -401,10 +414,13 @@ LINK: ${fmtPrice(l.current_price)} | 24h: ${fmtPct(l.price_change_percentage_24h
 LIVE MACRO DATA (use exact figures below, do not substitute):
 ${macroLines || 'Macro data temporarily unavailable.'}
 
+TODAY'S NEWS FROM REAL SOURCES (base your analysis on these — cite [N] inline):
+${newsItems.length ? newsItems.map((n,i) => `[${i+1}] ${n.title} (${n.source})\n${n.description||''}`).join('\n\n') : 'No news available — use your training knowledge carefully.'}
+
 INSTRUCTIONS:
-- Use your Google Search access to find the most relevant news and developments for today
+- Ground your analysis in the news articles provided above
+- Cite articles inline using [N] — do NOT invent events not in the news above
 - Write sharp, specific, authoritative bullets grounded in real current events
-- Cite your sources inline using [1], [2] etc — these correspond to what you actually searched
 - DO NOT use placeholder text — every bullet must contain specific, verifiable information
 - DO NOT invent or substitute macro gauge values — use only what is provided above
 - Avoid explicit buy/sell instructions; frame the verdict as conditions to monitor
@@ -523,24 +539,27 @@ function renderMacroCards(macro) {
   ].join('');
 }
 
-function renderSources(sources) {
+function renderSources(items) {
   const grid = document.getElementById('sources-grid');
-  if (!sources?.length) {
-    grid.innerHTML = '<p style="color:var(--muted);font-size:.9rem;grid-column:1/-1;">No grounding sources returned for this generation.</p>';
+  if (!items?.length) {
+    grid.innerHTML = '<p style="color:var(--muted);font-size:.9rem;grid-column:1/-1;">No news sources retrieved.</p>';
     return;
   }
-  grid.innerHTML = sources.map((s, i) => {
-    const domain = s.domain || (() => { try { return new URL(s.url).hostname.replace('www.', ''); } catch { return ''; } })();
-    const title  = (s.title ?? 'Article').slice(0, 90) + ((s.title ?? '').length > 90 ? '…' : '');
-    return `<a class="source-card" href="${s.url}" target="_blank" rel="noopener noreferrer">
-      <div class="source-tag">[${i + 1}] ${domain}</div>
+  grid.innerHTML = items.map((n, i) => {
+    let domain = '';
+    try { domain = new URL(n.url).hostname.replace('www.', ''); } catch { domain = n.source || ''; }
+    const title   = (n.title || 'Article').slice(0, 90) + ((n.title || '').length > 90 ? '…' : '');
+    const snippet = (n.description || '').slice(0, 120) + ((n.description || '').length > 120 ? '…' : '');
+    return `<a class="source-card" href="${n.url}" target="_blank" rel="noopener noreferrer">
+      <div class="source-tag">[${i + 1}] ${n.source || domain}</div>
       <div class="source-title">${title}</div>
+      ${snippet ? `<div style="font-size:.78rem;color:var(--muted);margin-top:6px;font-style:italic;">${snippet}</div>` : ''}
       <div class="source-meta"><span class="source-domain">${domain}</span><span>↗</span></div>
     </a>`;
   }).join('');
 }
 
-function renderBrief(brief, prices, macro, groundingSources, generatedTime) {
+function renderBrief(brief, prices, macro, newsItems, generatedTime) {
   // Defensive defaults in case Gemini omits a section
   brief.btc  = brief.btc  || { support: '—', resist: '—', bullets: [] };
   brief.eth  = brief.eth  || { support: '—', resist: '—', bullets: [] };
@@ -567,14 +586,14 @@ function renderBrief(brief, prices, macro, groundingSources, generatedTime) {
   renderBullets('macro-bullets', brief.macro.bullets);
   renderBullets('threats',       brief.threats);
   renderBullets('watch',         brief.watch);
-  renderSources(groundingSources);
+  renderSources(newsItems);
 
   // Debug panel
   const debugEl = document.getElementById('debug-content');
   if (debugEl) {
-    debugEl.textContent = groundingSources.length
-      ? groundingSources.map((s, i) => `[${i + 1}] ${s.title}\n    ${s.url}`).join('\n\n')
-      : 'No grounding sources returned.';
+    debugEl.textContent = newsItems.length
+      ? newsItems.map((n, i) => `[${i+1}] ${n.title} (${n.source})\n    ${n.url}\n    ${n.description || ''}`).join('\n\n' + '─'.repeat(50) + '\n\n')
+      : 'No news items retrieved.';
   }
 
   document.getElementById('verdict-content').innerHTML =
@@ -596,13 +615,14 @@ async function run() {
   document.getElementById('loading').classList.remove('hidden');
 
   try {
-    document.getElementById('load-sub').textContent = 'Fetching live prices and macro data…';
-    const [prices, macro] = await Promise.all([fetchPrices(), fetchMacro()]);
+    document.getElementById('load-sub').textContent = 'Fetching live prices, macro and news…';
+    const [prices, macro, newsItems] = await Promise.all([fetchPrices(), fetchMacro(), fetchNews()]);
 
-    document.getElementById('load-sub').textContent = 'Generating brief via Gemini + Google Search…';
-    const { brief, groundingSources } = await callAI(prices, macro);
+    document.getElementById('load-sub').textContent = 'Generating analysis via Gemini…';
+    const { brief } = await callAI(prices, macro, newsItems);
+    const generatedTime = sgtNow();
 
-    renderBrief(brief, prices, macro, groundingSources, sgtNow());
+    renderBrief(brief, prices, macro, newsItems, generatedTime);
 
   } catch (err) {
     console.error(err);
