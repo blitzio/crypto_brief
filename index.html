@@ -46,22 +46,18 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1r
 #brief{display:none;}
 #brief.active{display:block;}
 .doc{max-width:1080px;margin:0 auto;background:var(--paper);border:1px solid var(--border);}
-
 .cbar{background:var(--red);color:rgba(255,255,255,.92);text-align:center;padding:6px 12px;font-size:.66rem;font-family:var(--mono);font-weight:500;letter-spacing:.35em;text-transform:uppercase;}
-
 .rbar{background:var(--bg);border-bottom:1px solid var(--border);padding:10px 44px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
 .rbar-info{font-size:.82rem;color:var(--muted);}
 .rbar-info b{color:var(--text);font-weight:600;}
 .accent-btn{background:var(--gold-bg);border:1px solid rgba(215,171,58,.28);color:var(--gold);font-family:var(--font);font-size:.8rem;font-weight:600;padding:7px 14px;cursor:pointer;border-radius:4px;transition:background .15s,border-color .15s;}
 .accent-btn:hover{background:rgba(215,171,58,.16);border-color:rgba(215,171,58,.42);}
-
 .masthead{padding:30px 44px 22px;border-bottom:1px solid var(--border2);display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;}
 .m-title{font-size:2.15rem;font-weight:700;color:var(--text);letter-spacing:-.02em;line-height:1.08;}
 .m-sub{margin-top:10px;font-size:.8rem;font-family:var(--mono);letter-spacing:.10em;color:var(--muted);text-transform:uppercase;}
 .m-right{text-align:right;font-size:.82rem;color:var(--muted);line-height:1.8;}
 .stamp-label{font-size:.66rem;font-family:var(--mono);letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:3px;}
 .ts-stamp{font-size:.98rem;font-weight:600;font-family:var(--mono);color:var(--text);letter-spacing:.02em;display:block;margin-bottom:4px;}
-
 .routing{padding:8px 44px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;gap:28px;font-size:.72rem;font-family:var(--mono);letter-spacing:.05em;color:var(--faint);flex-wrap:wrap;}
 .routing b{color:#b86d6d;}
 
@@ -86,7 +82,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1r
 .sec{padding:24px 30px;border-bottom:1px solid var(--border);}
 .sec:last-child{border-bottom:none;}
 .sec-head{font-size:.72rem;font-family:var(--mono);font-weight:500;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);}
-
 ul.ib{list-style:none;}
 ul.ib>li{padding:12px 0 12px 18px;border-bottom:1px solid var(--border);position:relative;font-size:.97rem;line-height:1.75;color:var(--text);font-weight:400;}
 ul.ib>li:last-child{border-bottom:none;}
@@ -105,7 +100,6 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
 .full .sec-head{margin-bottom:16px;}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:34px;}
 .col-head{font-size:.72rem;font-family:var(--mono);font-weight:500;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);}
-
 .abox{background:var(--surface);border-left:3px solid var(--red);padding:22px;margin-top:22px;border-radius:0 4px 4px 0;}
 .abox .alabel{font-size:.68rem;font-family:var(--mono);font-weight:500;letter-spacing:.18em;color:var(--neg);text-transform:uppercase;margin-bottom:12px;}
 .abox p{font-size:.98rem;line-height:1.85;color:var(--text);font-weight:400;margin-bottom:12px;}
@@ -130,7 +124,6 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
 .debug-panel.open{display:block;}
 .debug-panel h4{color:var(--gold);letter-spacing:.12em;font-size:.7rem;text-transform:uppercase;margin:14px 0 6px;}
 .debug-panel pre{white-space:pre-wrap;word-break:break-word;color:#87a18f;background:#0f141c;padding:12px 14px;border:1px solid var(--border);border-radius:4px;max-height:320px;overflow-y:auto;}
-
 .footer{border-top:1px solid var(--border);padding:12px 44px;display:flex;justify-content:space-between;align-items:center;font-size:.72rem;font-family:var(--mono);color:var(--faint);letter-spacing:.04em;flex-wrap:wrap;gap:8px;}
 .footer .warn{color:rgba(179,60,60,.78);}
 
@@ -392,7 +385,7 @@ async function callAI(prices, macro, newsItems = []) {
       ? `Gold: $${macro.gold.price.toLocaleString('en-US', { maximumFractionDigits: 0 })} (${fmtPct(macro.gold.pct)} today)`
       : null,
     macro.stablecoins?.total && macro.stablecoins.total !== 'N/A'
-      ? `Stablecoin Supply (DefiLlama): Total ${macro.stablecoins.total} — USDT ${macro.stablecoins.usdt}, USDC ${macro.stablecoins.usdc} (rising supply = dry powder accumulating; falling = capital leaving crypto)`
+      ? `Stablecoin Supply (DefiLlama): Total ${macro.stablecoins.total} — USDT ${macro.stablecoins.usdt}, USDC ${macro.stablecoins.usdc}`
       : null,
     Number.isFinite(macro.cryptoSentiment?.value)
       ? `Crypto Fear & Greed: ${macro.cryptoSentiment.value}/100 (${macro.cryptoSentiment.classification})`
@@ -419,15 +412,23 @@ ${newsItems.length
   : 'No news retrieved — rely only on the live price and macro data above. Do not invent events.'}
 
 ANALYSIS INSTRUCTIONS:
-- Every claim in your analysis MUST reference a <doc id> — write it as [N] inline
+
+GENERAL:
+- Every claim in BTC, ETH, and LINK sections MUST reference a <doc id> — write it as [N] inline
 - If no <doc> supports a claim, DO NOT include that claim — omit it entirely
-- For each asset: identify the 2-3 most significant real developments from the docs, synthesize into sharp bullets
+- For each asset: identify the most significant real developments from the docs, synthesize into sharp bullets
 - DO NOT hallucinate events, dates, prices, or developments not present in the docs above
-- DO NOT use placeholder text — every bullet must be specific and traceable to a doc
-- DO NOT invent or substitute macro gauge values — use only the exact figures provided
-- Support and resistance levels must be actual dollar figures from the current price data
-- Rising stablecoin supply = capital accumulating (bullish dry powder); falling = capital leaving (bearish signal)
-- Avoid explicit buy/sell language; frame verdict as market conditions and levels to monitor`;
+- Support and resistance levels must be actual dollar figures derived from the current price data
+- Avoid explicit buy/sell language; frame verdict as market conditions and levels to monitor
+- Be concise — 1-2 sentences per bullet maximum
+
+MACRO BULLETS — CRITICAL:
+- The macro gauge values (Fed Rate, S&P 500, Gold, Stablecoins, Fear & Greed, CPI) are ALREADY shown as data cards above these bullets — do NOT restate them
+- Every macro bullet must synthesize 2 or more signals into a single cross-asset inference — what does this combination of conditions MEAN for crypto this week?
+- Flag divergences and confluences: e.g. rising stablecoins while prices fall = dry powder accumulating despite fear; equities selling off while stablecoins rise = possible rotation signal
+- Frame each bullet as an actionable observation: what should the investor watch, and why does it matter right now?
+- GOOD example: "Simultaneous equity selloff and Fear & Greed at extreme fear historically precede either capitulation bottoms or sharp relief rallies — $263B stablecoin supply suggests sideline capital is positioned to re-enter fast on any positive macro catalyst"
+- BAD example (forbidden): "The Fed Funds Rate stands at 3.64%, indicating restrictive monetary policy" — pure restatement, zero inference, never do this`;
 
   const res = await fetch(WORKER_URL, {
     method:  'POST',
@@ -436,7 +437,7 @@ ANALYSIS INSTRUCTIONS:
       messages: [
         {
           role:    'system',
-          content: "You are a senior crypto intelligence analyst. You MUST complete ALL sections of the JSON — btc (6 bullets), eth (6 bullets), link (6 bullets), macro (5 bullets), threats (5 items), watch (6 items), verdict, ranking, bullTrigger, bearTrigger. Every section must be fully populated — never leave any section empty or with fewer bullets than required. For sections where the provided news sources have direct coverage, cite them with [N]. For sections where news coverage is limited (especially LINK), use your knowledge of recent market conditions, price action, technical levels, and ecosystem developments — label these bullets without a citation number. Never write 'No Specific News' — always provide substantive analysis. Be concise — 1-2 sentences per bullet maximum.",
+          content: "You are a senior crypto intelligence analyst. You MUST complete ALL sections of the JSON — btc (6 bullets), eth (6 bullets), link (6 bullets), macro (5 bullets), threats (5 items), watch (6 items), verdict, ranking, bullTrigger, bearTrigger. Every section must be fully populated — never leave any section empty or with fewer bullets than required. For BTC/ETH/LINK: cite sources with [N] where available; for LINK where coverage is thin, use knowledge of recent market conditions without citation. Never write 'No Specific News'. Be concise — 1-2 sentences per bullet. MACRO BULLETS RULE: never restate the gauge values already shown in the cards — every macro bullet must combine at least 2 signals into a forward-looking cross-asset inference for crypto. Zero restatement, all synthesis.",
         },
         { role: 'user', content: prompt },
       ],
@@ -564,7 +565,7 @@ function renderSources(items) {
 function renderBrief(brief, prices, macro, newsItems, generatedTime) {
   brief.btc  = brief.btc  || { support: '—', resist: '—', bullets: [] };
   brief.eth  = brief.eth  || { support: '—', resist: '—', bullets: [] };
-  brief.link = brief.link || { support: '—', resist: '—', badge: null, bullets: [] };
+  brief.link = brief.link || { support: '—', resist: '—', badge: '', bullets: [] };
   brief.macro    = brief.macro    || { bullets: [] };
   brief.threats  = brief.threats  || [];
   brief.watch    = brief.watch    || [];
@@ -577,8 +578,17 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
   renderCard('eth',  prices['ethereum'],  brief.eth.support,  brief.eth.resist);
   renderCard('link', prices['chainlink'], brief.link.support, brief.link.resist);
 
+  // Only show LINK badge if it's a meaningful non-generic value
+  const badgeVal  = (brief.link.badge || '').trim();
+  const showBadge = badgeVal !== '' &&
+                    badgeVal.toLowerCase() !== 'neutral' &&
+                    badgeVal.toLowerCase() !== 'none' &&
+                    badgeVal.toLowerCase() !== 'n/a';
+
   document.getElementById('link-sec-head').innerHTML =
-    `⬡ &nbsp; Chainlink — LINK${brief.link.badge ? ` <span style="display:inline-block;font-size:.6rem;font-family:var(--mono);letter-spacing:.1em;padding:2px 7px;background:var(--green-bg);border:1px solid rgba(56,177,114,.25);color:var(--green);text-transform:uppercase;border-radius:2px;vertical-align:middle;margin-left:6px;">${brief.link.badge}</span>` : ''}`;
+    `⬡ &nbsp; Chainlink — LINK${showBadge
+      ? ` <span style="display:inline-block;font-size:.6rem;font-family:var(--mono);letter-spacing:.1em;padding:2px 7px;background:var(--green-bg);border:1px solid rgba(56,177,114,.25);color:var(--green);text-transform:uppercase;border-radius:2px;vertical-align:middle;margin-left:6px;">${badgeVal}</span>`
+      : ''}`;
 
   renderMacroCards(macro);
   renderBullets('btc-bullets',   brief.btc.bullets);
@@ -652,7 +662,6 @@ async function run(forceRefresh = false) {
 
   } catch (err) {
     console.error(err);
-    document.getElementById('spinner') && document.getElementById('spinner').remove();
     document.getElementById('load-sub').textContent = '❌ ' + err.message + ' — refresh to retry.';
   }
 }
