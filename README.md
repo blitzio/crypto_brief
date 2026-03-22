@@ -1,272 +1,146 @@
-# CID-SGT — Crypto Daily Brief
+# Crypto Daily Brief
 
-> A self-updating AI-powered crypto intelligence terminal that pulls live prices, real macro data, and today's journalism — then synthesises everything into a classified-style daily brief, automatically, every time the page loads.
+A self-hosted, single-page daily intelligence brief for BTC, ETH, and LINK — built on Cloudflare Workers, GitHub Pages, and Gemini AI. No subscriptions, no backend server, no paid news APIs.
 
-**Live site:** https://blitzio.github.io/crypto_brief/
-
----
-
-## Vision
-
-The brief works like a proper intelligence analyst: read today's real journalism from reputable sources, cross-reference with live market data, and produce a tight classified-document-style report. Every number is live. Every analysis bullet is grounded in real news with a citation. Sources at the bottom are clickable articles you can verify yourself. Runs entirely free with zero manual effort after setup.
+**Live:** https://blitzio.github.io/crypto_brief/
 
 ---
 
-## How It Works — Full Pipeline
+## What it does
 
-Every time the page loads, this sequence runs automatically:
+Generates a formatted two-page crypto intelligence brief every morning (or on demand) covering:
 
-```
-1. CoinGecko (free, no key)
-   └── Live BTC, ETH, LINK — price, 24h%, 7d%, market cap, volume
-
-2. Cloudflare Worker /macro
-   ├── Yahoo Finance  → Gold (GC=F), S&P 500, USD/SGD, DXY
-   ├── NY Fed EFFR    → Federal Funds Rate (official, updates daily)
-   ├── BLS Public API → CPI inflation (official US government)
-   └── Alternative.me → Crypto Fear & Greed Index (0–100)
-
-3. Cloudflare Worker /news
-   ├── Fetches 8 RSS feeds in parallel
-   │   (CoinDesk, The Block, Decrypt, CoinTelegraph, Blockworks,
-   │    Reuters Business, WSJ Markets)
-   ├── Parses headlines + descriptions from XML
-   └── Fetches full article text from each URL (~800 chars per article)
-       ↳ KEY: Gemini reads real journalism substance, not just headlines
-         This is the primary anti-hallucination mechanism
-
-4. Cloudflare Worker POST /
-   ├── All data formatted into a structured prompt
-   ├── Sent to Gemini 2.5 Flash (Google AI API)
-   ├── JSON schema enforcement → guaranteed valid structured output
-   └── Gemini writes analysis grounded in the real articles
-       ↳ Citations [1][2][3] map to actual clickable source articles
-
-5. Frontend renders the brief
-   ├── Live price strip (CoinGecko)
-   ├── Live macro gauges (6 indicators)
-   ├── Analysis: BTC, ETH, LINK, Macro, Assessment
-   ├── Sources section (clickable cards with article snippets)
-   └── Debug panel → "Show Raw Sources" reveals exact content fed to AI
-
-6. Cloudflare KV caching
-   └── Brief saved to KV for 1 hour
-       ↳ Repeat visitors get instant load (no 20s wait)
-       ↳ ↻ Refresh Brief button bypasses cache → forces fresh generation
-```
+- Live prices and 24h/7d performance for BTC, ETH, and LINK
+- Support and resistance levels derived from current price data
+- Macro dashboard: Fed Rate, USD/SGD, S&P 500, Gold, Stablecoin supply, Fear & Greed Index, CPI
+- Cross-asset macro analysis synthesising multiple signals into crypto implications
+- News-grounded analysis for each asset, cited by source number
+- Active threat stack and 7-day forward watch
+- Analyst verdict with bull/bear triggers and conviction ranking
+- Full source grid linking to every article used
 
 ---
 
 ## Architecture
 
 ```
-Browser (GitHub Pages — index.html)
-        │
-        ├── CoinGecko API ─────────────────────────► Live crypto prices
-        │   (direct from browser, no proxy needed)
-        │
-        └── Cloudflare Worker (crypto-brief-proxy.blitzio.workers.dev)
-                │
-                ├── GET /macro ─────────────────────► Yahoo Finance (Gold, S&P, USD/SGD, DXY)
-                │                                      NY Fed EFFR (Fed rate)
-                │                                      BLS API (CPI)
-                │                                      Alternative.me (Fear & Greed)
-                │
-                ├── GET /news ──────────────────────► 8 RSS feeds → full article content
-                │
-                ├── POST / ─────────────────────────► Gemini 2.5 Flash (AI analysis)
-                │
-                ├── GET /brief ─────────────────────► Cloudflare KV (read cache)
-                └── POST /brief/save ───────────────► Cloudflare KV (write cache)
+GitHub Pages (index.html)
+    │
+    ├── CoinGecko API          → live BTC / ETH / LINK prices (direct, no key)
+    │
+    └── Cloudflare Worker (worker.js)
+            ├── GET /macro     → Yahoo Finance, NY Fed EFFR, BLS CPI,
+            │                    Alternative.me Fear & Greed, DefiLlama stablecoins
+            ├── GET /news      → 8 RSS feeds, sorted by recency, top 20 articles
+            ├── POST /         → Gemini 2.5 Flash brief generation
+            ├── GET /brief     → serve KV-cached brief (< 1 hour old)
+            └── POST /brief/save → persist brief to Cloudflare KV
+```
+
+The brief is cached in Cloudflare KV for 1 hour. On page load it serves the cache instantly; hitting "Refresh Brief" forces a fresh generation.
+
+---
+
+## Setup
+
+### 1. Fork and enable GitHub Pages
+
+Fork this repo. Go to Settings → Pages → Source: `main` branch, `/ (root)`. Your brief will be live at `https://<your-username>.github.io/crypto_brief/`.
+
+### 2. Deploy the Cloudflare Worker
+
+- Go to [Cloudflare Workers](https://workers.cloudflare.com/) and create a new worker
+- Paste the contents of `worker.js`
+- Note your worker URL (e.g. `https://your-worker.workers.dev`)
+
+### 3. Configure Worker secrets
+
+In your Worker settings → Variables and Secrets, add:
+
+| Variable | Value |
+|---|---|
+| `GEMINI_API_KEY` | Your [Google AI Studio](https://aistudio.google.com/) API key |
+| `GEMINI_MODEL` | `gemini-2.5-flash` |
+
+### 4. Create the KV namespace
+
+- Workers & Pages → KV → Create namespace → name it `BRIEF_CACHE`
+- In your Worker settings → Variables → KV Namespace Bindings → add binding with variable name `BRIEF_CACHE`
+
+### 5. Update the Worker URL in index.html
+
+At the top of the `<script>` block in `index.html`, set:
+
+```js
+const WORKER_URL = 'https://your-worker.workers.dev';
+```
+
+Push to GitHub — done.
+
+---
+
+## Data sources
+
+| Source | Data | Cost |
+|---|---|---|
+| CoinGecko | BTC, ETH, LINK prices | Free, no key |
+| NY Fed EFFR API | Federal Funds Rate | Free |
+| BLS Public API | CPI inflation | Free |
+| Alternative.me | Crypto Fear & Greed Index | Free |
+| DefiLlama | USDT + USDC circulating supply | Free |
+| Yahoo Finance | S&P 500, Gold, USD/SGD | Free (via Worker proxy) |
+| CoinDesk, The Block, Decrypt, Blockworks, DL News, Reuters, WSJ | News via RSS | Free |
+| Gemini 2.5 Flash | AI analysis | Free tier: 20 RPD — add billing for 1,000 RPD |
+
+---
+
+## Gemini quota
+
+The free tier allows **20 requests per day**, which resets at midnight Pacific time (UTC-7/8). For normal daily use (one morning generation + occasional refreshes) the free tier is usually sufficient. If you hit the limit during development/testing, add a billing account in Google AI Studio to move to Tier 1 (1,000 RPD). Actual cost at normal usage volume is near zero.
+
+---
+
+## Caching behaviour
+
+- On page load: checks Cloudflare KV for a brief generated within the last hour. If found, renders it instantly (no Gemini call).
+- "Refresh Brief" button: bypasses the cache and generates a fully fresh brief.
+- After generation: saves to KV in the background (fire-and-forget, does not block render).
+- KV entries auto-expire after 1 hour via `expirationTtl`.
+- The "Brief Generated" timestamp reflects when the brief was actually created, not when the page was loaded.
+
+---
+
+## AI analysis design
+
+Gemini receives:
+- Exact live prices (not substitutable)
+- Exact macro figures (not substitutable)
+- Up to 20 RSS articles sorted by recency, formatted as numbered `<doc>` blocks
+
+The model is instructed to:
+- Cite every BTC/ETH claim with a `[N]` doc reference
+- Fill LINK bullets from market knowledge when news coverage is thin (no citation)
+- Never restate macro card values in the macro bullet section — synthesise cross-asset implications only
+- Never hallucinate events, prices, or dates not present in the source docs
+
+---
+
+## Macro percentage accuracy note
+
+Yahoo Finance's `chartPreviousClose` field can return a stale reference price on weekends and non-trading days, causing incorrect daily percentage changes. The worker fixes this by reading the last two actual closes from the `indicators.quote.close` array instead, giving accurate day-over-day figures regardless of when the page is loaded.
+
+---
+
+## File structure
+
+```
+index.html   — frontend: UI, data fetching, AI prompt, rendering
+worker.js    — Cloudflare Worker: macro data, RSS news, Gemini proxy, KV caching
+README.md    — this file
 ```
 
 ---
 
-## Repository Files
+## Not financial advice
 
-```
-crypto_brief/
-├── index.html    ← Complete frontend (HTML + CSS + JS, single file, no build step)
-├── worker.js     ← Cloudflare Worker backend — deploy manually via Cloudflare dashboard
-└── README.md     ← This file
-```
-
-**Why is `worker.js` safe in a public repo?**
-All secrets (API keys) live in Cloudflare environment variables — `env.GEMINI_API_KEY`, `env.GEMINI_MODEL`. The code itself contains zero sensitive data. It is best practice to version-control your Worker code.
-
-**Why single-file frontend?**
-GitHub Pages serves static files. One `index.html` = zero build toolchain, zero dependencies, instant deploy on every commit.
-
----
-
-## Data Sources — Full Reference
-
-| Source | Data provided | Key required | Cost |
-|--------|--------------|--------------|------|
-| CoinGecko `/coins/markets` | BTC/ETH/LINK price, 24h%, 7d%, mcap, vol | No | Free |
-| Yahoo Finance (via Worker) | Gold, S&P 500, USD/SGD, DXY | No | Free |
-| NY Fed EFFR | Federal Funds Rate (official) | No | Free |
-| BLS Public API | CPI YoY inflation (official) | No | Free |
-| Alternative.me | Crypto Fear & Greed 0–100 | No | Free |
-| RSS (8 feeds below) | Today's journalism + full article text | No | Free |
-| Gemini 2.5 Flash | AI analysis and synthesis | `GEMINI_API_KEY` | Free (250 req/day) |
-
-### RSS News Sources
-| Feed | Source | Topic focus |
-|------|--------|-------------|
-| coindesk.com/arc/outboundfeeds/rss/category/markets/ | CoinDesk Markets | BTC price action |
-| blockworks.co/feed/ | Blockworks | Institutional crypto |
-| theblock.co/rss.xml | The Block | Research-grade crypto |
-| decrypt.co/feed | Decrypt | Broad crypto |
-| cointelegraph.com/rss | CoinTelegraph | General crypto |
-| coindesk.com/arc/outboundfeeds/rss/ | CoinDesk | Full coverage |
-| feeds.reuters.com/reuters/businessNews | Reuters Business | Macro/finance |
-| feeds.a.dj.com/rss/RSSMarketsMain.xml | WSJ Markets | Macro/finance |
-
----
-
-## Cloudflare Worker Configuration
-
-**Worker name:** `crypto-brief-proxy`
-**URL:** `https://crypto-brief-proxy.blitzio.workers.dev`
-
-### Secrets (Settings → Variables and Secrets)
-
-| Name | Value | Notes |
-|------|-------|-------|
-| `GEMINI_API_KEY` | `AIza...` from aistudio.google.com | Never put this in code |
-| `GEMINI_MODEL` | `gemini-2.5-flash` | Change this secret to upgrade model — no code change needed |
-
-### KV Namespace Binding (Settings → Bindings)
-
-| Variable name | Namespace | Purpose |
-|---------------|-----------|---------|
-| `BRIEF_CACHE` | BRIEF_CACHE | 1-hour brief cache — instant load for repeat visitors |
-
-### Worker Routes
-
-| Method | Route | Purpose | Cache |
-|--------|-------|---------|-------|
-| GET | `/macro` | Gold, S&P, USD/SGD, DXY, Fed rate, CPI, Fear & Greed | 5 min edge |
-| GET | `/news` | 8 RSS feeds + full article content extraction | 15 min edge |
-| POST | `/` | Gemini AI call — returns structured JSON brief | None |
-| GET | `/brief` | Read cached brief from KV | 1 hour KV |
-| POST | `/brief/save` | Write brief to KV after generation | 1 hour TTL |
-
----
-
-## Brief Sections
-
-| Section | Content |
-|---------|---------|
-| Price Strip | BTC / ETH / LINK — live price, 24h/7d delta, mcap, volume, support/resist |
-| § I Bitcoin | 6 intel bullets grounded in today's news with [N] citations |
-| § II Ethereum | 6 intel bullets with citations |
-| § III Macro | 6 live gauges + 5 analysis bullets |
-| § IV Chainlink | 6 intel bullets with citations |
-| § V Assessment | Threat stack · Forward watch · Verdict · Conviction ranking · Bull/Bear triggers |
-| § VI Sources | Clickable article cards from today's RSS — title, snippet, domain, link |
-| Debug Panel | "Show Raw Sources" — exact article content passed to Gemini |
-
----
-
-## Caching Reference
-
-| What | Cache duration | Storage |
-|------|---------------|---------|
-| Macro data (Gold, S&P etc.) | 5 minutes | Cloudflare edge |
-| News articles (RSS + content) | 15 minutes | Cloudflare edge |
-| Full generated brief | 1 hour | Cloudflare KV |
-
-**↻ Refresh Brief** — calls `run(true)`, bypasses KV cache, forces full regeneration including fresh prices, news and AI analysis.
-
----
-
-## Upgrading the AI Model
-
-The model name is stored as a Cloudflare secret — not hardcoded. To upgrade:
-
-1. Go to Cloudflare → Worker → Settings → Variables and Secrets
-2. Edit `GEMINI_MODEL`
-3. Change value to new model name (e.g. `gemini-3.0-flash` when available)
-4. Deploy — done. No code changes ever needed.
-
----
-
-## Anti-Hallucination Design
-
-Three layers prevent the AI from inventing events:
-
-**Layer 1 — Full article content**
-Worker fetches the first 5 paragraphs (~800 chars) of each article, not just the headline. Gemini reads real substance before writing any bullet.
-
-**Layer 2 — JSON schema enforcement**
-`responseMimeType: application/json` + `responseJsonSchema` forces Gemini to return a valid structured object matching the exact schema. No freeform text generation.
-
-**Layer 3 — Hard prompt constraints**
-- Every claim must cite a source `[N]`
-- Claims without a citation must be omitted
-- Macro gauge values must use only the exact live numbers provided
-- Substituting or inventing figures is explicitly prohibited
-
----
-
-## How to Update
-
-**Frontend change** (UI, layout, prompt wording):
-→ Edit `index.html` → commit → auto-deploys in ~60 seconds
-
-**Worker change** (data sources, caching, AI routing):
-→ Edit `worker.js` → Cloudflare dashboard → Edit code → paste → Deploy
-
-**Upgrade AI model:**
-→ Cloudflare → Worker → Settings → edit `GEMINI_MODEL` secret → Deploy
-
-**Rotate a key:**
-→ Cloudflare → Worker → Settings → edit the relevant secret → Deploy
-→ Key is never in GitHub — nothing to change there
-
----
-
-## Known Limitations
-
-| Limitation | Impact | Notes |
-|------------|--------|-------|
-| Gemini 2.5 Flash quality | Below Claude Sonnet / GPT-4o | Free tier constraint. Claude API costs ~$0.001/brief (~$0.37/year) |
-| Google grounding incompatibility | Can't use web search + JSON schema together | Google API hard limitation. RSS pipeline is the workaround |
-| RSS article scraping | ~20% of sites block content extraction | Falls back to RSS description automatically |
-| Yahoo Finance blocking | Occasional macro data gaps | Handled gracefully — shows "Unavailable" not a crash |
-| Gemini free tier limit | 250 req/day | Covers ~250 briefs/day — more than sufficient |
-
----
-
-## Total Monthly Cost: $0.00
-
-| Service | Free tier | Daily usage |
-|---------|-----------|-------------|
-| GitHub Pages | Unlimited static hosting | 1 file |
-| Cloudflare Workers | 100,000 req/day | ~10 req/brief |
-| Cloudflare KV | 100,000 reads + 1,000 writes/day | ~2/brief |
-| CoinGecko | Unlimited (public endpoint) | 1 call |
-| Yahoo Finance | Unlimited | 4 calls |
-| NY Fed / BLS | Unlimited | 2 calls |
-| Alternative.me | Unlimited | 1 call |
-| RSS feeds | Unlimited | 8 feeds |
-| Gemini 2.5 Flash | 250 req/day free | 1 call |
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Vanilla HTML + CSS + JS (no framework, no build step) |
-| Backend | Cloudflare Workers (serverless, V8 isolates, edge-deployed) |
-| Cache | Cloudflare Workers KV |
-| Hosting | GitHub Pages |
-| AI | Google Gemini 2.5 Flash (Google AI Studio API) |
-| Fonts | Inter + JetBrains Mono (Google Fonts) |
-
----
-
-*Built with Claude + Chatgpt 2026*
+This tool is for informational purposes only. Nothing in the brief constitutes financial advice.
