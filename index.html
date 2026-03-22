@@ -449,11 +449,24 @@ INSTRUCTIONS:
   if (start === -1 || end === -1) throw new Error('No JSON in response — try refreshing.');
   clean = clean.slice(start, end + 1);
 
+  let brief;
   try {
-    return { brief: JSON.parse(clean), groundingSources };
+    brief = JSON.parse(clean);
   } catch {
-    return { brief: JSON.parse(clean.replace(/,\s*([}\]])/g, '$1')), groundingSources };
+    try {
+      brief = JSON.parse(clean.replace(/,\s*([}\]])/g, '$1'));
+    } catch(e2) {
+      throw new Error('Could not parse AI response as JSON. Try refreshing. Detail: ' + e2.message);
+    }
   }
+
+  // If Gemini wrapped everything in a top-level key, unwrap it
+  const keys = Object.keys(brief);
+  if (keys.length === 1 && typeof brief[keys[0]] === 'object' && brief[keys[0]].btc) {
+    brief = brief[keys[0]];
+  }
+
+  return { brief, groundingSources };
 }
 
 // ─── RENDER HELPERS ─────────────────────────────────────────────────
@@ -528,6 +541,18 @@ function renderSources(sources) {
 }
 
 function renderBrief(brief, prices, macro, groundingSources, generatedTime) {
+  // Defensive defaults in case Gemini omits a section
+  brief.btc  = brief.btc  || { support: '—', resist: '—', bullets: [] };
+  brief.eth  = brief.eth  || { support: '—', resist: '—', bullets: [] };
+  brief.link = brief.link || { support: '—', resist: '—', badge: null, bullets: [] };
+  brief.macro    = brief.macro    || { bullets: [] };
+  brief.threats  = brief.threats  || [];
+  brief.watch    = brief.watch    || [];
+  brief.verdict  = brief.verdict  || '';
+  brief.ranking  = brief.ranking  || '';
+  brief.bullTrigger = brief.bullTrigger || '';
+  brief.bearTrigger = brief.bearTrigger || '';
+
   renderCard('btc',  prices['bitcoin'],   brief.btc.support,  brief.btc.resist);
   renderCard('eth',  prices['ethereum'],  brief.eth.support,  brief.eth.resist);
   renderCard('link', prices['chainlink'], brief.link.support, brief.link.resist);
