@@ -1,28 +1,27 @@
 /**
  * Crypto Daily Brief — Cloudflare Worker
- * 
+ *
  * Routes:
- *   GET  /macro  → live macro data (Yahoo Finance, NY Fed, BLS, Alternative.me)
- *   GET  /news   → RSS feeds with full article content extraction
- *   POST /       → Gemini AI brief generation with JSON schema enforcement
+ *   GET  /macro       → live macro data (Yahoo Finance, NY Fed, BLS, Alternative.me)
+ *   GET  /news        → RSS feeds with full article content extraction
+ *   POST /            → Gemini AI brief generation with JSON schema enforcement
  *
  * Secrets required (Settings → Variables and Secrets):
  *   GEMINI_API_KEY  — Google AI Studio key
  *   GEMINI_MODEL    — model name e.g. "gemini-2.5-flash" (update here to upgrade, no code change)
  *
  * KV Namespace required (for brief caching):
- *   BRIEF_CACHE     — bind a KV namespace called BRIEF_CACHE in Worker settings
- *                     Workers & Pages → your worker → Settings → Variables → KV Namespace Bindings
- *                     Create namespace "BRIEF_CACHE" and bind it with variable name BRIEF_CACHE
+ *   BRIEF_CACHE — bind a KV namespace called BRIEF_CACHE in Worker settings
+ *   Workers & Pages → your worker → Settings → Variables → KV Namespace Bindings
+ *   Create namespace "BRIEF_CACHE" and bind it with variable name BRIEF_CACHE
  *
  * All news via free RSS feeds — no Tavily, no paid news API.
  */
 
 export default {
   async fetch(request, env, ctx) {
-
     const cors = {
-      'Access-Control-Allow-Origin':  '*',
+      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
@@ -48,10 +47,20 @@ export default {
       );
       if (!res.ok) throw new Error(`Yahoo ${symbol} HTTP ${res.status}`);
       const data = await res.json();
-      const meta = data?.chart?.result?.[0]?.meta;
+      const result = data?.chart?.result?.[0];
+      const meta = result?.meta;
       if (!meta?.regularMarketPrice) throw new Error(`No price for ${symbol}`);
+
       const price = meta.regularMarketPrice;
-      const prev  = meta.chartPreviousClose ?? meta.previousClose ?? price;
+
+      // FIX: Use last two actual closes from the indicators array instead of
+      // chartPreviousClose — avoids weekend/non-trading day bug where Yahoo
+      // returns a stale reference price, causing wildly wrong % changes (e.g. gold -8.52%).
+      const closes = result?.indicators?.quote?.[0]?.close?.filter(v => v != null) ?? [];
+      const prev = closes.length >= 2
+        ? closes[closes.length - 2]
+        : (meta.chartPreviousClose ?? meta.previousClose ?? price);
+
       return { price, pct: ((price - prev) / prev) * 100, source: 'Yahoo Finance' };
     };
 
@@ -61,7 +70,7 @@ export default {
         { headers: { Accept: 'application/json' } }
       );
       if (!res.ok) throw new Error(`NY Fed HTTP ${res.status}`);
-      const data   = await res.json();
+      const data = await res.json();
       const latest = data?.refRates?.[0];
       if (!latest) throw new Error('NY Fed: no rate data');
       const rate = parseFloat(latest.percentRate);
@@ -73,10 +82,10 @@ export default {
         headers: { 'Content-Type': 'application/json' },
       });
       if (!res.ok) throw new Error(`BLS HTTP ${res.status}`);
-      const data   = await res.json();
+      const data = await res.json();
       const series = data?.Results?.series?.[0]?.data;
       if (!series?.length) throw new Error('BLS: no CPI data');
-      const latest  = series[0];
+      const latest = series[0];
       const yearAgo = series.find(s => s.year === String(parseInt(latest.year, 10) - 1) && s.period === latest.period);
       const current = parseFloat(latest.value);
       const prior   = yearAgo ? parseFloat(yearAgo.value) : null;
@@ -95,7 +104,6 @@ export default {
     };
 
     const fetchStablecoinFlows = async () => {
-      // DefiLlama stablecoin endpoint — free, no key, tracks USDT/USDC flows to exchanges
       const res = await fetch('https://stablecoins.llama.fi/stablecoins?includePrices=true', {
         headers: { Accept: 'application/json' }
       });
@@ -103,21 +111,19 @@ export default {
       const data = await res.json();
       const pegs = data?.peggedAssets ?? [];
 
-      // Focus on USDT and USDC — the two dominant stablecoins
       const usdt = pegs.find(p => p.symbol === 'USDT');
       const usdc = pegs.find(p => p.symbol === 'USDC');
 
       const circulating = (asset) => asset?.circulating?.peggedUSD ?? null;
-      const change7d    = (asset) => asset?.chainCirculating ? null : null; // placeholder
 
-      const usdtCirc = circulating(usdt);
-      const usdcCirc = circulating(usdc);
+      const usdtCirc  = circulating(usdt);
+      const usdcCirc  = circulating(usdc);
       const totalCirc = (usdtCirc && usdcCirc) ? usdtCirc + usdcCirc : null;
 
       return {
-        usdt: usdtCirc ? `$${(usdtCirc / 1e9).toFixed(1)}B` : 'N/A',
-        usdc: usdcCirc ? `$${(usdcCirc / 1e9).toFixed(1)}B` : 'N/A',
-        total: totalCirc ? `$${(totalCirc / 1e9).toFixed(1)}B` : 'N/A',
+        usdt:   usdtCirc  ? `$${(usdtCirc  / 1e9).toFixed(1)}B` : 'N/A',
+        usdc:   usdcCirc  ? `$${(usdcCirc  / 1e9).toFixed(1)}B` : 'N/A',
+        total:  totalCirc ? `$${(totalCirc / 1e9).toFixed(1)}B` : 'N/A',
         source: 'DefiLlama Stablecoins',
       };
     };
@@ -126,21 +132,17 @@ export default {
     // RSS + FULL ARTICLE CONTENT
     // ─────────────────────────────────────────────────────────────────
 
-    // Quality-first RSS lineup — no clickbait, no sponsored content farms
-    // LINK coverage: The Defiant covers DeFi/oracle ecosystem where LINK operates;
-    // quality broad sources (The Block, DL News) cover LINK when genuinely significant
     const RSS_FEEDS = [
       { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/category/markets/', source: 'CoinDesk Markets', topic: 'btc' },
       { url: 'https://blockworks.co/feed/',                                       source: 'Blockworks',       topic: 'btc' },
       { url: 'https://theblock.co/rss.xml',                                       source: 'The Block',        topic: 'eth' },
       { url: 'https://decrypt.co/feed',                                           source: 'Decrypt',          topic: 'eth' },
       { url: 'https://dlnews.com/feed/',                                          source: 'DL News',          topic: 'general' },
-      { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',                  source: 'CoinDesk',         topic: 'general' },
+      { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',                   source: 'CoinDesk',         topic: 'general' },
       { url: 'https://feeds.reuters.com/reuters/businessNews',                    source: 'Reuters Business', topic: 'macro' },
-      { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml',                   source: 'WSJ Markets',      topic: 'macro' },
+      { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml',                    source: 'WSJ Markets',      topic: 'macro' },
     ];
 
-    // Parse RSS XML cleanly
     function parseRSS(xml, sourceName, topic) {
       const items = [];
       const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
@@ -162,10 +164,9 @@ export default {
       return items;
     }
 
-    // Fetch one RSS feed with 6s timeout
     async function fetchFeed(feedUrl, sourceName, topic) {
       const controller = new AbortController();
-      const timeout    = setTimeout(() => controller.abort(), 4000);
+      const timeout = setTimeout(() => controller.abort(), 4000); // 4s timeout
       try {
         const res = await fetch(feedUrl, {
           signal:  controller.signal,
@@ -181,9 +182,7 @@ export default {
       }
     }
 
-    // Article content comes from RSS description only — no scraping
-    // Scraping causes timeouts and is blocked by most sites anyway
-    function getArticleContent(item) {
+    function getDescription(item) {
       return item.description || '';
     }
 
@@ -197,9 +196,6 @@ export default {
       const cached   = await cache.match(cacheKey);
       if (cached) return cached;
 
-      const unavail = (e) => ({ price: null, pct: null, source: 'unavailable', error: e.message });
-
-      // Promise.allSettled — if one source fails, the rest still succeed
       const [goldR, sp500R, usdsgdR, stablecoinsR, fedRateR, cpiR, sentimentR] = await Promise.allSettled([
         fetchYahoo('GC=F'),
         fetchYahoo('^GSPC'),
@@ -210,16 +206,16 @@ export default {
         fetchSentiment(),
       ]);
 
-      const settle = (r, fallback) => r.status === 'fulfilled' ? r.value : { ...fallback, error: r.reason?.message };
+      const settle       = (r, fallback) => r.status === 'fulfilled' ? r.value : { ...fallback, error: r.reason?.message };
       const unavailFallback = { price: null, pct: null, source: 'unavailable' };
 
-      const gold        = settle(goldR,        unavailFallback);
-      const sp500       = settle(sp500R,       unavailFallback);
-      const usdsgd      = settle(usdsgdR,      unavailFallback);
+      const gold       = settle(goldR,       unavailFallback);
+      const sp500      = settle(sp500R,      unavailFallback);
+      const usdsgd     = settle(usdsgdR,     unavailFallback);
       const stablecoins = settle(stablecoinsR, { usdt: 'N/A', usdc: 'N/A', total: 'N/A', source: 'unavailable' });
-      const fedRate     = settle(fedRateR,     { rate: null, rateStr: 'UNAVAILABLE', date: null, source: 'unavailable' });
-      const cpi         = settle(cpiR,         { value: null, yoy: 'N/A', period: 'Unavailable', source: 'unavailable' });
-      const sentiment   = settle(sentimentR,   { value: null, classification: 'Unavailable', dir: 'neu', source: 'unavailable' });
+      const fedRate    = settle(fedRateR,    { rate: null, rateStr: 'UNAVAILABLE', date: null, source: 'unavailable' });
+      const cpi        = settle(cpiR,        { value: null, yoy: 'N/A', period: 'Unavailable', source: 'unavailable' });
+      const sentiment  = settle(sentimentR,  { value: null, classification: 'Unavailable', dir: 'neu', source: 'unavailable' });
 
       const response = json(
         { snapshotTime: new Date().toISOString(), fedRate, usdsgd, sp500, gold, stablecoins, cryptoSentiment: sentiment, cpi },
@@ -230,22 +226,22 @@ export default {
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // GET /news — fetch RSS + full article content, cache 15 min
+    // GET /news — fetch RSS + content, sort by recency, cache 15 min
     // ─────────────────────────────────────────────────────────────────
 
     if (request.method === 'GET' && pathname === '/news') {
       const cache    = caches.default;
-      const cacheKey = new Request(new URL(request.url).origin + '/news-rss-v2');
+      const cacheKey = new Request(new URL(request.url).origin + '/news-rss-v3');
       const cached   = await cache.match(cacheKey);
       if (cached) return cached;
 
-      // 1. Fetch all RSS feeds in parallel — allSettled so one failure doesn't break all
+      // Fetch all feeds in parallel
       const feedSettled = await Promise.allSettled(
         RSS_FEEDS.map(f => fetchFeed(f.url, f.source, f.topic))
       );
       const feedResults = feedSettled.map(r => r.status === 'fulfilled' ? r.value : []);
 
-      // 2. Flatten + deduplicate
+      // Flatten + deduplicate
       const seen  = new Set();
       const items = [];
       for (const feedItems of feedResults) {
@@ -257,15 +253,22 @@ export default {
         }
       }
 
-      const topItems = items.slice(0, 10);
+      // FIX: Sort by recency before slicing so macro/LINK feeds aren't starved
+      // by earlier feeds filling all 10 slots first
+      items.sort((a, b) => {
+        const da = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+        const db = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+        return db - da;
+      });
 
-      // 3. Use RSS description as content — fast, reliable, no scraping needed
+      const topItems = items.slice(0, 20); // give Gemini more to work with
+
       const withContent = topItems.map(item => ({
         ...item,
-        content: getArticleContent(item),
+        content: getDescription(item),
       }));
 
-      const response = json(withContent, 200, { 'Cache-Control': 'public, max-age=900' }); // 15 min cache
+      const response = json(withContent, 200, { 'Cache-Control': 'public, max-age=900' }); // 15 min
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
       return response;
     }
@@ -288,7 +291,7 @@ export default {
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // POST /brief/save — save a generated brief to KV cache
+    // POST /brief/save — save generated brief to KV cache
     // ─────────────────────────────────────────────────────────────────
 
     if (request.method === 'POST' && pathname === '/brief/save') {
@@ -306,7 +309,7 @@ export default {
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // POST /  — Gemini brief generation with JSON schema enforcement
+    // POST / — Gemini brief generation with JSON schema enforcement
     // ─────────────────────────────────────────────────────────────────
 
     if (request.method === 'POST' && pathname === '/') {
@@ -337,10 +340,10 @@ export default {
           type: 'object',
           required: ['btc','eth','link','macro','threats','watch','verdict','ranking','bullTrigger','bearTrigger'],
           properties: {
-            btc:  { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', items: bulletSchema } } },
-            eth:  { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', items: bulletSchema } } },
-            link: { type: 'object', required: ['support','resist','badge','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, badge: { type: ['string','null'] }, bullets: { type: 'array', items: bulletSchema } } },
-            macro:       { type: 'object', required: ['bullets'], properties: { bullets: { type: 'array', items: bulletSchema } } },
+            btc:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', items: bulletSchema } } },
+            eth:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', items: bulletSchema } } },
+            link:  { type: 'object', required: ['support','resist','badge','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, badge: { type: 'string' }, bullets: { type: 'array', items: bulletSchema } } },
+            macro: { type: 'object', required: ['bullets'], properties: { bullets: { type: 'array', items: bulletSchema } } },
             threats:     { type: 'array', items: bulletSchema },
             watch:       { type: 'array', items: bulletSchema },
             verdict:     { type: 'string' },
@@ -350,16 +353,15 @@ export default {
           },
         };
 
-        const model = env.GEMINI_MODEL || 'gemini-2.5-flash';
-
+        const model   = env.GEMINI_MODEL || 'gemini-2.5-flash';
         const payload = {
           contents: contents.length
             ? contents
             : [{ role: 'user', parts: [{ text: 'Generate the brief.' }] }],
           generationConfig: {
-            temperature:        typeof body.temperature === 'number' ? body.temperature : 0.3,
-            maxOutputTokens:    8192,
-            responseMimeType:   'application/json',
+            temperature:      typeof body.temperature === 'number' ? body.temperature : 0.3,
+            maxOutputTokens:  8192,
+            responseMimeType: 'application/json',
             responseJsonSchema: responseSchema,
           },
         };
