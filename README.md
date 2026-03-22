@@ -1,169 +1,272 @@
 # CID-SGT — Crypto Daily Brief
 
-A self-updating AI-powered crypto intelligence terminal. Pulls live prices, real macro data, and today's journalism from reputable sources — synthesizes everything into a classified-style daily brief, automatically, every time the page loads.
+> A self-updating AI-powered crypto intelligence terminal that pulls live prices, real macro data, and today's journalism — then synthesises everything into a classified-style daily brief, automatically, every time the page loads.
 
 **Live site:** https://blitzio.github.io/crypto_brief/
 
 ---
 
-## What It Does
+## Vision
 
-Every time someone opens the page:
+The brief works like a proper intelligence analyst: read today's real journalism from reputable sources, cross-reference with live market data, and produce a tight classified-document-style report. Every number is live. Every analysis bullet is grounded in real news with a citation. Sources at the bottom are clickable articles you can verify yourself. Runs entirely free with zero manual effort after setup.
 
-1. **CoinGecko** fetches live BTC, ETH, and LINK prices (price, 24h change, 7d change, market cap, volume)
-2. **Cloudflare Worker** fetches live macro data from Yahoo Finance (Gold, VIX, S&P 500), NY Fed (EFFR federal funds rate), and BLS (CPI)
-3. **Tavily** searches today's news from reputable crypto and financial journalism sources (CoinDesk, The Block, Decrypt, Reuters, Bloomberg, etc.)
-4. All of this data is passed to an AI model via **OpenRouter** which synthesizes it into a full intelligence brief
-5. The brief renders in a classified-document format with live SGT timestamp, cited sources, and clickable references
+---
 
-No manual updates required. No login. Works for anyone with the link.
+## How It Works — Full Pipeline
+
+Every time the page loads, this sequence runs automatically:
+
+```
+1. CoinGecko (free, no key)
+   └── Live BTC, ETH, LINK — price, 24h%, 7d%, market cap, volume
+
+2. Cloudflare Worker /macro
+   ├── Yahoo Finance  → Gold (GC=F), S&P 500, USD/SGD, DXY
+   ├── NY Fed EFFR    → Federal Funds Rate (official, updates daily)
+   ├── BLS Public API → CPI inflation (official US government)
+   └── Alternative.me → Crypto Fear & Greed Index (0–100)
+
+3. Cloudflare Worker /news
+   ├── Fetches 8 RSS feeds in parallel
+   │   (CoinDesk, The Block, Decrypt, CoinTelegraph, Blockworks,
+   │    Reuters Business, WSJ Markets)
+   ├── Parses headlines + descriptions from XML
+   └── Fetches full article text from each URL (~800 chars per article)
+       ↳ KEY: Gemini reads real journalism substance, not just headlines
+         This is the primary anti-hallucination mechanism
+
+4. Cloudflare Worker POST /
+   ├── All data formatted into a structured prompt
+   ├── Sent to Gemini 2.5 Flash (Google AI API)
+   ├── JSON schema enforcement → guaranteed valid structured output
+   └── Gemini writes analysis grounded in the real articles
+       ↳ Citations [1][2][3] map to actual clickable source articles
+
+5. Frontend renders the brief
+   ├── Live price strip (CoinGecko)
+   ├── Live macro gauges (6 indicators)
+   ├── Analysis: BTC, ETH, LINK, Macro, Assessment
+   ├── Sources section (clickable cards with article snippets)
+   └── Debug panel → "Show Raw Sources" reveals exact content fed to AI
+
+6. Cloudflare KV caching
+   └── Brief saved to KV for 1 hour
+       ↳ Repeat visitors get instant load (no 20s wait)
+       ↳ ↻ Refresh Brief button bypasses cache → forces fresh generation
+```
 
 ---
 
 ## Architecture
 
 ```
-Browser (GitHub Pages)
-    │
-    ├── CoinGecko API (free, no key) ──────────► Live crypto prices
-    │
-    ├── Tavily API (free tier) ─────────────────► Live news from reputable sources
-    │
-    └── Cloudflare Worker (crypto-brief-proxy)
-            │
-            ├── /macro route
-            │       ├── Yahoo Finance ──────────► Gold, VIX, S&P 500
-            │       ├── NY Fed EFFR API ─────────► Federal Funds Rate
-            │       └── BLS Public API ──────────► CPI inflation data
-            │
-            └── POST / route
-                    └── OpenRouter API ──────────► AI analysis (auto-selects best free model)
+Browser (GitHub Pages — index.html)
+        │
+        ├── CoinGecko API ─────────────────────────► Live crypto prices
+        │   (direct from browser, no proxy needed)
+        │
+        └── Cloudflare Worker (crypto-brief-proxy.blitzio.workers.dev)
+                │
+                ├── GET /macro ─────────────────────► Yahoo Finance (Gold, S&P, USD/SGD, DXY)
+                │                                      NY Fed EFFR (Fed rate)
+                │                                      BLS API (CPI)
+                │                                      Alternative.me (Fear & Greed)
+                │
+                ├── GET /news ──────────────────────► 8 RSS feeds → full article content
+                │
+                ├── POST / ─────────────────────────► Gemini 2.5 Flash (AI analysis)
+                │
+                ├── GET /brief ─────────────────────► Cloudflare KV (read cache)
+                └── POST /brief/save ───────────────► Cloudflare KV (write cache)
 ```
 
 ---
 
-## Files
+## Repository Files
 
-| File | Location | Purpose |
-|------|----------|---------|
-| `index.html` | GitHub repo (this repo) | Frontend — all UI, data fetching, rendering |
-| `worker.js` | Cloudflare Workers (`crypto-brief-proxy`) | Backend proxy — macro data + AI API calls |
+```
+crypto_brief/
+├── index.html    ← Complete frontend (HTML + CSS + JS, single file, no build step)
+├── worker.js     ← Cloudflare Worker backend — deploy manually via Cloudflare dashboard
+└── README.md     ← This file
+```
 
----
+**Why is `worker.js` safe in a public repo?**
+All secrets (API keys) live in Cloudflare environment variables — `env.GEMINI_API_KEY`, `env.GEMINI_MODEL`. The code itself contains zero sensitive data. It is best practice to version-control your Worker code.
 
-## APIs & Services
-
-| Service | What it does | Key location | Cost |
-|---------|-------------|--------------|------|
-| **CoinGecko** | Live crypto prices (BTC/ETH/LINK) | No key needed | Free |
-| **Tavily** | Live news search from reputable sources | Hardcoded in `index.html` | Free (1,000 req/mo) |
-| **Yahoo Finance** | Gold (GC=F), VIX (^VIX), S&P 500 (^GSPC) | No key needed | Free |
-| **NY Fed EFFR** | Federal funds rate (daily) | No key needed | Free |
-| **BLS Public API** | CPI inflation data | No key needed | Free |
-| **OpenRouter** | AI model routing — auto-selects best available free model | Stored as `OPENROUTER_API_KEY` secret in Cloudflare Worker | Free (200 req/day) |
-| **Cloudflare Workers** | Proxy layer — keeps API keys off GitHub, fetches macro data | Cloudflare dashboard | Free (100k req/day) |
-| **GitHub Pages** | Hosts the frontend | This repo | Free |
+**Why single-file frontend?**
+GitHub Pages serves static files. One `index.html` = zero build toolchain, zero dependencies, instant deploy on every commit.
 
 ---
 
-## News Sources (Tavily whitelist)
+## Data Sources — Full Reference
 
-Tavily is configured to only pull from reputable journalism — not price aggregators:
+| Source | Data provided | Key required | Cost |
+|--------|--------------|--------------|------|
+| CoinGecko `/coins/markets` | BTC/ETH/LINK price, 24h%, 7d%, mcap, vol | No | Free |
+| Yahoo Finance (via Worker) | Gold, S&P 500, USD/SGD, DXY | No | Free |
+| NY Fed EFFR | Federal Funds Rate (official) | No | Free |
+| BLS Public API | CPI YoY inflation (official) | No | Free |
+| Alternative.me | Crypto Fear & Greed 0–100 | No | Free |
+| RSS (8 feeds below) | Today's journalism + full article text | No | Free |
+| Gemini 2.5 Flash | AI analysis and synthesis | `GEMINI_API_KEY` | Free (250 req/day) |
 
-- coindesk.com
-- theblock.co
-- decrypt.co
-- reuters.com
-- bloomberg.com
-- ft.com / wsj.com
-- cointelegraph.com
-- axios.com / cnbc.com / forbes.com
-- blockworks.co
-- dlnews.com
-- thedefiant.io
-- protos.com
-
-Price aggregators (CoinGecko, CoinMarketCap, Binance, Kraken etc.) are explicitly excluded.
+### RSS News Sources
+| Feed | Source | Topic focus |
+|------|--------|-------------|
+| coindesk.com/arc/outboundfeeds/rss/category/markets/ | CoinDesk Markets | BTC price action |
+| blockworks.co/feed/ | Blockworks | Institutional crypto |
+| theblock.co/rss.xml | The Block | Research-grade crypto |
+| decrypt.co/feed | Decrypt | Broad crypto |
+| cointelegraph.com/rss | CoinTelegraph | General crypto |
+| coindesk.com/arc/outboundfeeds/rss/ | CoinDesk | Full coverage |
+| feeds.reuters.com/reuters/businessNews | Reuters Business | Macro/finance |
+| feeds.a.dj.com/rss/RSSMarketsMain.xml | WSJ Markets | Macro/finance |
 
 ---
 
-## Cloudflare Worker Setup
+## Cloudflare Worker Configuration
 
-Worker name: `crypto-brief-proxy`
-Worker URL: `https://crypto-brief-proxy.blitzio.workers.dev`
+**Worker name:** `crypto-brief-proxy`
+**URL:** `https://crypto-brief-proxy.blitzio.workers.dev`
 
-**Secret variables (Settings → Variables and Secrets):**
+### Secrets (Settings → Variables and Secrets)
 
-| Name | Value |
-|------|-------|
-| `OPENROUTER_API_KEY` | Your OpenRouter API key (sk-or-v1-...) |
+| Name | Value | Notes |
+|------|-------|-------|
+| `GEMINI_API_KEY` | `AIza...` from aistudio.google.com | Never put this in code |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Change this secret to upgrade model — no code change needed |
 
-**Routes handled by the Worker:**
-- `GET /macro` — fetches Gold, VIX, S&P 500, Fed rate, CPI in parallel
-- `POST /` — proxies AI completion requests to OpenRouter (key never exposed to browser)
+### KV Namespace Binding (Settings → Bindings)
+
+| Variable name | Namespace | Purpose |
+|---------------|-----------|---------|
+| `BRIEF_CACHE` | BRIEF_CACHE | 1-hour brief cache — instant load for repeat visitors |
+
+### Worker Routes
+
+| Method | Route | Purpose | Cache |
+|--------|-------|---------|-------|
+| GET | `/macro` | Gold, S&P, USD/SGD, DXY, Fed rate, CPI, Fear & Greed | 5 min edge |
+| GET | `/news` | 8 RSS feeds + full article content extraction | 15 min edge |
+| POST | `/` | Gemini AI call — returns structured JSON brief | None |
+| GET | `/brief` | Read cached brief from KV | 1 hour KV |
+| POST | `/brief/save` | Write brief to KV after generation | 1 hour TTL |
+
+---
+
+## Brief Sections
+
+| Section | Content |
+|---------|---------|
+| Price Strip | BTC / ETH / LINK — live price, 24h/7d delta, mcap, volume, support/resist |
+| § I Bitcoin | 6 intel bullets grounded in today's news with [N] citations |
+| § II Ethereum | 6 intel bullets with citations |
+| § III Macro | 6 live gauges + 5 analysis bullets |
+| § IV Chainlink | 6 intel bullets with citations |
+| § V Assessment | Threat stack · Forward watch · Verdict · Conviction ranking · Bull/Bear triggers |
+| § VI Sources | Clickable article cards from today's RSS — title, snippet, domain, link |
+| Debug Panel | "Show Raw Sources" — exact article content passed to Gemini |
+
+---
+
+## Caching Reference
+
+| What | Cache duration | Storage |
+|------|---------------|---------|
+| Macro data (Gold, S&P etc.) | 5 minutes | Cloudflare edge |
+| News articles (RSS + content) | 15 minutes | Cloudflare edge |
+| Full generated brief | 1 hour | Cloudflare KV |
+
+**↻ Refresh Brief** — calls `run(true)`, bypasses KV cache, forces full regeneration including fresh prices, news and AI analysis.
+
+---
+
+## Upgrading the AI Model
+
+The model name is stored as a Cloudflare secret — not hardcoded. To upgrade:
+
+1. Go to Cloudflare → Worker → Settings → Variables and Secrets
+2. Edit `GEMINI_MODEL`
+3. Change value to new model name (e.g. `gemini-3.0-flash` when available)
+4. Deploy — done. No code changes ever needed.
+
+---
+
+## Anti-Hallucination Design
+
+Three layers prevent the AI from inventing events:
+
+**Layer 1 — Full article content**
+Worker fetches the first 5 paragraphs (~800 chars) of each article, not just the headline. Gemini reads real substance before writing any bullet.
+
+**Layer 2 — JSON schema enforcement**
+`responseMimeType: application/json` + `responseJsonSchema` forces Gemini to return a valid structured object matching the exact schema. No freeform text generation.
+
+**Layer 3 — Hard prompt constraints**
+- Every claim must cite a source `[N]`
+- Claims without a citation must be omitted
+- Macro gauge values must use only the exact live numbers provided
+- Substituting or inventing figures is explicitly prohibited
 
 ---
 
 ## How to Update
 
-**To update the frontend** (UI changes, prompt changes, Tavily config):
-1. Edit `index.html` in this repo
-2. Commit — GitHub Pages deploys automatically within ~60 seconds
+**Frontend change** (UI, layout, prompt wording):
+→ Edit `index.html` → commit → auto-deploys in ~60 seconds
 
-**To update the Worker** (macro sources, AI model, routing):
-1. Go to dash.cloudflare.com → Compute → Workers & Pages → `crypto-brief-proxy`
-2. Click Edit code → paste updated worker.js → Deploy
+**Worker change** (data sources, caching, AI routing):
+→ Edit `worker.js` → Cloudflare dashboard → Edit code → paste → Deploy
 
-**To rotate the OpenRouter API key:**
-1. Generate new key at openrouter.ai
-2. Go to Cloudflare Worker → Settings → Variables and Secrets
-3. Update `OPENROUTER_API_KEY` → Deploy
+**Upgrade AI model:**
+→ Cloudflare → Worker → Settings → edit `GEMINI_MODEL` secret → Deploy
 
----
-
-## Features
-
-- ✅ Live BTC / ETH / LINK prices with 24h and 7d changes
-- ✅ Live macro gauges: Fed Rate (NY Fed), Gold, VIX, S&P 500, CPI
-- ✅ Live news from reputable sources via Tavily
-- ✅ AI synthesis of prices + macro + news into classified-style brief
-- ✅ Inline citations [N] linking analysis to source articles
-- ✅ Clickable source cards with article snippets
-- ✅ "Show Raw Feed" debug panel — see exactly what was fed to the AI
-- ✅ Live SGT timestamp (ticks every second)
-- ✅ Issue number increments daily by day-of-year
-- ✅ Refresh Brief button regenerates on demand
-- ✅ Mobile responsive (tablet + phone breakpoints)
-- ✅ No login required — works for anyone with the link
-- ✅ Zero hardcoded data — everything pulled live
-
----
-
-## Sections in the Brief
-
-| Section | Content |
-|---------|---------|
-| Price Strip | BTC, ETH, LINK — live prices, deltas, market cap, volume, support/resist |
-| § I Bitcoin | 6-bullet intel analysis grounded in today's news |
-| § II Ethereum | 6-bullet intel analysis |
-| § III Macro | Live gauges + 5-bullet macro threat analysis |
-| § IV Chainlink | 6-bullet intel analysis |
-| § V Assessment | Threat stack, forward watch, analyst verdict, conviction ranking, bull/bear triggers |
-| § VI Sources | Clickable cards for every article used, with snippets + raw feed debug panel |
+**Rotate a key:**
+→ Cloudflare → Worker → Settings → edit the relevant secret → Deploy
+→ Key is never in GitHub — nothing to change there
 
 ---
 
 ## Known Limitations
 
-- **OpenRouter free tier**: 200 requests/day across all free models. Auto-selects best available model — if one goes down it tries others
-- **Tavily free tier**: 1,000 searches/month. Each brief generation uses 4 searches
-- **Yahoo Finance**: occasionally blocks Cloudflare server IPs — Worker falls back to recent known values if blocked
-- **AI quality**: OpenRouter free models (currently auto-routing) produce decent but not Claude-quality analysis. Brief generation takes 15–45 seconds depending on model selected
+| Limitation | Impact | Notes |
+|------------|--------|-------|
+| Gemini 2.5 Flash quality | Below Claude Sonnet / GPT-4o | Free tier constraint. Claude API costs ~$0.001/brief (~$0.37/year) |
+| Google grounding incompatibility | Can't use web search + JSON schema together | Google API hard limitation. RSS pipeline is the workaround |
+| RSS article scraping | ~20% of sites block content extraction | Falls back to RSS description automatically |
+| Yahoo Finance blocking | Occasional macro data gaps | Handled gracefully — shows "Unavailable" not a crash |
+| Gemini free tier limit | 250 req/day | Covers ~250 briefs/day — more than sufficient |
 
 ---
 
-## Built With
+## Total Monthly Cost: $0.00
 
-- Vanilla HTML/CSS/JS (no framework)
-- Cloudflare Workers (serverless edge functions)
-- GitHub Pages (static hosting)
+| Service | Free tier | Daily usage |
+|---------|-----------|-------------|
+| GitHub Pages | Unlimited static hosting | 1 file |
+| Cloudflare Workers | 100,000 req/day | ~10 req/brief |
+| Cloudflare KV | 100,000 reads + 1,000 writes/day | ~2/brief |
+| CoinGecko | Unlimited (public endpoint) | 1 call |
+| Yahoo Finance | Unlimited | 4 calls |
+| NY Fed / BLS | Unlimited | 2 calls |
+| Alternative.me | Unlimited | 1 call |
+| RSS feeds | Unlimited | 8 feeds |
+| Gemini 2.5 Flash | 250 req/day free | 1 call |
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vanilla HTML + CSS + JS (no framework, no build step) |
+| Backend | Cloudflare Workers (serverless, V8 isolates, edge-deployed) |
+| Cache | Cloudflare Workers KV |
+| Hosting | GitHub Pages |
+| AI | Google Gemini 2.5 Flash (Google AI Studio API) |
+| Fonts | Inter + JetBrains Mono (Google Fonts) |
+
+---
+
+*Built with Claude + Chatgpt 2026*
