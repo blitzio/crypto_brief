@@ -165,7 +165,7 @@ export default {
     // Fetch one RSS feed with 6s timeout
     async function fetchFeed(feedUrl, sourceName, topic) {
       const controller = new AbortController();
-      const timeout    = setTimeout(() => controller.abort(), 6000);
+      const timeout    = setTimeout(() => controller.abort(), 4000);
       try {
         const res = await fetch(feedUrl, {
           signal:  controller.signal,
@@ -181,44 +181,10 @@ export default {
       }
     }
 
-    // Extract readable text from an article URL — strips HTML, returns clean paragraphs
-    async function fetchArticleContent(url) {
-      const controller = new AbortController();
-      const timeout    = setTimeout(() => controller.abort(), 5000);
-      try {
-        const res = await fetch(url, {
-          signal:  controller.signal,
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NewsBot/1.0)', 'Accept': 'text/html' },
-        });
-        clearTimeout(timeout);
-        if (!res.ok) return '';
-        const html = await res.text();
-
-        // Extract text from <p> tags — this gets article body reliably
-        const paragraphs = [];
-        const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
-        let m;
-        while ((m = pRegex.exec(html)) !== null) {
-          const text = m[1]
-            .replace(/<[^>]+>/g, '')       // strip inner HTML tags
-            .replace(/&amp;/g, '&')
-            .replace(/&nbsp;/g, ' ')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#8217;/g, "'")
-            .replace(/&#8220;/g, '"')
-            .replace(/&#8221;/g, '"')
-            .replace(/\s+/g, ' ')
-            .trim();
-          if (text.length > 60) paragraphs.push(text); // skip nav/footer noise
-        }
-
-        return paragraphs.slice(0, 3).join(' ').slice(0, 400); // first 3 paragraphs, max 400 chars
-      } catch {
-        clearTimeout(timeout);
-        return '';
-      }
+    // Article content comes from RSS description only — no scraping
+    // Scraping causes timeouts and is blocked by most sites anyway
+    function getArticleContent(item) {
+      return item.description || '';
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -291,17 +257,12 @@ export default {
         }
       }
 
-      const topItems = items.slice(0, 8);
+      const topItems = items.slice(0, 10);
 
-      // 3. Fetch full article content in parallel — allSettled so blocked sites don't crash
-      const contentResults = await Promise.allSettled(
-        topItems.map(item => fetchArticleContent(item.url))
-      );
-      const withContent = topItems.map((item, i) => ({
+      // 3. Use RSS description as content — fast, reliable, no scraping needed
+      const withContent = topItems.map(item => ({
         ...item,
-        content: (contentResults[i].status === 'fulfilled' && contentResults[i].value)
-          ? contentResults[i].value
-          : item.description || '',
+        content: getArticleContent(item),
       }));
 
       const response = json(withContent, 200, { 'Cache-Control': 'public, max-age=900' }); // 15 min cache
