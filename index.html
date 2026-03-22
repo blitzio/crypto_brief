@@ -378,7 +378,6 @@ async function callAI(prices, macro, newsItems = []) {
   const l = prices['chainlink'];
   const today = fmtDate(sgtNow());
 
-  // Build macro context string — only include fields that have real data
   const macroLines = [
     macro.fedRate?.rateStr && macro.fedRate.rateStr !== 'UNAVAILABLE'
       ? `Fed Funds Rate (NY Fed EFFR): ${macro.fedRate.rateStr}${macro.fedRate.date ? ` as of ${macro.fedRate.date}` : ''}`
@@ -437,7 +436,7 @@ ANALYSIS INSTRUCTIONS:
       messages: [
         {
           role:    'system',
-          content: 'You are a senior crypto intelligence analyst. You MUST complete ALL sections of the JSON — btc (6 bullets), eth (6 bullets), link (6 bullets), macro (5 bullets), threats (5 items), watch (6 items), verdict, ranking, bullTrigger, bearTrigger. Every section must be fully populated — never leave any section empty or with fewer bullets than required. For sections where the provided news sources have direct coverage, cite them with [N]. For sections where news coverage is limited (especially LINK), use your knowledge of recent market conditions, price action, technical levels, and ecosystem developments — label these bullets without a citation number. Never write 'No Specific News' — always provide substantive analysis. Be concise — 1-2 sentences per bullet maximum.',
+          content: "You are a senior crypto intelligence analyst. You MUST complete ALL sections of the JSON — btc (6 bullets), eth (6 bullets), link (6 bullets), macro (5 bullets), threats (5 items), watch (6 items), verdict, ranking, bullTrigger, bearTrigger. Every section must be fully populated — never leave any section empty or with fewer bullets than required. For sections where the provided news sources have direct coverage, cite them with [N]. For sections where news coverage is limited (especially LINK), use your knowledge of recent market conditions, price action, technical levels, and ecosystem developments — label these bullets without a citation number. Never write 'No Specific News' — always provide substantive analysis. Be concise — 1-2 sentences per bullet maximum.",
         },
         { role: 'user', content: prompt },
       ],
@@ -451,9 +450,8 @@ ANALYSIS INSTRUCTIONS:
     throw new Error(err?.error?.message ?? `Worker error ${res.status}`);
   }
 
-  const data             = await res.json();
-  const raw              = data?.choices?.[0]?.message?.content ?? '';
-  const groundingSources = data?.groundingSources ?? [];
+  const data = await res.json();
+  const raw  = data?.choices?.[0]?.message?.content ?? '';
 
   let clean = raw
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
@@ -486,7 +484,7 @@ ANALYSIS INSTRUCTIONS:
     brief = brief[keys[0]];
   }
 
-  return { brief, groundingSources };
+  return { brief };
 }
 
 // ─── RENDER HELPERS ─────────────────────────────────────────────────
@@ -564,7 +562,6 @@ function renderSources(items) {
 }
 
 function renderBrief(brief, prices, macro, newsItems, generatedTime) {
-  // Defensive defaults in case Gemini omits a section
   brief.btc  = brief.btc  || { support: '—', resist: '—', bullets: [] };
   brief.eth  = brief.eth  || { support: '—', resist: '—', bullets: [] };
   brief.link = brief.link || { support: '—', resist: '—', badge: null, bullets: [] };
@@ -592,7 +589,6 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
   renderBullets('watch',         brief.watch);
   renderSources(newsItems);
 
-  // Debug panel
   const debugEl = document.getElementById('debug-content');
   if (debugEl) {
     debugEl.textContent = newsItems.length
@@ -619,27 +615,24 @@ async function run(forceRefresh = false) {
   document.getElementById('loading').classList.remove('hidden');
 
   try {
-    // Try to load cached brief first (avoids 20s wait for repeat visitors)
     if (!forceRefresh) {
       document.getElementById('load-sub').textContent = 'Checking for cached brief…';
       try {
-        const cacheRes = await fetch(WORKER_URL + '/brief', { cache: 'no-store' });
+        const cacheRes  = await fetch(WORKER_URL + '/brief', { cache: 'no-store' });
         const cacheData = await cacheRes.json();
         if (cacheData.cached && cacheData.brief && cacheData.prices && cacheData.macro) {
           document.getElementById('load-sub').textContent = 'Loading cached brief…';
-          const generatedTime = new Date(cacheData.generatedAt);
           renderBrief(
             cacheData.brief,
             cacheData.prices,
             cacheData.macro,
             cacheData.newsItems || [],
-            new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Singapore' }))
+            new Date(cacheData.generatedAt)
           );
-          // Show cached indicator
           document.getElementById('load-sub').textContent = '';
           return;
         }
-      } catch { /* no cache available, generate fresh */ }
+      } catch { /* no cache, generate fresh */ }
     }
 
     document.getElementById('load-sub').textContent = 'Fetching live prices, macro and news…';
@@ -651,16 +644,16 @@ async function run(forceRefresh = false) {
 
     renderBrief(brief, prices, macro, newsItems, generatedTime);
 
-    // Save to cache in background — doesn't block render
     fetch(WORKER_URL + '/brief/save', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brief, prices, macro, newsItems }),
-    }).catch(() => {}); // fire and forget
+      body:    JSON.stringify({ brief, prices, macro, newsItems }),
+    }).catch(() => {});
 
   } catch (err) {
     console.error(err);
-    document.getElementById('load-sub').textContent = 'Error: ' + err.message + ' — refresh to retry.';
+    document.getElementById('spinner') && document.getElementById('spinner').remove();
+    document.getElementById('load-sub').textContent = '❌ ' + err.message + ' — refresh to retry.';
   }
 }
 
