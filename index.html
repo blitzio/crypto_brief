@@ -617,6 +617,7 @@ async function run(forceRefresh = false) {
       try {
         const cacheRes  = await fetch(WORKER_URL + '/brief', { cache: 'no-store' });
         const cacheData = await cacheRes.json();
+        console.log('CACHE RESULT:', JSON.stringify(cacheData).slice(0, 200));
        if (cacheData.cached && cacheData.brief) {
           document.getElementById('load-sub').textContent = 'Loading cached brief…';
           renderBrief(
