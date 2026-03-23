@@ -617,7 +617,7 @@ async function run(forceRefresh = false) {
       try {
         const cacheRes  = await fetch(WORKER_URL + '/brief', { cache: 'no-store' });
         const cacheData = await cacheRes.json();
-        if (cacheData.cached && cacheData.brief && cacheData.prices && cacheData.macro) {
+       if (cacheData.cached && cacheData.brief) {
           document.getElementById('load-sub').textContent = 'Loading cached brief…';
           renderBrief(
             cacheData.brief,
@@ -629,7 +629,7 @@ async function run(forceRefresh = false) {
           document.getElementById('load-sub').textContent = '';
           return;
         }
-      } catch { /* no cache, generate fresh */ }
+      } catch (e) { console.warn('Cache miss:', e); }
     }
 
     document.getElementById('load-sub').textContent = 'Fetching live prices, macro and news…';
