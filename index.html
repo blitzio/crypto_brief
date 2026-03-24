@@ -406,7 +406,7 @@ LINK: ${fmtPrice(l.current_price)} | 24h: ${fmtPct(l.price_change_percentage_24h
 LIVE MACRO DATA (use exact figures below, do not substitute):
 ${macroLines || 'Macro data temporarily unavailable.'}
 
-TODAY'S VERIFIED SOURCES — CITE BY doc id FOR EVERY CLAIM:
+RECENT FEED SOURCES (LAST 72H MAX) — CITE BY doc id FOR EVERY CLAIM:
 ${newsItems.length
   ? newsItems.map((n,i) => `<doc id="${i+1}">\nSOURCE: ${n.source}\nHEADLINE: ${n.title}\nCONTENT: ${n.content || n.description || 'No content available'}\n</doc>`).join('\n\n')
   : 'No news retrieved — rely only on the live price and macro data above. Do not invent events.'}
