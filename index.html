@@ -608,11 +608,12 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
 
 // ─── MAIN ────────────────────────────────────────────────────────────
 async function run(forceRefresh = false) {
+  const shouldForceRefresh = forceRefresh === true;
   document.getElementById('brief').classList.remove('active');
   document.getElementById('loading').classList.remove('hidden');
 
   try {
-    if (!forceRefresh) {
+    if (!shouldForceRefresh) {
       document.getElementById('load-sub').textContent = 'Checking for cached brief…';
       try {
         const cacheRes  = await fetch(WORKER_URL + '/brief', { cache: 'no-store' });
@@ -678,7 +679,7 @@ function toggleDebug() {
   btn.textContent = panel.classList.contains('open') ? '⚙ Hide Raw Sources' : '⚙ Show Raw Sources';
 }
 
-window.addEventListener('DOMContentLoaded', run);
+window.addEventListener('DOMContentLoaded', () => run());
 </script>
 </body>
 </html>
