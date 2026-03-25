@@ -30,9 +30,11 @@
   --neu:#e0a43c;
   --font:'Inter',system-ui,sans-serif;
   --mono:'JetBrains Mono','SFMono-Regular',monospace;
+  --radius:8px;
+  --shadow:0 10px 28px rgba(0,0,0,.22);
 }
 html{font-size:17px;}
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1rem;line-height:1.75;-webkit-font-smoothing:antialiased;min-height:100vh;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1rem;line-height:1.72;-webkit-font-smoothing:antialiased;min-height:100vh;}
 
 /* ── LOADING ── */
 #loading{display:flex;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:18px;}
@@ -45,7 +47,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1r
 /* ── BRIEF ── */
 #brief{display:none;}
 #brief.active{display:block;}
-.doc{max-width:1080px;margin:0 auto;background:var(--paper);border:1px solid var(--border);}
+.doc{max-width:1120px;margin:0 auto;background:var(--paper);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
 .cbar{background:var(--red);color:rgba(255,255,255,.92);text-align:center;padding:6px 12px;font-size:.66rem;font-family:var(--mono);font-weight:500;letter-spacing:.35em;text-transform:uppercase;}
 .rbar{background:var(--bg);border-bottom:1px solid var(--border);padding:10px 44px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
 .rbar-info{font-size:.82rem;color:var(--muted);}
@@ -79,7 +81,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1r
 /* ── BODY ── */
 .body{display:grid;grid-template-columns:1fr 1fr;}
 .col-l{border-right:1px solid var(--border);}
-.sec{padding:24px 30px;border-bottom:1px solid var(--border);}
+.sec{padding:26px 32px;border-bottom:1px solid var(--border);}
 .sec:last-child{border-bottom:none;}
 .sec-head{font-size:.72rem;font-family:var(--mono);font-weight:500;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);}
 ul.ib{list-style:none;}
@@ -109,12 +111,17 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
 /* ── SOURCES ── */
 .sources-section{grid-column:1/-1;border-top:1px solid var(--border2);padding:24px 44px 30px;background:var(--bg);}
 .sources-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
-.source-card{background:var(--paper);border:1px solid var(--border);padding:14px 15px;border-radius:4px;text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .15s;}
+.source-card{background:var(--paper);border:1px solid var(--border);padding:14px 15px;border-radius:6px;text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .15s;}
 .source-card:hover{border-color:var(--blue);background:var(--blue-bg);transform:translateY(-1px);}
 .source-tag{font-size:.66rem;font-family:var(--mono);letter-spacing:.10em;color:var(--muted);text-transform:uppercase;margin-bottom:6px;}
-.source-title{font-size:.9rem;color:var(--text);line-height:1.55;font-weight:600;}
+.source-title{font-size:.9rem;color:var(--text);line-height:1.5;font-weight:600;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.source-snippet{font-size:.78rem;color:var(--muted);margin-top:6px;font-style:italic;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.4em;}
 .source-meta{margin-top:8px;font-size:.74rem;color:var(--muted);display:flex;justify-content:space-between;}
 .source-domain{color:var(--blue);font-family:var(--mono);}
+.source-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.chip{font-size:.62rem;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--border2);color:var(--muted);padding:2px 6px;border-radius:999px;}
+.chip.topic-macro{border-color:rgba(90,141,238,.45);color:#9bb8f6;}
+.chip.topic-btc,.chip.topic-eth{border-color:rgba(215,171,58,.45);color:#e6bf5f;}
 
 /* ── DEBUG ── */
 .psep{grid-column:1/-1;text-align:center;padding:6px 0;font-size:.64rem;font-family:var(--mono);letter-spacing:.28em;color:var(--faint);border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg);}
@@ -140,7 +147,7 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
   .p-price{font-size:1.72rem;}
   .body{grid-template-columns:1fr;}
   .col-l{border-right:none;}
-  .sec{padding:18px 16px;}
+  .sec{padding:20px 16px;}
   .two-col{grid-template-columns:1fr;gap:20px;}
   .sources-grid{grid-template-columns:1fr 1fr;}
   .macro-grid{grid-template-columns:1fr 1fr;}
@@ -159,7 +166,7 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
   .p-price{font-size:1.55rem;}
   .p-deltas{font-size:.8rem;gap:10px;}
   .p-stats{font-size:.75rem;}
-  .sec{padding:16px;}
+  .sec{padding:18px 14px;}
   .sec-head{font-size:.64rem;letter-spacing:.12em;}
   ul.ib>li{font-size:.9rem;padding:10px 0 10px 16px;}
   .macro-grid{grid-template-columns:1fr 1fr;}
@@ -547,15 +554,30 @@ function renderSources(items) {
     grid.innerHTML = '<p style="color:var(--muted);font-size:.9rem;grid-column:1/-1;">No news sources retrieved.</p>';
     return;
   }
+  const fmtAge = (dateStr) => {
+    const ts = dateStr ? new Date(dateStr).getTime() : NaN;
+    if (!Number.isFinite(ts)) return 'Unknown time';
+    const mins = Math.max(1, Math.floor((Date.now() - ts) / 60000));
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 48) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
   grid.innerHTML = items.map((n, i) => {
     let domain = '';
     try { domain = new URL(n.url).hostname.replace('www.', ''); } catch { domain = n.source || ''; }
     const title   = (n.title || 'Article').slice(0, 90) + ((n.title || '').length > 90 ? '…' : '');
     const snippet = (n.description || '').slice(0, 120) + ((n.description || '').length > 120 ? '…' : '');
+    const topic = (n.topic || 'general').toLowerCase();
+    const age = fmtAge(n.pubDate);
     return `<a class="source-card" href="${n.url}" target="_blank" rel="noopener noreferrer">
       <div class="source-tag">[${i + 1}] ${n.source || domain}</div>
       <div class="source-title">${title}</div>
-      ${snippet ? `<div style="font-size:.78rem;color:var(--muted);margin-top:6px;font-style:italic;">${snippet}</div>` : ''}
+      ${snippet ? `<div class="source-snippet">${snippet}</div>` : ''}
+      <div class="source-chips">
+        <span class="chip topic-${topic}">${topic}</span>
+        <span class="chip">${age}</span>
+      </div>
       <div class="source-meta"><span class="source-domain">${domain}</span><span>↗</span></div>
     </a>`;
   }).join('');
@@ -608,29 +630,36 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
 
 // ─── MAIN ────────────────────────────────────────────────────────────
 async function run(forceRefresh = false) {
+  const shouldForceRefresh = forceRefresh === true;
   document.getElementById('brief').classList.remove('active');
   document.getElementById('loading').classList.remove('hidden');
 
   try {
-    if (!forceRefresh) {
+    if (!shouldForceRefresh) {
       document.getElementById('load-sub').textContent = 'Checking for cached brief…';
       try {
         const cacheRes  = await fetch(WORKER_URL + '/brief', { cache: 'no-store' });
         const cacheData = await cacheRes.json();
-        console.log('CACHE RESULT:', JSON.stringify(cacheData).slice(0, 200));
-       if (cacheData.cached && cacheData.brief) {
+        if (cacheData.cached && cacheData.brief) {
+          console.log('[cache] hit: rendering cached brief');
           document.getElementById('load-sub').textContent = 'Loading cached brief…';
-          renderBrief(
-            cacheData.brief,
-            cacheData.prices,
-            cacheData.macro,
-            cacheData.newsItems || [],
-            new Date(cacheData.generatedAt)
-          );
+          try {
+            renderBrief(
+              cacheData.brief,
+              cacheData.prices,
+              cacheData.macro,
+              cacheData.newsItems || [],
+              new Date(cacheData.generatedAt)
+            );
+          } catch (renderErr) {
+            console.error('[cache] render failed for cached brief:', renderErr);
+            throw renderErr;
+          }
           document.getElementById('load-sub').textContent = '';
           return;
         }
-      } catch (e) { console.warn('Cache miss:', e); }
+        console.log(`[cache] miss: ${cacheData.reason || 'no usable cached brief'}`);
+      } catch (e) { console.warn('[cache] miss: cache check failed', e); }
     }
 
     document.getElementById('load-sub').textContent = 'Fetching live prices, macro and news…';
@@ -640,13 +669,24 @@ async function run(forceRefresh = false) {
     const { brief } = await callAI(prices, macro, newsItems);
     const generatedTime = sgtNow();
 
-    renderBrief(brief, prices, macro, newsItems, generatedTime);
+    try {
+      renderBrief(brief, prices, macro, newsItems, generatedTime);
+    } catch (renderErr) {
+      console.error('[render] failed for freshly generated brief:', renderErr);
+      throw renderErr;
+    }
 
     fetch(WORKER_URL + '/brief/save', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ brief, prices, macro, newsItems }),
-    }).catch(() => {});
+    })
+      .then(r => r.json().catch(() => ({ ok: false, error: 'Non-JSON response' })))
+      .then(result => {
+        if (result.ok) console.log('[cache] save success');
+        else console.warn('[cache] save failed:', result.reason || result.error || 'unknown reason');
+      })
+      .catch((saveErr) => console.warn('[cache] save request failed:', saveErr));
 
   } catch (err) {
     console.error(err);
@@ -661,7 +701,7 @@ function toggleDebug() {
   btn.textContent = panel.classList.contains('open') ? '⚙ Hide Raw Sources' : '⚙ Show Raw Sources';
 }
 
-window.addEventListener('DOMContentLoaded', run);
+window.addEventListener('DOMContentLoaded', () => run());
 </script>
 </body>
 </html>
