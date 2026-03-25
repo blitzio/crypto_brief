@@ -39,6 +39,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:1r
 /* ── LOADING ── */
 #loading{display:flex;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:18px;}
 #loading.hidden{display:none;}
+.preview-banner{display:none;max-width:1120px;margin:12px auto 0;background:rgba(90,141,238,.14);border:1px solid rgba(90,141,238,.38);color:#b9cdff;padding:8px 12px;border-radius:6px;font-size:.72rem;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;}
+.preview-banner.show{display:block;}
 .spinner{width:42px;height:42px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .9s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .load-title{font-size:1.15rem;font-weight:600;color:var(--text);}
@@ -187,6 +189,7 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
   <div class="load-title">Crypto Daily Brief</div>
   <div class="load-sub" id="load-sub">Fetching live market data…</div>
 </div>
+<div id="preview-banner" class="preview-banner">Option A Preview Mode · Mock Data Only · Not Production</div>
 
 <div id="brief">
 <div class="doc">
@@ -314,6 +317,9 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
 
 // ─── CONFIG ────────────────────────────────────────────────────────
 const WORKER_URL = 'https://crypto-brief-proxy.blitzio.workers.dev';
+const PREVIEW_MODE =
+  new URLSearchParams(window.location.search).get('preview') === '1' ||
+  window.location.hostname.includes('htmlpreview.github.io');
 
 // ─── SGT UTILITIES ─────────────────────────────────────────────────
 const MONS  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
@@ -628,6 +634,53 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
   document.getElementById('loading').classList.add('hidden');
 }
 
+function loadPreviewMock() {
+  const now = new Date();
+  const prices = {
+    bitcoin:   { current_price: 72880, market_cap: 1450000000000, total_volume: 39800000000, price_change_percentage_24h: 1.6, price_change_percentage_7d_in_currency: -0.8 },
+    ethereum:  { current_price: 2238,  market_cap: 269000000000,  total_volume: 17200000000, price_change_percentage_24h: 1.1, price_change_percentage_7d_in_currency: -2.3 },
+    chainlink: { current_price: 9.62,  market_cap: 6810000000,    total_volume: 412000000,   price_change_percentage_24h: 2.0, price_change_percentage_7d_in_currency: -1.1 },
+  };
+  const macro = {
+    fedRate: { rateStr: '3.64%', date: '2026-03-25' },
+    usdsgd: { price: 1.2795, pct: 0.33 },
+    sp500: { price: 6556, pct: -0.01 },
+    gold: { price: 4559, pct: 1.22 },
+    stablecoins: { total: '$262.9B', usdt: '$184.2B', usdc: '$78.7B' },
+    cryptoSentiment: { value: 14, classification: 'Extreme Fear', dir: 'neg' },
+  };
+  const brief = {
+    btc: { support: '$71,500', resist: '$74,000', bullets: [
+      { label: 'ETF Flow', text: 'Institutional bid remains resilient despite risk-off macro tone.' },
+      { label: 'Structure', text: 'Price holding above local support keeps medium-term bias constructive.' },
+    ]},
+    eth: { support: '$2,150', resist: '$2,300', bullets: [
+      { label: 'Liquidity', text: 'Stablecoin usage and exchange depth support relative stability.' },
+      { label: 'Risk', text: 'Macro uncertainty continues to cap upside follow-through.' },
+    ]},
+    link: { support: '$9.30', resist: '$10.00', bullets: [
+      { label: 'Positioning', text: 'LINK remains a high-beta infrastructure proxy in this setup.' },
+      { label: 'Catalyst', text: 'Cross-chain narrative remains supportive if risk appetite improves.' },
+    ]},
+    macro: { bullets: [
+      { label: 'Cross-Asset Read', text: 'Elevated fear + large stablecoin base suggests rebound potential on positive catalysts.' },
+      { label: 'Watchpoint', text: 'If equities weaken further while dollar strengthens, crypto may remain range-bound.' },
+    ]},
+    threats: [{ label: 'Policy Risk', text: 'Unexpected regulatory updates can reprice risk quickly.' }],
+    watch: [{ label: 'Flows', text: 'Track ETF and stablecoin flow direction for confirmation.' }],
+    verdict: 'Preview-only mock verdict for UI review.',
+    ranking: 'BTC > ETH > LINK',
+    bullTrigger: 'Improving risk appetite and sustained inflows.',
+    bearTrigger: 'Macro stress with falling liquidity.',
+  };
+  const newsItems = [
+    { title: 'Macro liquidity remains key swing factor for crypto', source: 'FT Markets', url: '#', description: 'Preview mock headline for layout testing.', topic: 'macro', pubDate: new Date(now - 40 * 60000).toUTCString() },
+    { title: 'ETF demand steadies despite broader risk-off backdrop', source: 'Dow Jones Markets', url: '#', description: 'Preview mock headline for layout testing.', topic: 'btc', pubDate: new Date(now - 110 * 60000).toUTCString() },
+    { title: 'Stablecoin payment rails expand cross-border usage', source: 'DL News', url: '#', description: 'Preview mock headline for layout testing.', topic: 'general', pubDate: new Date(now - 5 * 3600 * 1000).toUTCString() },
+  ];
+  renderBrief(brief, prices, macro, newsItems, now);
+}
+
 // ─── MAIN ────────────────────────────────────────────────────────────
 async function run(forceRefresh = false) {
   const shouldForceRefresh = forceRefresh === true;
@@ -701,7 +754,15 @@ function toggleDebug() {
   btn.textContent = panel.classList.contains('open') ? '⚙ Hide Raw Sources' : '⚙ Show Raw Sources';
 }
 
-window.addEventListener('DOMContentLoaded', () => run());
+window.addEventListener('DOMContentLoaded', () => {
+  if (PREVIEW_MODE) {
+    const banner = document.getElementById('preview-banner');
+    if (banner) banner.classList.add('show');
+    loadPreviewMock();
+    return;
+  }
+  run();
+});
 </script>
 </body>
 </html>
