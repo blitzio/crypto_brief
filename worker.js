@@ -136,10 +136,10 @@ export default {
       { url: 'https://blockworks.co/feed/',                                       source: 'Blockworks',       topic: 'btc' },
       { url: 'https://theblock.co/rss.xml',                                       source: 'The Block',        topic: 'eth' },
       { url: 'https://decrypt.co/feed',                                           source: 'Decrypt',          topic: 'eth' },
-      { url: 'https://dlnews.com/feed/',                                          source: 'DL News',          topic: 'general' },
+      { url: 'https://www.dlnews.com/arc/outboundfeeds/rss/',                     source: 'DL News',          topic: 'general' },
       { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',                   source: 'CoinDesk',         topic: 'general' },
-      { url: 'https://feeds.reuters.com/reuters/businessNews',                    source: 'Reuters Business', topic: 'macro' },
-      { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml',                     source: 'WSJ Markets',      topic: 'macro' },
+      { url: 'https://feeds.content.dowjones.io/public/rss/RSSMarketsMain',       source: 'Dow Jones Markets', topic: 'macro' },
+      { url: 'https://www.ft.com/markets?format=rss',                             source: 'FT Markets',       topic: 'macro' },
     ];
 
     function parseRSS(xml, sourceName, topic) {
@@ -295,14 +295,25 @@ export default {
     // ─────────────────────────────────────────────────────────────────
 
     if (request.method === 'GET' && pathname === '/brief') {
-      if (!env.BRIEF_CACHE) return json({ cached: false, reason: 'KV not configured' });
+      if (!env.BRIEF_CACHE) {
+        console.log('[cache] /brief miss: KV not configured');
+        return json({ cached: false, reason: 'KV not configured' });
+      }
       try {
         const cached = await env.BRIEF_CACHE.get('latest', { type: 'json' });
-        if (!cached) return json({ cached: false });
+        if (!cached) {
+          console.log('[cache] /brief miss: no KV entry');
+          return json({ cached: false });
+        }
         const age = Date.now() - new Date(cached.generatedAt).getTime();
-        if (age > 60 * 60 * 1000) return json({ cached: false, reason: 'stale' });
+        if (age > 60 * 60 * 1000) {
+          console.log(`[cache] /brief miss: stale entry (${Math.round(age / 1000)}s old)`);
+          return json({ cached: false, reason: 'stale' });
+        }
+        console.log(`[cache] /brief hit: serving KV entry (${Math.round(age / 1000)}s old)`);
         return json({ cached: true, ...cached });
-      } catch {
+      } catch (e) {
+        console.log(`[cache] /brief miss: KV read error (${e?.message ?? 'unknown'})`);
         return json({ cached: false });
       }
     }
@@ -312,15 +323,20 @@ export default {
     // ─────────────────────────────────────────────────────────────────
 
     if (request.method === 'POST' && pathname === '/brief/save') {
-      if (!env.BRIEF_CACHE) return json({ ok: false, reason: 'KV not configured' });
+      if (!env.BRIEF_CACHE) {
+        console.log('[cache] /brief/save failed: KV not configured');
+        return json({ ok: false, reason: 'KV not configured' });
+      }
       try {
         const body = await request.json();
         await env.BRIEF_CACHE.put('latest', JSON.stringify({
           ...body,
           generatedAt: new Date().toISOString(),
         }), { expirationTtl: 3600 });
+        console.log('[cache] /brief/save success: KV updated');
         return json({ ok: true });
       } catch (e) {
+        console.log(`[cache] /brief/save failed: ${e.message}`);
         return json({ ok: false, error: e.message });
       }
     }
