@@ -136,10 +136,10 @@ export default {
       { url: 'https://blockworks.co/feed/',                                       source: 'Blockworks',       topic: 'btc' },
       { url: 'https://theblock.co/rss.xml',                                       source: 'The Block',        topic: 'eth' },
       { url: 'https://decrypt.co/feed',                                           source: 'Decrypt',          topic: 'eth' },
-      { url: 'https://dlnews.com/feed/',                                          source: 'DL News',          topic: 'general' },
+      { url: 'https://www.dlnews.com/arc/outboundfeeds/rss/',                     source: 'DL News',          topic: 'general' },
       { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',                   source: 'CoinDesk',         topic: 'general' },
-      { url: 'https://feeds.reuters.com/reuters/businessNews',                    source: 'Reuters Business', topic: 'macro' },
-      { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml',                     source: 'WSJ Markets',      topic: 'macro' },
+      { url: 'https://feeds.content.dowjones.io/public/rss/RSSMarketsMain',       source: 'Dow Jones Markets', topic: 'macro' },
+      { url: 'https://www.ft.com/markets?format=rss',                             source: 'FT Markets',       topic: 'macro' },
     ];
 
     function parseRSS(xml, sourceName, topic) {
