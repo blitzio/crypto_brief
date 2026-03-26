@@ -335,6 +335,13 @@ const fmtPct   = n  => n == null  ? 'N/A' : (n >= 0 ? '+' : '') + n.toFixed(2) +
 const arrowCls  = n => n >= 0 ? 'pos' : 'neg';
 const arrowChar = n => n >= 0 ? '▲' : '▼';
 const dirFromPct = p => Number.isFinite(p) ? (p > 0 ? 'pos' : p < 0 ? 'neg' : 'neu') : 'neu';
+const safeClass = (s = '') => String(s).toLowerCase().replace(/[^a-z0-9_-]/g, '');
+const escapeHtml = (s = '') => String(s)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
 
 // ─── DATA FETCHERS ──────────────────────────────────────────────────
 async function fetchPrices() {
@@ -517,7 +524,7 @@ function renderCard(id, coin, support, resist) {
 
 function renderBullets(id, arr) {
   document.getElementById(id).innerHTML =
-    (arr ?? []).map(b => `<li><strong>${b.label}:</strong> ${b.text}</li>`).join('');
+    (arr ?? []).map(b => `<li><strong>${escapeHtml(b.label)}:</strong> ${escapeHtml(b.text)}</li>`).join('');
 }
 
 function renderMacroCards(macro) {
@@ -577,16 +584,17 @@ function renderSources(items) {
     const title   = (n.title || 'Article').slice(0, 90) + ((n.title || '').length > 90 ? '…' : '');
     const snippet = (n.description || '').slice(0, 120) + ((n.description || '').length > 120 ? '…' : '');
     const topic = (n.topic || 'general').toLowerCase();
+    const topicClass = safeClass(topic) || 'general';
     const age = fmtAge(n.pubDate);
-    return `<a class="source-card" href="${n.url}" target="_blank" rel="noopener noreferrer">
-      <div class="source-tag">[${i + 1}] ${n.source || domain}</div>
-      <div class="source-title">${title}</div>
-      ${snippet ? `<div class="source-snippet">${snippet}</div>` : ''}
+    return `<a class="source-card" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer">
+      <div class="source-tag">[${i + 1}] ${escapeHtml(n.source || domain)}</div>
+      <div class="source-title">${escapeHtml(title)}</div>
+      ${snippet ? `<div class="source-snippet">${escapeHtml(snippet)}</div>` : ''}
       <div class="source-chips">
-        <span class="chip topic-${topic}">${topic}</span>
-        <span class="chip">${age}</span>
+        <span class="chip topic-${topicClass}">${escapeHtml(topic)}</span>
+        <span class="chip">${escapeHtml(age)}</span>
       </div>
-      <div class="source-meta"><span class="source-domain">${domain}</span><span>↗</span></div>
+      <div class="source-meta"><span class="source-domain">${escapeHtml(domain)}</span><span>↗</span></div>
     </a>`;
   }).join('');
 }
@@ -624,10 +632,10 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
   }
 
   document.getElementById('verdict-content').innerHTML =
-    `<p>${brief.verdict}</p>
-     <p><strong>Conviction Ranking:</strong> ${brief.ranking}</p>
-     <p><strong>Bull Trigger:</strong> ${brief.bullTrigger}<br/>
-        <strong>Bear Trigger:</strong> ${brief.bearTrigger}</p>`;
+    `<p>${escapeHtml(brief.verdict)}</p>
+     <p><strong>Conviction Ranking:</strong> ${escapeHtml(brief.ranking)}</p>
+     <p><strong>Bull Trigger:</strong> ${escapeHtml(brief.bullTrigger)}<br/>
+        <strong>Bear Trigger:</strong> ${escapeHtml(brief.bearTrigger)}</p>`;
 
   document.getElementById('brief-generated').textContent = fmtSGT(generatedTime);
   document.getElementById('footer-date').textContent     = fmtDate(generatedTime);
