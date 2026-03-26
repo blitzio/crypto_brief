@@ -64,7 +64,7 @@ export default {
       }
 
       if (!Number.isFinite(prev)) {
-        prev = [meta.regularMarketPreviousClose, meta.chartPreviousClose, meta.previousClose]
+        prev = [meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
           .find(v => Number.isFinite(v) && v > 0) ?? null;
       }
 
