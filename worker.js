@@ -40,6 +40,43 @@ export default {
     // MACRO HELPERS
     // ─────────────────────────────────────────────────────────────────
 
+    const getTradingDayKey = (timestamp, timeZone = 'UTC') => {
+      try {
+        return new Intl.DateTimeFormat('en-CA', {
+          timeZone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(new Date(timestamp * 1000));
+      } catch {
+        return new Date(timestamp * 1000).toISOString().slice(0, 10);
+      }
+    };
+
+    const derivePrevCloseFromHistory = (result, meta, price) => {
+      const timestamps = Array.isArray(result?.timestamp) ? result.timestamp : [];
+      const closes = result?.indicators?.quote?.[0]?.close ?? [];
+      const latestCloseByDay = new Map();
+      const timeZone = meta?.exchangeTimezoneName || 'UTC';
+
+      for (let i = 0; i < Math.min(timestamps.length, closes.length); i++) {
+        const timestamp = timestamps[i];
+        const close = closes[i];
+        if (!Number.isFinite(timestamp) || !Number.isFinite(close)) continue;
+        latestCloseByDay.set(getTradingDayKey(timestamp, timeZone), close);
+      }
+
+      const distinctDailyCloses = Array.from(latestCloseByDay.values());
+      if (distinctDailyCloses.length >= 2) return distinctDailyCloses[distinctDailyCloses.length - 2];
+      if (distinctDailyCloses.length === 1) return distinctDailyCloses[0];
+
+      const numericCloses = closes.filter(v => Number.isFinite(v));
+      if (numericCloses.length >= 2) return numericCloses[numericCloses.length - 2];
+      if (numericCloses.length === 1) return numericCloses[0];
+
+      return Number.isFinite(meta?.chartPreviousClose) ? meta.chartPreviousClose : price;
+    };
+
     const fetchYahoo = async (symbol) => {
       const res = await fetch(
         `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
@@ -53,13 +90,12 @@ export default {
 
       const price = meta.regularMarketPrice;
 
-      // Primary source for "today" move should be the latest regular-session
-      // previous close. Fallback to closes/history only when metadata is absent.
-      const closes = result?.indicators?.quote?.[0]?.close?.filter(v => Number.isFinite(v)) ?? [];
-      const prevFromMeta = [meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
+      // Prefer explicit previous-close metadata. When Yahoo omits it for indices,
+      // derive the prior close from the last distinct trading day in the history.
+      const prevFromMeta = [meta.regularMarketPreviousClose, meta.previousClose]
         .find(v => Number.isFinite(v));
-      const prevFromCloses = closes.length >= 2 ? closes[closes.length - 2] : closes[closes.length - 1];
-      const prev = prevFromMeta ?? prevFromCloses ?? price;
+      const prevFromHistory = derivePrevCloseFromHistory(result, meta, price);
+      const prev = prevFromMeta ?? prevFromHistory ?? price;
       if (!Number.isFinite(prev) || prev <= 0) throw new Error(`No previous close for ${symbol}`);
 
       return { price, pct: ((price - prev) / prev) * 100, source: 'Yahoo Finance' };
@@ -193,7 +229,7 @@ export default {
 
     if (request.method === 'GET' && pathname === '/macro') {
       const cache    = caches.default;
-      const cacheKey = new Request(new URL(request.url).origin + '/macro-v4');
+      const cacheKey = new Request(new URL(request.url).origin + '/macro-v5');
       const cached   = await cache.match(cacheKey);
       if (cached) return cached;
 
