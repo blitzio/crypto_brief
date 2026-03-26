@@ -332,6 +332,12 @@ const fmtCap   = n  => !n        ? 'N/A'
                      : n >= 1e9  ? '$' + (n / 1e9).toFixed(1)  + 'B'
                      : '$' + (n / 1e6).toFixed(0) + 'M';
 const fmtPct   = n  => n == null  ? 'N/A' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+const pctSourceHint = (m) => {
+  if (!m) return '';
+  if (m.pctSource === 'regularMarketChangePercent') return ' · Yahoo live %';
+  if (m.pctSource === 'derivedPreviousClose') return ' · Derived %';
+  return '';
+};
 const arrowCls  = n => n >= 0 ? 'pos' : 'neg';
 const arrowChar = n => n >= 0 ? '▲' : '▼';
 const dirFromPct = p => Number.isFinite(p) ? (p > 0 ? 'pos' : p < 0 ? 'neg' : 'neu') : 'neu';
@@ -542,15 +548,15 @@ function renderMacroCards(macro) {
       'neu'),
     card('USD / SGD',
       Number.isFinite(macro.usdsgd?.price) ? macro.usdsgd.price.toFixed(4) : '—',
-      Number.isFinite(macro.usdsgd?.pct)   ? fmtPct(macro.usdsgd.pct) + ' today' : 'Unavailable',
+      Number.isFinite(macro.usdsgd?.pct)   ? fmtPct(macro.usdsgd.pct) + ' today' + pctSourceHint(macro.usdsgd) : 'Unavailable',
       dirFromPct(macro.usdsgd?.pct)),
     card('S&P 500',
       Number.isFinite(macro.sp500?.price) ? '$' + macro.sp500.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—',
-      Number.isFinite(macro.sp500?.pct)   ? fmtPct(macro.sp500.pct) + ' today' : 'Unavailable',
+      Number.isFinite(macro.sp500?.pct)   ? fmtPct(macro.sp500.pct) + ' today' + pctSourceHint(macro.sp500) : 'Unavailable',
       dirFromPct(macro.sp500?.pct)),
     card('Gold',
       Number.isFinite(macro.gold?.price) ? '$' + macro.gold.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : '—',
-      Number.isFinite(macro.gold?.pct)   ? fmtPct(macro.gold.pct) + ' today' : 'Unavailable',
+      Number.isFinite(macro.gold?.pct)   ? fmtPct(macro.gold.pct) + ' today' + pctSourceHint(macro.gold) : 'Unavailable',
       dirFromPct(macro.gold?.pct)),
     card('Stablecoins',
       macro.stablecoins?.total ?? '—',
