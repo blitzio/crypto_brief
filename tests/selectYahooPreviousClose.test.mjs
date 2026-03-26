@@ -75,6 +75,34 @@ const NY = 'America/New_York';
   assert.equal(prev, 100, 'same-day with no prior close bar should use regularMarketPreviousClose');
 }
 
+// Case 5b: Latest daily bar can be stamped at 00:00 UTC and look like a different exchange day.
+// Should still treat it as current session and use prior close.
+{
+  const rawCloses = [6556.37, 6591.9];
+  const rawTimestamps = [1742860800, 1742947200]; // 2025-03-25/26 00:00:00 UTC
+  const meta = {
+    regularMarketTime: 1743019200, // 2025-03-26 20:00:00 UTC (market day context)
+    exchangeTimezoneName: NY,
+  };
+  const price = 6591.9;
+  const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
+  assert.equal(prev, 6556.37, 'UTC-stamped daily bar should still use prior close baseline');
+}
+
+// Case 5c: When prior close bar is missing and drift is tiny, metadata previous close
+// should be preferred over last close to preserve non-zero 1D move.
+{
+  const rawCloses = [null, 6591.9];
+  const rawTimestamps = [1742860800, null];
+  const meta = {
+    regularMarketPreviousClose: 6556.37,
+    exchangeTimezoneName: NY,
+  };
+  const price = 6591.9001;
+  const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
+  assert.equal(prev, 6556.37, 'tiny drift with missing prior bar should use metadata previous close');
+}
+
 console.log('selectYahooPreviousClose tests passed');
 
 // Case 6: Prefer Yahoo's own regularMarketChangePercent when available.
@@ -103,6 +131,20 @@ console.log('selectYahooPreviousClose tests passed');
   };
   const { pct, pctSource } = resolveYahooPct({ rawCloses, rawTimestamps, meta, price });
   assert.ok(Math.abs(pct - ((103 - 102) / 102 * 100)) < 1e-9, 'should derive pct from previous-close baseline');
+  assert.equal(pctSource, 'derivedPreviousClose');
+}
+
+// Case 7b: Prefer metadata regularMarketPreviousClose for derived percent when present.
+{
+  const price = 6591.9;
+  const rawCloses = [null, 6591.9];
+  const rawTimestamps = [1742860800, null];
+  const meta = {
+    regularMarketPreviousClose: 6556.37,
+    exchangeTimezoneName: NY,
+  };
+  const { pct, pctSource } = resolveYahooPct({ rawCloses, rawTimestamps, meta, price });
+  assert.ok(Math.abs(pct - ((6591.9 - 6556.37) / 6556.37 * 100)) < 1e-12, 'should derive pct from regularMarketPreviousClose metadata');
   assert.equal(pctSource, 'derivedPreviousClose');
 }
 
