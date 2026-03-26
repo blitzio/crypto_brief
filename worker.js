@@ -49,16 +49,18 @@ export default {
       const data = await res.json();
       const result = data?.chart?.result?.[0];
       const meta = result?.meta;
-      if (!meta?.regularMarketPrice) throw new Error(`No price for ${symbol}`);
+      if (!Number.isFinite(meta?.regularMarketPrice)) throw new Error(`No price for ${symbol}`);
 
       const price = meta.regularMarketPrice;
 
-      // Use last two actual closes from the indicators array instead of
-      // chartPreviousClose — avoids weekend/non-trading day bugs.
-      const closes = result?.indicators?.quote?.[0]?.close?.filter(v => v != null) ?? [];
-      const prev = closes.length >= 2
-        ? closes[closes.length - 2]
-        : (meta.chartPreviousClose ?? meta.previousClose ?? price);
+      // Primary source for "today" move should be the latest regular-session
+      // previous close. Fallback to closes/history only when metadata is absent.
+      const closes = result?.indicators?.quote?.[0]?.close?.filter(v => Number.isFinite(v)) ?? [];
+      const prevFromMeta = [meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
+        .find(v => Number.isFinite(v));
+      const prevFromCloses = closes.length >= 2 ? closes[closes.length - 2] : closes[closes.length - 1];
+      const prev = prevFromMeta ?? prevFromCloses ?? price;
+      if (!Number.isFinite(prev) || prev <= 0) throw new Error(`No previous close for ${symbol}`);
 
       return { price, pct: ((price - prev) / prev) * 100, source: 'Yahoo Finance' };
     };
