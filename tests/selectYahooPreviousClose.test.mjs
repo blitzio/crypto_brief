@@ -3,18 +3,18 @@ import { selectYahooPreviousClose } from '../worker.js';
 
 const NY = 'America/New_York';
 
-// Case 1: Duplicate close values with missing timestamp on latest close.
-// Should skip sameTradingDay and rely on drift fallback result.
+// Case 1: Missing timestamp on latest close.
+// Should skip sameTradingDay and avoid prior-close fallback under drift.
 {
-  const rawCloses = [100, 101, 101];
-  const rawTimestamps = [1709251200, 1709337600, undefined];
+  const rawCloses = [100, 101];
+  const rawTimestamps = [1709251200, undefined];
   const meta = {
     regularMarketTime: 1709339000,
     exchangeTimezoneName: NY,
   };
-  const price = 101;
+  const price = 101.05; // <0.2% drift from lastClose
   const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
-  assert.equal(prev, 101, 'missing latest close timestamp should route through drift fallback result');
+  assert.equal(prev, 101, 'missing latest close timestamp should keep lastClose, not priorClose');
 }
 
 // Case 2: Latest close timestamp exists and is same trading day as market time.
