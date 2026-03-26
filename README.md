@@ -127,7 +127,7 @@ The model is instructed to:
 
 ## Macro percentage accuracy note
 
-Yahoo Finance fields can disagree depending on session state. The worker now uses `regularMarketPreviousClose` as the primary baseline for "today" percentage changes, and only falls back to `previousClose` / `chartPreviousClose` / close-history when needed. This prevents intraday misreads (e.g., 0.00% when the index is clearly moving) while still handling weekends/non-trading periods gracefully.
+Yahoo Finance fields can disagree depending on session state. The worker now requires a finite `regularMarketPrice` and uses timestamped close-history first: if the latest chart close is on the same exchange trading day as `regularMarketTime`, it treats that bar as current-session and uses the prior close baseline (when valid); if not, it uses the latest close baseline. If timestamps are missing or ambiguous, it falls back to a 0.2% drift heuristic between `regularMarketPrice` and latest close to decide prior-vs-latest close. If no close-history baseline is available, it falls back to `regularMarketPreviousClose`, then `previousClose`, then `chartPreviousClose`, and finally latest close when valid. It throws if no valid positive previous baseline exists.
 
 ---
 

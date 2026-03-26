@@ -18,6 +18,129 @@
  * All news via free RSS feeds — no Tavily, no paid news API.
  */
 
+export function selectYahooPreviousClose({ rawCloses = [], rawTimestamps = [], meta = {}, price }) {
+  const lastCloseIdx = (() => {
+    for (let i = rawCloses.length - 1; i >= 0; i--) {
+      if (Number.isFinite(rawCloses[i])) return i;
+    }
+    return -1;
+  })();
+  const priorCloseIdx = (() => {
+    for (let i = lastCloseIdx - 1; i >= 0; i--) {
+      if (Number.isFinite(rawCloses[i])) return i;
+    }
+    return -1;
+  })();
+
+  const lastClose = lastCloseIdx >= 0 ? rawCloses[lastCloseIdx] : null;
+  const priorClose = priorCloseIdx >= 0 ? rawCloses[priorCloseIdx] : null;
+  const lastCloseTs = lastCloseIdx >= 0 ? rawTimestamps[lastCloseIdx] : null;
+  const metaPrev = [meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
+    .find(v => Number.isFinite(v) && v > 0) ?? null;
+
+  let prev = null;
+  if (Number.isFinite(lastClose) && lastClose > 0) {
+    const hasPrior = Number.isFinite(priorClose) && priorClose > 0;
+    const marketTime = Number.isFinite(meta?.regularMarketTime) ? meta.regularMarketTime : null;
+    const exchangeTz = meta?.exchangeTimezoneName || 'UTC';
+    const dayKey = (ts) => new Intl.DateTimeFormat('en-CA', {
+      timeZone: exchangeTz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date(ts * 1000));
+
+    // If the latest chart close is from the same exchange day as regularMarketTime,
+    // treat it as current-session and use the prior close baseline when available.
+    // Yahoo daily bars can be timestamped at period start (e.g. 00:00 UTC),
+    // which may appear as a different local exchange day even for the current session.
+    // In that case, matching UTC calendar day is a safer signal than local-day equality.
+    if (marketTime && Number.isFinite(lastCloseTs)) {
+      const sameTradingDay = dayKey(marketTime) === dayKey(lastCloseTs);
+      const utcDay = (ts) => new Date(ts * 1000).toISOString().slice(0, 10);
+      const sameUtcDay = utcDay(marketTime) === utcDay(lastCloseTs);
+      const treatAsCurrentSession = sameTradingDay || sameUtcDay;
+      if (treatAsCurrentSession && hasPrior) {
+        prev = priorClose;
+      } else if (treatAsCurrentSession && Number.isFinite(metaPrev)) {
+        // Some Yahoo responses only include one finite close for the current session.
+        // In that case, use metadata previous close instead of zeroing intraday change.
+        prev = metaPrev;
+      } else if (!treatAsCurrentSession) {
+        prev = lastClose;
+      }
+    }
+
+    // Fallback when timestamps are missing/ambiguous: infer via drift threshold.
+    // Only allow prior-close drift fallback when the latest close has a usable timestamp.
+    if (!Number.isFinite(prev)) {
+      const drift = Math.abs(price - lastClose) / lastClose;
+      const canUsePriorOnDrift = hasPrior && Number.isFinite(lastCloseTs);
+      if (drift <= 0.002 && canUsePriorOnDrift) {
+        prev = priorClose;
+      } else if (drift <= 0.002 && Number.isFinite(metaPrev) && metaPrev > 0) {
+        // When chart close is effectively equal to price and prior bar is unavailable,
+        // prefer metadata previous close to avoid collapsing 1D change to ~0%.
+        prev = metaPrev;
+      } else {
+        prev = lastClose;
+      }
+    }
+  }
+
+  if (!Number.isFinite(prev)) {
+    prev = metaPrev;
+  }
+
+  if (!Number.isFinite(prev) && Number.isFinite(lastClose) && lastClose > 0) {
+    prev = lastClose;
+  }
+
+  return { prev, lastClose, priorClose, lastCloseTs };
+}
+
+export function resolveYahooPct({ rawCloses = [], rawTimestamps = [], meta = {}, price }) {
+  if (Number.isFinite(meta?.regularMarketChangePercent)) {
+    return { pct: meta.regularMarketChangePercent, pctSource: 'regularMarketChangePercent' };
+  }
+
+  if (Number.isFinite(meta?.regularMarketPreviousClose) && meta.regularMarketPreviousClose > 0) {
+    return {
+      pct: ((price - meta.regularMarketPreviousClose) / meta.regularMarketPreviousClose) * 100,
+      pctSource: 'derivedPreviousClose'
+    };
+  }
+
+  const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
+  if (!Number.isFinite(prev) || prev <= 0) throw new Error('No previous close baseline');
+  return { pct: ((price - prev) / prev) * 100, pctSource: 'derivedPreviousClose' };
+}
+
+export function resolveYahooQuotePct({ quote = {} }) {
+  const price = Number.isFinite(quote?.regularMarketPrice) ? quote.regularMarketPrice : null;
+  if (!Number.isFinite(price)) return null;
+
+  if (Number.isFinite(quote?.regularMarketChangePercent)) {
+    return {
+      price,
+      pct: quote.regularMarketChangePercent,
+      pctSource: 'quoteRegularMarketChangePercent'
+    };
+  }
+
+  const prev = [quote.regularMarketPreviousClose, quote.previousClose]
+    .find(v => Number.isFinite(v) && v > 0) ?? null;
+  if (Number.isFinite(prev)) {
+    return {
+      price,
+      pct: ((price - prev) / prev) * 100,
+      pctSource: 'quoteDerivedPreviousClose'
+    };
+  }
+
+  return null;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const cors = {
@@ -28,7 +151,9 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
 
-    const { pathname } = new URL(request.url);
+    const url = new URL(request.url);
+    const { pathname } = url;
+    const debugNoCache = url.searchParams.get('nocache') === '1';
 
     const json = (data, status = 200, extra = {}) =>
       new Response(JSON.stringify(data), {
@@ -40,65 +165,47 @@ export default {
     // MACRO HELPERS
     // ─────────────────────────────────────────────────────────────────
 
-    const getTradingDayKey = (timestamp, timeZone = 'UTC') => {
-      try {
-        return new Intl.DateTimeFormat('en-CA', {
-          timeZone,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-        }).format(new Date(timestamp * 1000));
-      } catch {
-        return new Date(timestamp * 1000).toISOString().slice(0, 10);
-      }
-    };
-
-    const derivePrevCloseFromHistory = (result, meta, price) => {
-      const timestamps = Array.isArray(result?.timestamp) ? result.timestamp : [];
-      const closes = result?.indicators?.quote?.[0]?.close ?? [];
-      const latestCloseByDay = new Map();
-      const timeZone = meta?.exchangeTimezoneName || 'UTC';
-
-      for (let i = 0; i < Math.min(timestamps.length, closes.length); i++) {
-        const timestamp = timestamps[i];
-        const close = closes[i];
-        if (!Number.isFinite(timestamp) || !Number.isFinite(close)) continue;
-        latestCloseByDay.set(getTradingDayKey(timestamp, timeZone), close);
-      }
-
-      const distinctDailyCloses = Array.from(latestCloseByDay.values());
-      if (distinctDailyCloses.length >= 2) return distinctDailyCloses[distinctDailyCloses.length - 2];
-      if (distinctDailyCloses.length === 1) return distinctDailyCloses[0];
-
-      const numericCloses = closes.filter(v => Number.isFinite(v));
-      if (numericCloses.length >= 2) return numericCloses[numericCloses.length - 2];
-      if (numericCloses.length === 1) return numericCloses[0];
-
-      return Number.isFinite(meta?.chartPreviousClose) ? meta.chartPreviousClose : price;
-    };
-
     const fetchYahoo = async (symbol) => {
+      const headers = { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Referer': 'https://finance.yahoo.com/' };
+      let quoteErr = null;
+
+      // Primary path: quote endpoint is the most direct source for 1D market change.
+      try {
+        const quoteRes = await fetch(
+          `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`,
+          { headers }
+        );
+        if (quoteRes.ok) {
+          const quoteData = await quoteRes.json();
+          const quote = quoteData?.quoteResponse?.result?.[0];
+          const fromQuote = resolveYahooQuotePct({ quote });
+          if (fromQuote) return { ...fromQuote, source: 'Yahoo Finance' };
+          quoteErr = `quote-empty:${symbol}`;
+        } else {
+          quoteErr = `quote-http-${quoteRes.status}:${symbol}`;
+        }
+      } catch (err) {
+        quoteErr = `quote-throw:${symbol}:${err?.message ?? 'unknown'}`;
+      }
+
+      // Fallback path: chart endpoint with baseline-selection logic.
       const res = await fetch(
         `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
-        { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Referer': 'https://finance.yahoo.com/' } }
+        { headers }
       );
-      if (!res.ok) throw new Error(`Yahoo ${symbol} HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`Yahoo ${symbol} chart HTTP ${res.status} (${quoteErr ?? 'quote-ok-no-data'})`);
       const data = await res.json();
       const result = data?.chart?.result?.[0];
       const meta = result?.meta;
-      if (!Number.isFinite(meta?.regularMarketPrice)) throw new Error(`No price for ${symbol}`);
-
+      if (!Number.isFinite(meta?.regularMarketPrice)) {
+        throw new Error(`Yahoo ${symbol} chart missing regularMarketPrice (${quoteErr ?? 'quote-ok-no-data'})`);
+      }
       const price = meta.regularMarketPrice;
 
-      // Prefer explicit previous-close metadata. When Yahoo omits it for indices,
-      // derive the prior close from the last distinct trading day in the history.
-      const prevFromMeta = [meta.regularMarketPreviousClose, meta.previousClose]
-        .find(v => Number.isFinite(v));
-      const prevFromHistory = derivePrevCloseFromHistory(result, meta, price);
-      const prev = prevFromMeta ?? prevFromHistory ?? price;
-      if (!Number.isFinite(prev) || prev <= 0) throw new Error(`No previous close for ${symbol}`);
-
-      return { price, pct: ((price - prev) / prev) * 100, source: 'Yahoo Finance' };
+      const rawCloses = result?.indicators?.quote?.[0]?.close ?? [];
+      const rawTimestamps = result?.timestamp ?? [];
+      const { pct, pctSource } = resolveYahooPct({ rawCloses, rawTimestamps, meta, price });
+      return { price, pct, pctSource, source: 'Yahoo Finance' };
     };
 
     const fetchFedRate = async () => {
@@ -230,7 +337,7 @@ export default {
     if (request.method === 'GET' && pathname === '/macro') {
       const cache    = caches.default;
       const cacheKey = new Request(new URL(request.url).origin + '/macro-v5');
-      const cached   = await cache.match(cacheKey);
+      const cached   = debugNoCache ? null : await cache.match(cacheKey);
       if (cached) return cached;
 
       const [goldR, sp500R, usdsgdR, stablecoinsR, fedRateR, cpiR, sentimentR] = await Promise.allSettled([
@@ -254,6 +361,12 @@ export default {
       const cpi         = settle(cpiR,         { value: null, yoy: 'N/A', period: 'Unavailable', source: 'unavailable' });
       const sentiment   = settle(sentimentR,   { value: null, classification: 'Unavailable', dir: 'neu', source: 'unavailable' });
 
+      if (sp500?.source === 'unavailable') {
+        console.log(`[macro] SP500 unavailable: ${sp500?.error ?? 'unknown'}`);
+      } else {
+        console.log(`[macro] SP500 ok: source=${sp500?.source} pctSource=${sp500?.pctSource ?? 'none'} price=${sp500?.price ?? 'n/a'} pct=${sp500?.pct ?? 'n/a'}`);
+      }
+
       const response = json(
         { snapshotTime: new Date().toISOString(), fedRate, usdsgd, sp500, gold, stablecoins, cryptoSentiment: sentiment, cpi },
         200, { 'Cache-Control': 'public, max-age=300' }
@@ -269,7 +382,7 @@ export default {
     if (request.method === 'GET' && pathname === '/news') {
       const cache    = caches.default;
       const cacheKey = new Request(new URL(request.url).origin + '/news-rss-v4');
-      const cached   = await cache.match(cacheKey);
+      const cached   = debugNoCache ? null : await cache.match(cacheKey);
       if (cached) return cached;
 
       const feedSettled = await Promise.allSettled(
