@@ -104,6 +104,13 @@ export function resolveYahooPct({ rawCloses = [], rawTimestamps = [], meta = {},
     return { pct: meta.regularMarketChangePercent, pctSource: 'regularMarketChangePercent' };
   }
 
+  if (Number.isFinite(meta?.regularMarketPreviousClose) && meta.regularMarketPreviousClose > 0) {
+    return {
+      pct: ((price - meta.regularMarketPreviousClose) / meta.regularMarketPreviousClose) * 100,
+      pctSource: 'derivedPreviousClose'
+    };
+  }
+
   const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
   if (!Number.isFinite(prev) || prev <= 0) throw new Error('No previous close baseline');
   return { pct: ((price - prev) / prev) * 100, pctSource: 'derivedPreviousClose' };

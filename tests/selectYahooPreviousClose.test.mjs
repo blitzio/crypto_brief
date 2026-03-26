@@ -134,6 +134,20 @@ console.log('selectYahooPreviousClose tests passed');
   assert.equal(pctSource, 'derivedPreviousClose');
 }
 
+// Case 7b: Prefer metadata regularMarketPreviousClose for derived percent when present.
+{
+  const price = 6591.9;
+  const rawCloses = [null, 6591.9];
+  const rawTimestamps = [1742860800, null];
+  const meta = {
+    regularMarketPreviousClose: 6556.37,
+    exchangeTimezoneName: NY,
+  };
+  const { pct, pctSource } = resolveYahooPct({ rawCloses, rawTimestamps, meta, price });
+  assert.ok(Math.abs(pct - ((6591.9 - 6556.37) / 6556.37 * 100)) < 1e-12, 'should derive pct from regularMarketPreviousClose metadata');
+  assert.equal(pctSource, 'derivedPreviousClose');
+}
+
 console.log('resolveYahooPct tests passed');
 
 // Case 8: Quote endpoint percent should be preferred when present.
