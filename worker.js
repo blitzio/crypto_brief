@@ -174,7 +174,7 @@ export default {
         clearTimeout(timeout);
         if (!res.ok) return [];
         const xml = await res.text();
-        return parseRSS(xml, sourceName, topic).slice(0, 4);
+        return parseRSS(xml, sourceName, topic).slice(0, 8);
       } catch {
         clearTimeout(timeout);
         return [];
@@ -253,7 +253,7 @@ export default {
 
       // SAFE FIX:
       // 1) Keep only recent items from the last 72 hours
-      // 2) Exclude obvious low-signal WSJ roundup items
+      // 2) Exclude obvious low-signal Dow Jones roundup items
       const now = Date.now();
       const MAX_AGE_MS = 72 * 60 * 60 * 1000;
 
@@ -263,7 +263,7 @@ export default {
         if ((now - ts) > MAX_AGE_MS) return false;
 
         if (
-          item.source === 'WSJ Markets' &&
+          item.source === 'Dow Jones Markets' &&
           /market talk|roundup/i.test(item.title)
         ) {
           return false;

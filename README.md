@@ -31,7 +31,7 @@ GitHub Pages (index.html)
     └── Cloudflare Worker (worker.js)
             ├── GET /macro     → Yahoo Finance, NY Fed EFFR, BLS CPI,
             │                    Alternative.me Fear & Greed, DefiLlama stablecoins
-            ├── GET /news      → 8 RSS feeds, sorted by recency, top 20 articles
+            ├── GET /news      → 8 RSS feeds, 72h freshness filter, sorted by recency, top 20 articles
             ├── POST /         → Gemini 2.5 Flash brief generation
             ├── GET /brief     → serve KV-cached brief (< 1 hour old)
             └── POST /brief/save → persist brief to Cloudflare KV
@@ -89,7 +89,7 @@ Push to GitHub — done.
 | Alternative.me | Crypto Fear & Greed Index | Free |
 | DefiLlama | USDT + USDC circulating supply | Free |
 | Yahoo Finance | S&P 500, Gold, USD/SGD | Free (via Worker proxy) |
-| CoinDesk, The Block, Decrypt, Blockworks, DL News, Reuters, WSJ | News via RSS | Free |
+| CoinDesk, CoinDesk Markets, The Block, Blockworks, Decrypt, DL News, Dow Jones Markets, FT Markets | News via RSS | Free |
 | Gemini 2.5 Flash | AI analysis | Free tier: 20 RPD — add billing for 1,000 RPD |
 
 ---

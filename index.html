@@ -196,7 +196,7 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
     <div class="rbar-info">
       <b>Data:</b> CoinGecko · Yahoo Finance · NY Fed · BLS · Alternative.me · DefiLlama
       &nbsp;·&nbsp;
-      <b>News:</b> CoinDesk · The Block · Reuters · Decrypt · more
+      <b>News:</b> CoinDesk · The Block · Decrypt · Dow Jones · FT · more
       &nbsp;·&nbsp;
       <b>Analysis:</b> Gemini 2.5 Flash
     </div>
@@ -295,7 +295,7 @@ ul.ib>li strong{font-weight:700;color:var(--text);}
 
     <div class="debug-panel" id="debug-panel">
       <h4>Raw News Articles Fed to Gemini</h4>
-      <p style="font-size:.76rem;color:var(--muted);margin-bottom:8px;">These are the exact RSS news articles fetched from CoinDesk, The Block, Reuters, Decrypt, and Cointelegraph — passed to Gemini as context for the analysis above.</p>
+      <p style="font-size:.76rem;color:var(--muted);margin-bottom:8px;">These are the exact RSS news articles fetched from CoinDesk, The Block, Decrypt, Dow Jones Markets, FT Markets, and other active feeds — passed to Gemini as context for the analysis above.</p>
       <pre id="debug-content">Loading…</pre>
     </div>
 
@@ -428,6 +428,14 @@ GENERAL:
 - Support and resistance levels must be actual dollar figures derived from the current price data
 - Avoid explicit buy/sell language; frame verdict as market conditions and levels to monitor
 - Be concise — 1-2 sentences per bullet maximum
+
+VERDICT FIELDS — CRITICAL:
+- verdict must be 2-3 full sentences (never a short label like "Cautious Optimism", "Neutral", or "Bullish")
+- Sentence 1: identify the current market regime
+- Sentence 2: explain the main drivers behind that regime
+- Sentence 3 (if used): explain what matters next or the practical positioning implication
+- ranking must remain a single string, but include a short reason for each asset order
+- bullTrigger and bearTrigger must each be exactly one concrete sentence tied to a level, catalyst, or invalidation condition
 
 MACRO BULLETS — CRITICAL:
 - The macro gauge values (Fed Rate, S&P 500, Gold, Stablecoins, Fear & Greed, CPI) are ALREADY shown as data cards above these bullets — do NOT restate them
