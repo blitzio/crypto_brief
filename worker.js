@@ -76,9 +76,14 @@ export default {
           day: '2-digit'
         }).format(new Date(ts * 1000));
 
+        const tsMatchesLatestClose =
+          Number.isFinite(lastBar?.close) &&
+          Number.isFinite(lastClose) &&
+          Math.abs(lastBar.close - lastClose) < 1e-8;
+
         // If the latest chart close is from the same exchange day as regularMarketTime,
         // treat it as current-session and use the prior close baseline when available.
-        if (marketTime && lastBar?.ts) {
+        if (marketTime && lastBar?.ts && tsMatchesLatestClose) {
           const sameTradingDay = dayKey(marketTime) === dayKey(lastBar.ts);
           if (sameTradingDay && hasPrior) {
             prev = priorClose;
