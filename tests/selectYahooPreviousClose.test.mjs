@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { resolveYahooPct, selectYahooPreviousClose } from '../worker.js';
+import { resolveYahooPct, resolveYahooQuotePct, selectYahooPreviousClose } from '../worker.js';
 
 const NY = 'America/New_York';
 
@@ -107,3 +107,29 @@ console.log('selectYahooPreviousClose tests passed');
 }
 
 console.log('resolveYahooPct tests passed');
+
+// Case 8: Quote endpoint percent should be preferred when present.
+{
+  const quote = {
+    regularMarketPrice: 6591.9,
+    regularMarketChangePercent: 0.54,
+    regularMarketPreviousClose: 6556.37,
+  };
+  const out = resolveYahooQuotePct({ quote });
+  assert.equal(out.price, 6591.9);
+  assert.equal(out.pct, 0.54);
+  assert.equal(out.pctSource, 'quoteRegularMarketChangePercent');
+}
+
+// Case 9: Quote endpoint should derive from previous close when change percent is missing.
+{
+  const quote = {
+    regularMarketPrice: 103,
+    regularMarketPreviousClose: 100,
+  };
+  const out = resolveYahooQuotePct({ quote });
+  assert.ok(Math.abs(out.pct - 3) < 1e-12);
+  assert.equal(out.pctSource, 'quoteDerivedPreviousClose');
+}
+
+console.log('resolveYahooQuotePct tests passed');

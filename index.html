@@ -334,8 +334,8 @@ const fmtCap   = n  => !n        ? 'N/A'
 const fmtPct   = n  => n == null  ? 'N/A' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const pctSourceHint = (m) => {
   if (!m) return '';
-  if (m.pctSource === 'regularMarketChangePercent') return ' · Yahoo live %';
-  if (m.pctSource === 'derivedPreviousClose') return ' · Derived %';
+  if (m.pctSource === 'regularMarketChangePercent' || m.pctSource === 'quoteRegularMarketChangePercent') return ' · Yahoo live %';
+  if (m.pctSource === 'derivedPreviousClose' || m.pctSource === 'quoteDerivedPreviousClose') return ' · Derived %';
   return '';
 };
 const arrowCls  = n => n >= 0 ? 'pos' : 'neg';

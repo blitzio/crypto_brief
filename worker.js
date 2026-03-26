@@ -95,6 +95,31 @@ export function resolveYahooPct({ rawCloses = [], rawTimestamps = [], meta = {},
   return { pct: ((price - prev) / prev) * 100, pctSource: 'derivedPreviousClose' };
 }
 
+export function resolveYahooQuotePct({ quote = {} }) {
+  const price = Number.isFinite(quote?.regularMarketPrice) ? quote.regularMarketPrice : null;
+  if (!Number.isFinite(price)) return null;
+
+  if (Number.isFinite(quote?.regularMarketChangePercent)) {
+    return {
+      price,
+      pct: quote.regularMarketChangePercent,
+      pctSource: 'quoteRegularMarketChangePercent'
+    };
+  }
+
+  const prev = [quote.regularMarketPreviousClose, quote.previousClose]
+    .find(v => Number.isFinite(v) && v > 0) ?? null;
+  if (Number.isFinite(prev)) {
+    return {
+      price,
+      pct: ((price - prev) / prev) * 100,
+      pctSource: 'quoteDerivedPreviousClose'
+    };
+  }
+
+  return null;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const cors = {
@@ -118,16 +143,32 @@ export default {
     // ─────────────────────────────────────────────────────────────────
 
     const fetchYahoo = async (symbol) => {
+      const headers = { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Referer': 'https://finance.yahoo.com/' };
+
+      // Primary path: quote endpoint is the most direct source for 1D market change.
+      try {
+        const quoteRes = await fetch(
+          `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`,
+          { headers }
+        );
+        if (quoteRes.ok) {
+          const quoteData = await quoteRes.json();
+          const quote = quoteData?.quoteResponse?.result?.[0];
+          const fromQuote = resolveYahooQuotePct({ quote });
+          if (fromQuote) return { ...fromQuote, source: 'Yahoo Finance' };
+        }
+      } catch {}
+
+      // Fallback path: chart endpoint with baseline-selection logic.
       const res = await fetch(
         `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
-        { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Referer': 'https://finance.yahoo.com/' } }
+        { headers }
       );
       if (!res.ok) throw new Error(`Yahoo ${symbol} HTTP ${res.status}`);
       const data = await res.json();
       const result = data?.chart?.result?.[0];
       const meta = result?.meta;
       if (!Number.isFinite(meta?.regularMarketPrice)) throw new Error(`No price for ${symbol}`);
-
       const price = meta.regularMarketPrice;
 
       const rawCloses = result?.indicators?.quote?.[0]?.close ?? [];
