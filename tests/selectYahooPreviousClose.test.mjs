@@ -89,6 +89,20 @@ const NY = 'America/New_York';
   assert.equal(prev, 6556.37, 'UTC-stamped daily bar should still use prior close baseline');
 }
 
+// Case 5c: When prior close bar is missing and drift is tiny, metadata previous close
+// should be preferred over last close to preserve non-zero 1D move.
+{
+  const rawCloses = [null, 6591.9];
+  const rawTimestamps = [1742860800, null];
+  const meta = {
+    regularMarketPreviousClose: 6556.37,
+    exchangeTimezoneName: NY,
+  };
+  const price = 6591.9001;
+  const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
+  assert.equal(prev, 6556.37, 'tiny drift with missing prior bar should use metadata previous close');
+}
+
 console.log('selectYahooPreviousClose tests passed');
 
 // Case 6: Prefer Yahoo's own regularMarketChangePercent when available.

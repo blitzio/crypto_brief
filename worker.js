@@ -76,7 +76,15 @@ export function selectYahooPreviousClose({ rawCloses = [], rawTimestamps = [], m
     if (!Number.isFinite(prev)) {
       const drift = Math.abs(price - lastClose) / lastClose;
       const canUsePriorOnDrift = hasPrior && Number.isFinite(lastCloseTs);
-      prev = (drift <= 0.002 && canUsePriorOnDrift) ? priorClose : lastClose;
+      if (drift <= 0.002 && canUsePriorOnDrift) {
+        prev = priorClose;
+      } else if (drift <= 0.002 && Number.isFinite(metaPrev) && metaPrev > 0) {
+        // When chart close is effectively equal to price and prior bar is unavailable,
+        // prefer metadata previous close to avoid collapsing 1D change to ~0%.
+        prev = metaPrev;
+      } else {
+        prev = lastClose;
+      }
     }
   }
 
