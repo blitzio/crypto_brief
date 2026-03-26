@@ -49,16 +49,30 @@ export default {
       const data = await res.json();
       const result = data?.chart?.result?.[0];
       const meta = result?.meta;
-      if (!meta?.regularMarketPrice) throw new Error(`No price for ${symbol}`);
+      if (!Number.isFinite(meta?.regularMarketPrice)) throw new Error(`No price for ${symbol}`);
 
       const price = meta.regularMarketPrice;
 
-      // Use last two actual closes from the indicators array instead of
-      // chartPreviousClose — avoids weekend/non-trading day bugs.
-      const closes = result?.indicators?.quote?.[0]?.close?.filter(v => v != null) ?? [];
-      const prev = closes.length >= 2
-        ? closes[closes.length - 2]
-        : (meta.chartPreviousClose ?? meta.previousClose ?? price);
+      // Yahoo meta fields can disagree by session/state for indices.
+      // Prefer deriving prev from close history using price-vs-last-close alignment:
+      // - If price ~= latest close, we are likely at/after session close → compare vs prior close.
+      // - Otherwise (intraday), compare vs latest close.
+      const closes = result?.indicators?.quote?.[0]?.close?.filter(v => Number.isFinite(v)) ?? [];
+      const lastClose = closes.length ? closes[closes.length - 1] : null;
+      const priorClose = closes.length >= 2 ? closes[closes.length - 2] : null;
+
+      let prev = null;
+      if (Number.isFinite(lastClose) && Number.isFinite(priorClose)) {
+        const closeGap = Math.abs(price - lastClose) / Math.abs(lastClose);
+        prev = closeGap <= 0.002 ? priorClose : lastClose; // 0.2% tolerance for delayed/rounded quotes
+      }
+
+      if (!Number.isFinite(prev)) {
+        prev = [meta.regularMarketPreviousClose, meta.chartPreviousClose, meta.previousClose]
+          .find(v => Number.isFinite(v));
+      }
+      if (!Number.isFinite(prev) && Number.isFinite(lastClose)) prev = lastClose;
+      if (!Number.isFinite(prev) || prev <= 0) throw new Error(`No previous close for ${symbol}`);
 
       return { price, pct: ((price - prev) / prev) * 100, source: 'Yahoo Finance' };
     };

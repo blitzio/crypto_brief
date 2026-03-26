@@ -127,7 +127,7 @@ The model is instructed to:
 
 ## Macro percentage accuracy note
 
-Yahoo Finance's `chartPreviousClose` field can return a stale reference price on weekends and non-trading days, causing incorrect daily percentage changes. The worker fixes this by reading the last two actual closes from the `indicators.quote.close` array instead, giving accurate day-over-day figures regardless of when the page is loaded.
+Yahoo Finance fields can disagree depending on session state, especially for index symbols. The worker now computes the "today" baseline using recent close-history alignment (price vs latest close), then falls back to metadata fields (`regularMarketPreviousClose`, `chartPreviousClose`, `previousClose`) only when needed. This avoids both intraday and end-of-session misreads.
 
 ---
 
