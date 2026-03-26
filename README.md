@@ -127,7 +127,7 @@ The model is instructed to:
 
 ## Macro percentage accuracy note
 
-Yahoo Finance fields can disagree depending on session state. The worker now requires a finite `regularMarketPrice` and uses close-history first: it compares `regularMarketPrice` vs latest close and, when drift is within 0.2%, treats that latest close as current-session noise and uses the prior close baseline; otherwise it uses the latest close baseline. If close-history is unavailable, it falls back to `regularMarketPreviousClose`, then `chartPreviousClose`, then `previousClose`, and finally latest close when valid. It throws if no valid positive previous baseline exists.
+Yahoo Finance fields can disagree depending on session state. The worker now requires a finite `regularMarketPrice` and uses close-history first: it compares `regularMarketPrice` vs latest close and, when drift is within 0.2%, treats that latest close as current-session noise and uses the prior close baseline (when valid); otherwise it uses the latest close baseline. If close-history is unavailable, it falls back to `regularMarketPreviousClose`, then `previousClose`, then `chartPreviousClose`, and finally latest close when valid. It throws if no valid positive previous baseline exists.
 
 ---
 
