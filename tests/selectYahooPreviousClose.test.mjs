@@ -75,6 +75,20 @@ const NY = 'America/New_York';
   assert.equal(prev, 100, 'same-day with no prior close bar should use regularMarketPreviousClose');
 }
 
+// Case 5b: Latest daily bar can be stamped at 00:00 UTC and look like a different exchange day.
+// Should still treat it as current session and use prior close.
+{
+  const rawCloses = [6556.37, 6591.9];
+  const rawTimestamps = [1742860800, 1742947200]; // 2025-03-25/26 00:00:00 UTC
+  const meta = {
+    regularMarketTime: 1743019200, // 2025-03-26 20:00:00 UTC (market day context)
+    exchangeTimezoneName: NY,
+  };
+  const price = 6591.9;
+  const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
+  assert.equal(prev, 6556.37, 'UTC-stamped daily bar should still use prior close baseline');
+}
+
 console.log('selectYahooPreviousClose tests passed');
 
 // Case 6: Prefer Yahoo's own regularMarketChangePercent when available.

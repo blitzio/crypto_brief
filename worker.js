@@ -52,15 +52,21 @@ export function selectYahooPreviousClose({ rawCloses = [], rawTimestamps = [], m
 
     // If the latest chart close is from the same exchange day as regularMarketTime,
     // treat it as current-session and use the prior close baseline when available.
+    // Yahoo daily bars can be timestamped at period start (e.g. 00:00 UTC),
+    // which may appear as a different local exchange day even for the current session.
+    // In that case, matching UTC calendar day is a safer signal than local-day equality.
     if (marketTime && Number.isFinite(lastCloseTs)) {
       const sameTradingDay = dayKey(marketTime) === dayKey(lastCloseTs);
-      if (sameTradingDay && hasPrior) {
+      const utcDay = (ts) => new Date(ts * 1000).toISOString().slice(0, 10);
+      const sameUtcDay = utcDay(marketTime) === utcDay(lastCloseTs);
+      const treatAsCurrentSession = sameTradingDay || sameUtcDay;
+      if (treatAsCurrentSession && hasPrior) {
         prev = priorClose;
-      } else if (sameTradingDay && Number.isFinite(metaPrev)) {
+      } else if (treatAsCurrentSession && Number.isFinite(metaPrev)) {
         // Some Yahoo responses only include one finite close for the current session.
         // In that case, use metadata previous close instead of zeroing intraday change.
         prev = metaPrev;
-      } else if (!sameTradingDay) {
+      } else if (!treatAsCurrentSession) {
         prev = lastClose;
       }
     }
@@ -130,7 +136,9 @@ export default {
 
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
 
-    const { pathname } = new URL(request.url);
+    const url = new URL(request.url);
+    const { pathname } = url;
+    const debugNoCache = url.searchParams.get('nocache') === '1';
 
     const json = (data, status = 200, extra = {}) =>
       new Response(JSON.stringify(data), {
@@ -144,6 +152,7 @@ export default {
 
     const fetchYahoo = async (symbol) => {
       const headers = { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Referer': 'https://finance.yahoo.com/' };
+      let quoteErr = null;
 
       // Primary path: quote endpoint is the most direct source for 1D market change.
       try {
@@ -156,19 +165,26 @@ export default {
           const quote = quoteData?.quoteResponse?.result?.[0];
           const fromQuote = resolveYahooQuotePct({ quote });
           if (fromQuote) return { ...fromQuote, source: 'Yahoo Finance' };
+          quoteErr = `quote-empty:${symbol}`;
+        } else {
+          quoteErr = `quote-http-${quoteRes.status}:${symbol}`;
         }
-      } catch {}
+      } catch (err) {
+        quoteErr = `quote-throw:${symbol}:${err?.message ?? 'unknown'}`;
+      }
 
       // Fallback path: chart endpoint with baseline-selection logic.
       const res = await fetch(
         `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
         { headers }
       );
-      if (!res.ok) throw new Error(`Yahoo ${symbol} HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`Yahoo ${symbol} chart HTTP ${res.status} (${quoteErr ?? 'quote-ok-no-data'})`);
       const data = await res.json();
       const result = data?.chart?.result?.[0];
       const meta = result?.meta;
-      if (!Number.isFinite(meta?.regularMarketPrice)) throw new Error(`No price for ${symbol}`);
+      if (!Number.isFinite(meta?.regularMarketPrice)) {
+        throw new Error(`Yahoo ${symbol} chart missing regularMarketPrice (${quoteErr ?? 'quote-ok-no-data'})`);
+      }
       const price = meta.regularMarketPrice;
 
       const rawCloses = result?.indicators?.quote?.[0]?.close ?? [];
@@ -306,7 +322,7 @@ export default {
     if (request.method === 'GET' && pathname === '/macro') {
       const cache    = caches.default;
       const cacheKey = new Request(new URL(request.url).origin + '/macro-v4');
-      const cached   = await cache.match(cacheKey);
+      const cached   = debugNoCache ? null : await cache.match(cacheKey);
       if (cached) return cached;
 
       const [goldR, sp500R, usdsgdR, stablecoinsR, fedRateR, cpiR, sentimentR] = await Promise.allSettled([
@@ -330,6 +346,12 @@ export default {
       const cpi         = settle(cpiR,         { value: null, yoy: 'N/A', period: 'Unavailable', source: 'unavailable' });
       const sentiment   = settle(sentimentR,   { value: null, classification: 'Unavailable', dir: 'neu', source: 'unavailable' });
 
+      if (sp500?.source === 'unavailable') {
+        console.log(`[macro] SP500 unavailable: ${sp500?.error ?? 'unknown'}`);
+      } else {
+        console.log(`[macro] SP500 ok: source=${sp500?.source} pctSource=${sp500?.pctSource ?? 'none'} price=${sp500?.price ?? 'n/a'} pct=${sp500?.pct ?? 'n/a'}`);
+      }
+
       const response = json(
         { snapshotTime: new Date().toISOString(), fedRate, usdsgd, sp500, gold, stablecoins, cryptoSentiment: sentiment, cpi },
         200, { 'Cache-Control': 'public, max-age=300' }
@@ -345,7 +367,7 @@ export default {
     if (request.method === 'GET' && pathname === '/news') {
       const cache    = caches.default;
       const cacheKey = new Request(new URL(request.url).origin + '/news-rss-v4');
-      const cached   = await cache.match(cacheKey);
+      const cached   = debugNoCache ? null : await cache.match(cacheKey);
       if (cached) return cached;
 
       const feedSettled = await Promise.allSettled(
