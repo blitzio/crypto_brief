@@ -60,4 +60,19 @@ const NY = 'America/New_York';
   assert.equal(prev, 99, 'should use metadata fallback in documented order');
 }
 
+// Case 5: Same-day latest close exists, but prior close is missing in chart data.
+// Should use metadata previous close instead of latest close to preserve 1D move.
+{
+  const rawCloses = [null, 102];
+  const rawTimestamps = [1709337600, 1709424000];
+  const meta = {
+    regularMarketTime: 1709427600,
+    regularMarketPreviousClose: 100,
+    exchangeTimezoneName: NY,
+  };
+  const price = 102.1;
+  const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
+  assert.equal(prev, 100, 'same-day with no prior close bar should use regularMarketPreviousClose');
+}
+
 console.log('selectYahooPreviousClose tests passed');
