@@ -18,6 +18,66 @@
  * All news via free RSS feeds — no Tavily, no paid news API.
  */
 
+export function selectYahooPreviousClose({ rawCloses = [], rawTimestamps = [], meta = {}, price }) {
+  const lastCloseIdx = (() => {
+    for (let i = rawCloses.length - 1; i >= 0; i--) {
+      if (Number.isFinite(rawCloses[i])) return i;
+    }
+    return -1;
+  })();
+  const priorCloseIdx = (() => {
+    for (let i = lastCloseIdx - 1; i >= 0; i--) {
+      if (Number.isFinite(rawCloses[i])) return i;
+    }
+    return -1;
+  })();
+
+  const lastClose = lastCloseIdx >= 0 ? rawCloses[lastCloseIdx] : null;
+  const priorClose = priorCloseIdx >= 0 ? rawCloses[priorCloseIdx] : null;
+  const lastCloseTs = lastCloseIdx >= 0 ? rawTimestamps[lastCloseIdx] : null;
+
+  let prev = null;
+  if (Number.isFinite(lastClose) && lastClose > 0) {
+    const hasPrior = Number.isFinite(priorClose) && priorClose > 0;
+    const marketTime = Number.isFinite(meta?.regularMarketTime) ? meta.regularMarketTime : null;
+    const exchangeTz = meta?.exchangeTimezoneName || 'UTC';
+    const dayKey = (ts) => new Intl.DateTimeFormat('en-CA', {
+      timeZone: exchangeTz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date(ts * 1000));
+
+    // If the latest chart close is from the same exchange day as regularMarketTime,
+    // treat it as current-session and use the prior close baseline when available.
+    if (marketTime && Number.isFinite(lastCloseTs)) {
+      const sameTradingDay = dayKey(marketTime) === dayKey(lastCloseTs);
+      if (sameTradingDay && hasPrior) {
+        prev = priorClose;
+      } else if (!sameTradingDay) {
+        prev = lastClose;
+      }
+    }
+
+    // Fallback when timestamps are missing/ambiguous: infer via drift threshold.
+    if (!Number.isFinite(prev)) {
+      const drift = Math.abs(price - lastClose) / lastClose;
+      prev = (drift <= 0.002 && hasPrior) ? priorClose : lastClose;
+    }
+  }
+
+  if (!Number.isFinite(prev)) {
+    prev = [meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
+      .find(v => Number.isFinite(v) && v > 0) ?? null;
+  }
+
+  if (!Number.isFinite(prev) && Number.isFinite(lastClose) && lastClose > 0) {
+    prev = lastClose;
+  }
+
+  return { prev, lastClose, priorClose, lastCloseTs };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const cors = {
@@ -104,9 +164,7 @@ export default {
           .find(v => Number.isFinite(v) && v > 0) ?? null;
       }
 
-      if (!Number.isFinite(prev) && Number.isFinite(lastClose) && lastClose > 0) {
-        prev = lastClose;
-      }
+      const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
 
       if (!Number.isFinite(prev) || prev <= 0) throw new Error(`No previous close for ${symbol}`);
 
