@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { selectYahooPreviousClose } from '../worker.js';
+import { resolveYahooPct, selectYahooPreviousClose } from '../worker.js';
 
 const NY = 'America/New_York';
 
@@ -76,3 +76,34 @@ const NY = 'America/New_York';
 }
 
 console.log('selectYahooPreviousClose tests passed');
+
+// Case 6: Prefer Yahoo's own regularMarketChangePercent when available.
+{
+  const price = 9999;
+  const rawCloses = [100, 101];
+  const rawTimestamps = [1709251200, 1709337600];
+  const meta = {
+    regularMarketChangePercent: 0.54,
+    regularMarketTime: 1709427600,
+    exchangeTimezoneName: NY,
+  };
+  const { pct, pctSource } = resolveYahooPct({ rawCloses, rawTimestamps, meta, price });
+  assert.equal(pct, 0.54, 'should use regularMarketChangePercent directly');
+  assert.equal(pctSource, 'regularMarketChangePercent');
+}
+
+// Case 7: Fallback to derived previous-close percent when regularMarketChangePercent is missing.
+{
+  const price = 103;
+  const rawCloses = [100, 101, 102];
+  const rawTimestamps = [1709251200, 1709337600, 1709424000];
+  const meta = {
+    regularMarketTime: 1709510400,
+    exchangeTimezoneName: NY,
+  };
+  const { pct, pctSource } = resolveYahooPct({ rawCloses, rawTimestamps, meta, price });
+  assert.ok(Math.abs(pct - ((103 - 102) / 102 * 100)) < 1e-9, 'should derive pct from previous-close baseline');
+  assert.equal(pctSource, 'derivedPreviousClose');
+}
+
+console.log('resolveYahooPct tests passed');

@@ -85,6 +85,16 @@ export function selectYahooPreviousClose({ rawCloses = [], rawTimestamps = [], m
   return { prev, lastClose, priorClose, lastCloseTs };
 }
 
+export function resolveYahooPct({ rawCloses = [], rawTimestamps = [], meta = {}, price }) {
+  if (Number.isFinite(meta?.regularMarketChangePercent)) {
+    return { pct: meta.regularMarketChangePercent, pctSource: 'regularMarketChangePercent' };
+  }
+
+  const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
+  if (!Number.isFinite(prev) || prev <= 0) throw new Error('No previous close baseline');
+  return { pct: ((price - prev) / prev) * 100, pctSource: 'derivedPreviousClose' };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const cors = {
@@ -122,12 +132,8 @@ export default {
 
       const rawCloses = result?.indicators?.quote?.[0]?.close ?? [];
       const rawTimestamps = result?.timestamp ?? [];
-
-      const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
-
-      if (!Number.isFinite(prev) || prev <= 0) throw new Error(`No previous close for ${symbol}`);
-
-      return { price, pct: ((price - prev) / prev) * 100, source: 'Yahoo Finance' };
+      const { pct, pctSource } = resolveYahooPct({ rawCloses, rawTimestamps, meta, price });
+      return { price, pct, pctSource, source: 'Yahoo Finance' };
     };
 
     const fetchFedRate = async () => {
