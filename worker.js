@@ -35,6 +35,8 @@ export function selectYahooPreviousClose({ rawCloses = [], rawTimestamps = [], m
   const lastClose = lastCloseIdx >= 0 ? rawCloses[lastCloseIdx] : null;
   const priorClose = priorCloseIdx >= 0 ? rawCloses[priorCloseIdx] : null;
   const lastCloseTs = lastCloseIdx >= 0 ? rawTimestamps[lastCloseIdx] : null;
+  const metaPrev = [meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
+    .find(v => Number.isFinite(v) && v > 0) ?? null;
 
   let prev = null;
   if (Number.isFinite(lastClose) && lastClose > 0) {
@@ -54,6 +56,10 @@ export function selectYahooPreviousClose({ rawCloses = [], rawTimestamps = [], m
       const sameTradingDay = dayKey(marketTime) === dayKey(lastCloseTs);
       if (sameTradingDay && hasPrior) {
         prev = priorClose;
+      } else if (sameTradingDay && Number.isFinite(metaPrev)) {
+        // Some Yahoo responses only include one finite close for the current session.
+        // In that case, use metadata previous close instead of zeroing intraday change.
+        prev = metaPrev;
       } else if (!sameTradingDay) {
         prev = lastClose;
       }
@@ -69,8 +75,7 @@ export function selectYahooPreviousClose({ rawCloses = [], rawTimestamps = [], m
   }
 
   if (!Number.isFinite(prev)) {
-    prev = [meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
-      .find(v => Number.isFinite(v) && v > 0) ?? null;
+    prev = metaPrev;
   }
 
   if (!Number.isFinite(prev) && Number.isFinite(lastClose) && lastClose > 0) {
