@@ -53,13 +53,25 @@ export default {
 
       const price = meta.regularMarketPrice;
 
-      // Primary source for "today" move should be the latest regular-session
-      // previous close. Fallback to closes/history only when metadata is absent.
       const closes = result?.indicators?.quote?.[0]?.close?.filter(v => Number.isFinite(v)) ?? [];
-      const prevFromMeta = [meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
-        .find(v => Number.isFinite(v));
-      const prevFromCloses = closes.length >= 2 ? closes[closes.length - 2] : closes[closes.length - 1];
-      const prev = prevFromMeta ?? prevFromCloses ?? price;
+      const lastClose = closes.length ? closes[closes.length - 1] : null;
+      const priorClose = closes.length >= 2 ? closes[closes.length - 2] : null;
+
+      let prev = null;
+      if (Number.isFinite(lastClose) && lastClose > 0) {
+        const drift = Math.abs(price - lastClose) / lastClose;
+        prev = (drift <= 0.002 && Number.isFinite(priorClose) && priorClose > 0) ? priorClose : lastClose;
+      }
+
+      if (!Number.isFinite(prev)) {
+        prev = [meta.regularMarketPreviousClose, meta.chartPreviousClose, meta.previousClose]
+          .find(v => Number.isFinite(v) && v > 0) ?? null;
+      }
+
+      if (!Number.isFinite(prev) && Number.isFinite(lastClose) && lastClose > 0) {
+        prev = lastClose;
+      }
+
       if (!Number.isFinite(prev) || prev <= 0) throw new Error(`No previous close for ${symbol}`);
 
       return { price, pct: ((price - prev) / prev) * 100, source: 'Yahoo Finance' };
