@@ -53,18 +53,49 @@ export default {
 
       const price = meta.regularMarketPrice;
 
-      const closes = result?.indicators?.quote?.[0]?.close?.filter(v => Number.isFinite(v)) ?? [];
-      const lastClose = closes.length ? closes[closes.length - 1] : null;
-      const priorClose = closes.length >= 2 ? closes[closes.length - 2] : null;
+      const rawCloses = result?.indicators?.quote?.[0]?.close ?? [];
+      const rawTimestamps = result?.timestamp ?? [];
+      const closeBars = rawCloses
+        .map((close, i) => ({ close, ts: rawTimestamps[i] }))
+        .filter(bar => Number.isFinite(bar.close) && Number.isFinite(bar.ts));
+
+      const lastBar = closeBars.length ? closeBars[closeBars.length - 1] : null;
+      const priorBar = closeBars.length >= 2 ? closeBars[closeBars.length - 2] : null;
+      const lastClose = lastBar?.close ?? null;
+      const priorClose = priorBar?.close ?? null;
 
       let prev = null;
       if (Number.isFinite(lastClose) && lastClose > 0) {
-        const drift = Math.abs(price - lastClose) / lastClose;
-        prev = (drift <= 0.002 && Number.isFinite(priorClose) && priorClose > 0) ? priorClose : lastClose;
+        const hasPrior = Number.isFinite(priorClose) && priorClose > 0;
+        const marketTime = Number.isFinite(meta?.regularMarketTime) ? meta.regularMarketTime : null;
+        const exchangeTz = meta?.exchangeTimezoneName || 'UTC';
+        const dayKey = (ts) => new Intl.DateTimeFormat('en-CA', {
+          timeZone: exchangeTz,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).format(new Date(ts * 1000));
+
+        // If the latest chart close is from the same exchange day as regularMarketTime,
+        // treat it as current-session and use the prior close baseline when available.
+        if (marketTime && lastBar?.ts) {
+          const sameTradingDay = dayKey(marketTime) === dayKey(lastBar.ts);
+          if (sameTradingDay && hasPrior) {
+            prev = priorClose;
+          } else if (!sameTradingDay) {
+            prev = lastClose;
+          }
+        }
+
+        // Fallback when timestamps are missing/ambiguous: infer via drift threshold.
+        if (!Number.isFinite(prev)) {
+          const drift = Math.abs(price - lastClose) / lastClose;
+          prev = (drift <= 0.002 && hasPrior) ? priorClose : lastClose;
+        }
       }
 
       if (!Number.isFinite(prev)) {
-        prev = [meta.regularMarketPreviousClose, meta.chartPreviousClose, meta.previousClose]
+        prev = [meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
           .find(v => Number.isFinite(v) && v > 0) ?? null;
       }
 
