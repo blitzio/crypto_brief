@@ -52,15 +52,21 @@ export function selectYahooPreviousClose({ rawCloses = [], rawTimestamps = [], m
 
     // If the latest chart close is from the same exchange day as regularMarketTime,
     // treat it as current-session and use the prior close baseline when available.
+    // Yahoo daily bars can be timestamped at period start (e.g. 00:00 UTC),
+    // which may appear as a different local exchange day even for the current session.
+    // In that case, matching UTC calendar day is a safer signal than local-day equality.
     if (marketTime && Number.isFinite(lastCloseTs)) {
       const sameTradingDay = dayKey(marketTime) === dayKey(lastCloseTs);
-      if (sameTradingDay && hasPrior) {
+      const utcDay = (ts) => new Date(ts * 1000).toISOString().slice(0, 10);
+      const sameUtcDay = utcDay(marketTime) === utcDay(lastCloseTs);
+      const treatAsCurrentSession = sameTradingDay || sameUtcDay;
+      if (treatAsCurrentSession && hasPrior) {
         prev = priorClose;
-      } else if (sameTradingDay && Number.isFinite(metaPrev)) {
+      } else if (treatAsCurrentSession && Number.isFinite(metaPrev)) {
         // Some Yahoo responses only include one finite close for the current session.
         // In that case, use metadata previous close instead of zeroing intraday change.
         prev = metaPrev;
-      } else if (!sameTradingDay) {
+      } else if (!treatAsCurrentSession) {
         prev = lastClose;
       }
     }
