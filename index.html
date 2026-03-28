@@ -75,18 +75,27 @@ body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%
 .routing b{color:var(--muted);font-weight:600;}
 
 /* ── PRICE STRIP ── */
-.price-strip{display:grid;grid-template-columns:1fr 1fr 1fr;margin:22px calc(var(--space-xl) * -1) 0;border-top:1px solid var(--border);background:rgba(255,255,255,.015);order:4;}
-.pcard{padding:22px 24px 20px;border-right:1px solid var(--border);position:relative;min-width:0;}
-.pcard:last-child{border-right:none;}
-.pcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:.82;}
-.pcard.btc::before{background:#f0a343;}
-.pcard.eth::before{background:#7c8ff0;}
-.pcard.link::before{background:#5d88e8;}
-.p-sym{font-size:.74rem;font-family:var(--font);font-weight:600;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;}
-.p-price{font-size:1.88rem;font-weight:700;color:var(--text);letter-spacing:-.03em;line-height:1;}
-.p-deltas{margin-top:10px;display:flex;gap:10px 12px;font-size:.88rem;font-weight:600;flex-wrap:wrap;}
-.p-stats{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:.82rem;color:var(--muted);line-height:1.72;}
-.p-stats span{color:var(--faint);}
+.market-summary{margin:18px calc(var(--space-xl) * -1) 0;border-top:1px solid var(--border);background:rgba(255,255,255,.015);order:4;}
+.market-summary-kicker{padding:12px 24px 0;font-size:.66rem;font-family:var(--font);font-weight:600;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;}
+.price-strip{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr) minmax(0,1fr);margin:0;background:none;}
+.pcard{padding:16px 24px 18px;position:relative;min-width:0;display:grid;gap:14px;}
+.pcard + .pcard{border-left:1px solid var(--border);}
+.p-head{display:flex;align-items:center;min-width:0;}
+.p-sym{display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-family:var(--font);font-weight:600;letter-spacing:.08em;color:var(--muted);}
+.p-sym::before{content:'';width:7px;height:7px;border-radius:999px;flex:0 0 auto;background:var(--faint);opacity:.95;}
+.pcard.btc .p-sym::before{background:#f0a343;}
+.pcard.eth .p-sym::before{background:#7c8ff0;}
+.pcard.link .p-sym::before{background:#5d88e8;}
+.p-main{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:end;min-width:0;}
+.p-price{font-size:1.88rem;font-weight:700;color:var(--text);letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums lining-nums;}
+.p-deltas{display:grid;gap:7px;min-width:112px;}
+.p-delta{display:grid;grid-template-columns:34px auto;gap:8px;align-items:baseline;justify-content:end;}
+.p-delta-label{font-size:.67rem;font-family:var(--font);font-weight:600;letter-spacing:.08em;color:var(--faint);text-transform:uppercase;}
+.p-delta-value{font-size:.87rem;font-weight:600;font-variant-numeric:tabular-nums lining-nums;white-space:nowrap;}
+.p-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;padding-top:14px;border-top:1px solid var(--border);}
+.p-stat{margin:0;min-width:0;}
+.p-stat-label{font-size:.67rem;font-family:var(--font);font-weight:600;letter-spacing:.08em;color:var(--faint);text-transform:uppercase;}
+.p-stat-value{margin-top:4px;font-size:.87rem;font-weight:600;color:var(--text);line-height:1.35;font-variant-numeric:tabular-nums lining-nums;word-break:break-word;}
 .neg{color:var(--neg);}.pos{color:var(--pos);}.neu{color:var(--neu);}
 
 /* ── BODY ── */
@@ -155,10 +164,15 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   .masthead{grid-template-columns:1fr;gap:14px;}
   .m-right{text-align:left;padding-right:0;}
   .routing{margin-top:14px;padding-top:12px;gap:8px 16px;font-size:.74rem;}
-  .price-strip{grid-template-columns:1fr;margin-left:-18px;margin-right:-18px;}
-  .pcard{padding:18px 18px 17px;border-right:none;border-bottom:1px solid var(--border);}
-  .pcard:last-child{border-bottom:none;}
+  .market-summary{margin-left:-18px;margin-right:-18px;}
+  .market-summary-kicker{padding:10px 18px 0;}
+  .price-strip{grid-template-columns:1fr;}
+  .pcard{padding:15px 18px 16px;gap:12px;}
+  .pcard + .pcard{border-left:none;border-top:1px solid var(--border);}
+  .p-main{gap:14px;}
   .p-price{font-size:1.72rem;}
+  .p-deltas{min-width:104px;}
+  .p-stats{gap:10px 16px;}
   .body{grid-template-columns:1fr;}
   .col-l{border-right:none;}
   .sec{padding:22px 18px;}
@@ -177,11 +191,16 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   .rbar{margin-top:12px;}
   .routing{display:block;line-height:1.7;}
   .routing div + div{margin-top:4px;}
-  .price-strip{margin-left:-16px;margin-right:-16px;}
-  .pcard{padding:17px 16px 16px;}
+  .market-summary{margin-left:-16px;margin-right:-16px;}
+  .market-summary-kicker{padding:9px 16px 0;}
+  .pcard{padding:14px 16px 15px;}
+  .p-main{grid-template-columns:1fr;gap:12px;align-items:start;}
   .p-price{font-size:1.6rem;}
-  .p-deltas{font-size:.82rem;gap:10px;}
-  .p-stats{font-size:.8rem;}
+  .p-deltas{grid-template-columns:1fr 1fr;gap:8px 12px;min-width:0;}
+  .p-delta{grid-template-columns:1fr;gap:3px;justify-content:start;}
+  .p-delta-value{font-size:.84rem;}
+  .p-stat-label{font-size:.64rem;}
+  .p-stat-value{font-size:.82rem;}
   .sec{padding:18px 14px;}
   .sec-head{font-size:.88rem;}
   ul.ib>li{font-size:.95rem;padding:11px 0;}
@@ -237,24 +256,39 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
     <div><b>SOURCES:</b> LIVE — SEE REFERENCES</div>
   </div>
 
-  <div class="price-strip">
-    <div class="pcard btc">
-      <div class="p-sym">BTC / USD</div>
-      <div class="p-price" id="btc-price">—</div>
-      <div class="p-deltas" id="btc-deltas"></div>
-      <div class="p-stats" id="btc-stats"></div>
-    </div>
-    <div class="pcard eth">
-      <div class="p-sym">ETH / USD</div>
-      <div class="p-price" id="eth-price">—</div>
-      <div class="p-deltas" id="eth-deltas"></div>
-      <div class="p-stats" id="eth-stats"></div>
-    </div>
-    <div class="pcard link">
-      <div class="p-sym">LINK / USD</div>
-      <div class="p-price" id="link-price">—</div>
-      <div class="p-deltas" id="link-deltas"></div>
-      <div class="p-stats" id="link-stats"></div>
+  <div class="market-summary">
+    <div class="market-summary-kicker">Market Summary</div>
+    <div class="price-strip">
+      <section class="pcard btc">
+        <div class="p-head">
+          <div class="p-sym">BTC / USD</div>
+        </div>
+        <div class="p-main">
+          <div class="p-price" id="btc-price">—</div>
+          <div class="p-deltas" id="btc-deltas"></div>
+        </div>
+        <dl class="p-stats" id="btc-stats"></dl>
+      </section>
+      <section class="pcard eth">
+        <div class="p-head">
+          <div class="p-sym">ETH / USD</div>
+        </div>
+        <div class="p-main">
+          <div class="p-price" id="eth-price">—</div>
+          <div class="p-deltas" id="eth-deltas"></div>
+        </div>
+        <dl class="p-stats" id="eth-stats"></dl>
+      </section>
+      <section class="pcard link">
+        <div class="p-head">
+          <div class="p-sym">LINK / USD</div>
+        </div>
+        <div class="p-main">
+          <div class="p-price" id="link-price">—</div>
+          <div class="p-deltas" id="link-deltas"></div>
+        </div>
+        <dl class="p-stats" id="link-stats"></dl>
+      </section>
     </div>
   </div>
 
@@ -539,11 +573,31 @@ function renderCard(id, coin, support, resist) {
   const d7  = coin.price_change_percentage_7d_in_currency ?? 0;
   document.getElementById(id + '-price').textContent = fmtPrice(coin.current_price);
   document.getElementById(id + '-deltas').innerHTML  =
-    `<span class="${arrowCls(d24)}">${arrowChar(d24)} ${Math.abs(d24).toFixed(2)}% (24h)</span>
-     <span class="${arrowCls(d7)}">${arrowChar(d7)} ${Math.abs(d7).toFixed(2)}% (7d)</span>`;
+    `<div class="p-delta">
+       <span class="p-delta-label">24H</span>
+       <span class="p-delta-value ${arrowCls(d24)}">${arrowChar(d24)} ${Math.abs(d24).toFixed(2)}%</span>
+     </div>
+     <div class="p-delta">
+       <span class="p-delta-label">7D</span>
+       <span class="p-delta-value ${arrowCls(d7)}">${arrowChar(d7)} ${Math.abs(d7).toFixed(2)}%</span>
+     </div>`;
   document.getElementById(id + '-stats').innerHTML   =
-    `<span>Mkt Cap</span> ${fmtCap(coin.market_cap)} &nbsp;·&nbsp; <span>Vol</span> ${fmtCap(coin.total_volume)}<br/>
-     <span>Support</span> ${support}<br/><span>Resist</span> ${resist}`;
+    `<div class="p-stat">
+       <dt class="p-stat-label">Mkt Cap</dt>
+       <dd class="p-stat-value">${fmtCap(coin.market_cap)}</dd>
+     </div>
+     <div class="p-stat">
+       <dt class="p-stat-label">Vol</dt>
+       <dd class="p-stat-value">${fmtCap(coin.total_volume)}</dd>
+     </div>
+     <div class="p-stat">
+       <dt class="p-stat-label">Support</dt>
+       <dd class="p-stat-value">${support}</dd>
+     </div>
+     <div class="p-stat">
+       <dt class="p-stat-label">Resist</dt>
+       <dd class="p-stat-value">${resist}</dd>
+     </div>`;
 }
 
 function renderBullets(id, arr) {
