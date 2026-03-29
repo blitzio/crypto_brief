@@ -118,13 +118,13 @@ body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%
 .sec-code{font-size:.73rem;font-family:var(--font);font-weight:600;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;white-space:nowrap;padding:2px 0 0;}
 .major-head .sec-title{font-size:2rem;}
 ul.ib{list-style:none;display:flex;flex-direction:column;gap:22px;}
-ul.ib>li{position:relative;padding:18px 0 0 20px;border:none;border-top:1px solid rgba(170,188,210,.08);font-size:1.14rem;line-height:1.62;color:var(--text);font-weight:400;}
+ul.ib>li{position:relative;padding:18px 0 0 14px;border:none;border-top:1px solid rgba(170,188,210,.08);font-size:1.14rem;line-height:1.62;color:var(--text);font-weight:400;}
 ul.ib>li:first-child{padding-top:0;border-top:none;}
-ul.ib>li::before{content:'';position:absolute;left:0;top:1.02em;width:5px;height:5px;border-radius:999px;background:rgba(195,171,118,.54);}
-ul.ib>li:first-child::before{top:.48em;}
+ul.ib>li::before{content:'';position:absolute;left:0;top:.98em;width:3px;height:3px;border-radius:999px;background:rgba(195,171,118,.38);}
+ul.ib>li:first-child::before{top:.5em;}
 .macro-sec ul.ib>li::before{background:rgba(126,165,220,.58);}
 .full ul.ib>li::before{background:rgba(170,188,210,.5);}
-.b-label{display:block;margin-bottom:5px;font-size:.95rem;font-family:var(--font);font-weight:650;letter-spacing:.02em;color:var(--text);line-height:1.36;}
+.b-label{display:block;margin-bottom:5px;font-size:1rem;font-family:var(--font);font-weight:700;letter-spacing:.015em;color:#f1f5fb;line-height:1.32;}
 .b-text{display:block;font-size:1em;line-height:1.6;color:var(--text);}
 
 /* ── MACRO CARDS ── */
@@ -239,8 +239,10 @@ ul.ib>li:first-child::before{top:.48em;}
   .sec-title{font-size:1.2rem;}
   .sec-code{font-size:.72rem;}
   ul.ib{gap:16px;}
-  ul.ib>li{font-size:1rem;padding-top:12px;line-height:1.58;}
-  .b-label{font-size:.85rem;margin-bottom:4px;}
+  ul.ib>li{font-size:1rem;padding:12px 0 0 12px;line-height:1.58;}
+  ul.ib>li::before{width:3px;height:3px;top:1em;}
+  ul.ib>li:first-child::before{top:.5em;}
+  .b-label{font-size:.88rem;margin-bottom:4px;}
   .b-text{line-height:1.56;}
   .macro-grid{grid-template-columns:1fr;gap:12px;padding-top:14px;}
   .macro-card{grid-template-columns:1fr;grid-template-areas:'label' 'value' 'sub';gap:3px;}
@@ -375,8 +377,8 @@ ul.ib>li:first-child::before{top:.48em;}
           <span class="sec-title">Macro Regime</span>
         </div>
       </div>
-      <ul class="ib" id="macro-bullets"></ul>
       <div class="macro-grid" id="macro-grid"></div>
+      <ul class="ib" id="macro-bullets"></ul>
     </div>
 
     <div class="psep">— END OF PAGE 1 · PAGE 2 FOLLOWS — HANDLE WITH CARE —</div>
