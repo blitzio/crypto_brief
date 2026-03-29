@@ -75,46 +75,77 @@ body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%
 .routing b{color:var(--muted);font-weight:600;}
 
 /* ── PRICE STRIP ── */
-.price-strip{display:grid;grid-template-columns:1fr 1fr 1fr;margin:22px calc(var(--space-xl) * -1) 0;border-top:1px solid var(--border);background:rgba(255,255,255,.015);order:4;}
-.pcard{padding:22px 24px 20px;border-right:1px solid var(--border);position:relative;min-width:0;}
-.pcard:last-child{border-right:none;}
-.pcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:.82;}
-.pcard.btc::before{background:#f0a343;}
-.pcard.eth::before{background:#7c8ff0;}
-.pcard.link::before{background:#5d88e8;}
-.p-sym{font-size:.74rem;font-family:var(--font);font-weight:600;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;}
-.p-price{font-size:1.88rem;font-weight:700;color:var(--text);letter-spacing:-.03em;line-height:1;}
-.p-deltas{margin-top:10px;display:flex;gap:10px 12px;font-size:.88rem;font-weight:600;flex-wrap:wrap;}
-.p-stats{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:.82rem;color:var(--muted);line-height:1.72;}
-.p-stats span{color:var(--faint);}
+.market-summary{margin:20px calc(var(--space-xl) * -1) 0;border-top:1px solid rgba(170,188,210,.14);border-bottom:1px solid rgba(170,188,210,.08);background:linear-gradient(180deg,rgba(255,255,255,.022),rgba(255,255,255,.01));order:4;}
+.market-summary-kicker{padding:13px 24px 0;font-size:.65rem;font-family:var(--font);font-weight:600;letter-spacing:.12em;color:#d4c094;text-transform:uppercase;}
+.price-strip{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr) minmax(0,1fr);margin:0;background:none;}
+.pcard{padding:19px 24px 20px;position:relative;min-width:0;display:grid;gap:16px;}
+.pcard + .pcard{border-left:1px solid var(--border);}
+.p-head{display:flex;align-items:center;min-width:0;}
+.p-sym{display:inline-flex;align-items:center;gap:8px;font-size:.75rem;font-family:var(--font);font-weight:600;letter-spacing:.08em;color:var(--muted);}
+.p-sym::before{content:'';width:7px;height:7px;border-radius:999px;flex:0 0 auto;background:var(--faint);opacity:.95;}
+.pcard.btc .p-sym::before{background:#f0a343;}
+.pcard.eth .p-sym::before{background:#7c8ff0;}
+.pcard.link .p-sym::before{background:#5d88e8;}
+.p-main{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end;min-width:0;}
+.p-price{font-size:1.8rem;font-weight:700;color:var(--text);letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums lining-nums;}
+.p-deltas{display:grid;gap:8px;min-width:120px;}
+.p-delta{display:grid;grid-template-columns:36px auto;gap:8px;align-items:baseline;justify-content:end;}
+.p-delta-label{font-size:.67rem;font-family:var(--font);font-weight:600;letter-spacing:.09em;color:var(--faint);text-transform:uppercase;}
+.p-delta-value{font-size:.91rem;font-weight:600;font-variant-numeric:tabular-nums lining-nums;white-space:nowrap;}
+.p-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 22px;padding-top:16px;border-top:1px solid rgba(170,188,210,.1);}
+.p-stat{margin:0;min-width:0;}
+.p-stat-label{font-size:.66rem;font-family:var(--font);font-weight:600;letter-spacing:.09em;color:var(--faint);text-transform:uppercase;}
+.p-stat-value{margin-top:4px;font-size:.92rem;font-weight:600;color:var(--text);line-height:1.42;font-variant-numeric:tabular-nums lining-nums;word-break:break-word;}
 .neg{color:var(--neg);}.pos{color:var(--pos);}.neu{color:var(--neu);}
 
 /* ── BODY ── */
-.body{display:grid;grid-template-columns:1fr 1fr;}
-.col-l{border-right:1px solid var(--border);}
-.sec{padding:28px 32px;border-bottom:1px solid var(--border);}
-.sec:last-child{border-bottom:none;}
+.body{display:block;max-width:1060px;margin:0 auto;padding:52px 0 0;}
+.sec{padding:0;min-width:0;border-bottom:none;}
+.body > .sec + .sec{margin-top:46px;padding-top:40px;border-top:1px solid rgba(170,188,210,.1);}
 .sec-head{font-size:.95rem;font-family:var(--font);font-weight:600;letter-spacing:.01em;color:var(--text);text-transform:none;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border);}
-ul.ib{list-style:none;}
-ul.ib>li{padding:14px 0;border-bottom:1px solid var(--border);font-size:1rem;line-height:1.78;color:var(--text);font-weight:400;}
-ul.ib>li:last-child{border-bottom:none;}
-ul.ib>li strong{font-weight:600;color:var(--text);}
+.body .sec-head,.full .sec-head{display:flex;align-items:flex-end;justify-content:flex-start;gap:14px;margin:0 0 28px;padding:0 0 18px;border-bottom:1px solid rgba(170,188,210,.12);position:relative;}
+.full .sec-head{display:block;margin-bottom:40px;padding-bottom:22px;border-bottom-color:rgba(195,171,118,.22);}
+.body .sec-head::after,.full .sec-head::after{content:'';position:absolute;left:0;bottom:-1px;width:96px;height:1px;background:rgba(195,171,118,.56);}
+.btc-sec .sec-head::after{background:rgba(195,171,118,.58);}
+.eth-sec .sec-head::after{background:rgba(124,143,240,.54);}
+.macro-sec .sec-head::after{background:rgba(126,165,220,.52);width:110px;}
+.link-sec .sec-head::after{background:rgba(93,136,232,.56);}
+.head-ident{display:inline-flex;align-items:baseline;gap:10px;min-width:0;flex-wrap:wrap;}
+.sec-icon{font-size:1.02rem;font-weight:600;color:var(--gold);line-height:1;transform:translateY(-1px);}
+.eth-sec .sec-icon{color:#aeb8ff;}
+.link-sec .sec-icon{color:#9fbef8;}
+.sec-title{font-size:1.64rem;font-weight:700;color:var(--text);letter-spacing:-.035em;line-height:1.06;}
+.sec-code{font-size:.73rem;font-family:var(--font);font-weight:600;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;white-space:nowrap;padding:2px 0 0;}
+.major-head .sec-title{font-size:2rem;}
+ul.ib{list-style:none;display:flex;flex-direction:column;gap:22px;}
+ul.ib>li{position:relative;padding:18px 0 0 20px;border:none;border-top:1px solid rgba(170,188,210,.08);font-size:1.14rem;line-height:1.62;color:var(--text);font-weight:400;}
+ul.ib>li:first-child{padding-top:0;border-top:none;}
+ul.ib>li::before{content:'';position:absolute;left:0;top:1.02em;width:5px;height:5px;border-radius:999px;background:rgba(195,171,118,.54);}
+ul.ib>li:first-child::before{top:.48em;}
+.macro-sec ul.ib>li::before{background:rgba(126,165,220,.58);}
+.full ul.ib>li::before{background:rgba(170,188,210,.5);}
+.b-label{display:block;margin-bottom:5px;font-size:.95rem;font-family:var(--font);font-weight:650;letter-spacing:.02em;color:var(--text);line-height:1.36;}
+.b-text{display:block;font-size:1em;line-height:1.6;color:var(--text);}
 
 /* ── MACRO CARDS ── */
-.macro-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
-.macro-card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015));border:1px solid var(--border);padding:16px;border-radius:var(--radius-sm);}
-.macro-label{font-size:.72rem;font-family:var(--font);font-weight:600;letter-spacing:.04em;color:var(--muted);text-transform:none;margin-bottom:8px;}
-.macro-value{font-size:1.4rem;font-weight:700;color:var(--text);line-height:1.1;letter-spacing:-.02em;}
-.macro-sub{font-size:.83rem;margin-top:7px;line-height:1.55;}
+.macro-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 28px;margin:20px 0 0;padding:18px 0 0;border-top:1px solid rgba(170,188,210,.08);}
+.macro-card{display:grid;grid-template-columns:104px minmax(0,1fr);grid-template-areas:'label value' '. sub';gap:2px 14px;min-width:0;padding:0;}
+.macro-label{grid-area:label;font-size:.72rem;font-family:var(--font);font-weight:600;letter-spacing:.08em;color:var(--faint);text-transform:uppercase;padding-top:2px;}
+.macro-value{grid-area:value;font-size:1.08rem;font-weight:650;color:var(--text);line-height:1.3;letter-spacing:-.01em;text-align:left;}
+.macro-sub{grid-area:sub;font-size:.86rem;margin-top:1px;line-height:1.58;color:var(--muted);}
+.macro-sub.pos{color:var(--pos);}
+.macro-sub.neg{color:var(--neg);}
+.macro-sub.neu{color:var(--muted);}
 
 /* ── FULL WIDTH ── */
-.full{grid-column:1/-1;border-top:1px solid var(--border2);padding:28px var(--space-xl) 34px;}
-.full .sec-head{margin-bottom:18px;}
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
-.col-head{font-size:.84rem;font-family:var(--font);font-weight:600;letter-spacing:.02em;color:var(--muted);text-transform:none;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
-.abox{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015));border:1px solid var(--border);border-left:2px solid rgba(195,171,118,.45);padding:24px;margin-top:24px;border-radius:var(--radius-sm);}
-.abox .alabel{font-size:.75rem;font-family:var(--font);font-weight:600;letter-spacing:.06em;color:var(--gold);text-transform:none;margin-bottom:14px;}
-.abox p{font-size:1rem;line-height:1.82;color:var(--text);font-weight:400;margin-bottom:14px;}
+.full{position:relative;max-width:1100px;margin:84px auto 0;padding:72px 0 44px;border-top:none;background:none;}
+.full::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,rgba(170,188,210,0),rgba(170,188,210,.22) 18%,rgba(195,171,118,.34) 50%,rgba(170,188,210,.22) 82%,rgba(170,188,210,0));}
+.two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px;align-items:start;}
+.col-head{font-size:1.1rem;font-family:var(--font);font-weight:650;letter-spacing:-.01em;color:var(--text);margin:0 0 18px;padding:0 0 13px;border-bottom:1px solid rgba(170,188,210,.12);}
+.abox{margin-top:56px;padding:46px 48px 46px;border:1px solid rgba(195,171,118,.18);border-top:2px solid rgba(195,171,118,.56);background:linear-gradient(180deg,rgba(195,171,118,.15),rgba(255,255,255,.035));border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.18);}
+.abox .alabel{font-size:1.52rem;font-family:var(--font);font-weight:650;letter-spacing:-.03em;color:var(--text);margin-bottom:20px;}
+.abox p{font-size:1.14rem;line-height:1.72;color:var(--text);font-weight:400;margin-bottom:16px;}
+.abox p:first-child{font-size:1.24rem;line-height:1.74;}
 .abox p:last-child{margin-bottom:0;}
 .abox strong{font-weight:600;}
 
@@ -155,16 +186,29 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   .masthead{grid-template-columns:1fr;gap:14px;}
   .m-right{text-align:left;padding-right:0;}
   .routing{margin-top:14px;padding-top:12px;gap:8px 16px;font-size:.74rem;}
-  .price-strip{grid-template-columns:1fr;margin-left:-18px;margin-right:-18px;}
-  .pcard{padding:18px 18px 17px;border-right:none;border-bottom:1px solid var(--border);}
-  .pcard:last-child{border-bottom:none;}
+  .market-summary{margin-left:-18px;margin-right:-18px;}
+  .market-summary-kicker{padding:10px 18px 0;}
+  .price-strip{grid-template-columns:1fr;}
+  .pcard{padding:17px 18px 18px;gap:14px;}
+  .pcard + .pcard{border-left:none;border-top:1px solid var(--border);}
+  .p-main{gap:14px;}
   .p-price{font-size:1.72rem;}
-  .body{grid-template-columns:1fr;}
-  .col-l{border-right:none;}
-  .sec{padding:22px 18px;}
-  .two-col{grid-template-columns:1fr;gap:22px;}
+  .p-deltas{min-width:104px;}
+  .p-stats{gap:10px 16px;}
+  .body{max-width:none;padding:42px 18px 0;}
+  .sec{padding:0;}
+  .body > .sec + .sec{margin-top:36px;padding-top:32px;}
+  .sec-title{font-size:1.4rem;}
+  .head-ident{gap:9px;}
+  .two-col{grid-template-columns:1fr;gap:28px;}
+  .full{max-width:none;margin-top:56px;padding:52px 18px 26px;}
+  .full::before{left:18px;right:18px;}
   .sources-grid{grid-template-columns:1fr 1fr;}
-  .macro-grid{grid-template-columns:1fr 1fr;}
+  .macro-grid{grid-template-columns:1fr 1fr;gap:14px 22px;}
+  .macro-card{grid-template-columns:88px minmax(0,1fr);}
+  .major-head .sec-title{font-size:1.62rem;}
+  .col-head{font-size:1.06rem;}
+  .abox{padding:34px 28px 36px;}
   .debug-panel{padding:18px;}
   .debug-toggle{float:none;margin-left:8px;}
 }
@@ -177,17 +221,36 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   .rbar{margin-top:12px;}
   .routing{display:block;line-height:1.7;}
   .routing div + div{margin-top:4px;}
-  .price-strip{margin-left:-16px;margin-right:-16px;}
-  .pcard{padding:17px 16px 16px;}
-  .p-price{font-size:1.6rem;}
-  .p-deltas{font-size:.82rem;gap:10px;}
-  .p-stats{font-size:.8rem;}
-  .sec{padding:18px 14px;}
+  .market-summary{margin-left:-16px;margin-right:-16px;}
+  .market-summary-kicker{padding:9px 16px 0;}
+  .pcard{padding:16px 16px 17px;gap:12px;}
+  .p-main{grid-template-columns:1fr;gap:12px;align-items:start;}
+  .p-price{font-size:1.58rem;}
+  .p-deltas{grid-template-columns:1fr 1fr;gap:8px 12px;min-width:0;}
+  .p-delta{grid-template-columns:1fr;gap:3px;justify-content:start;}
+  .p-delta-value{font-size:.86rem;}
+  .p-stat-label{font-size:.64rem;}
+  .p-stat-value{font-size:.85rem;}
+  .body{padding:28px 16px 0;}
   .sec-head{font-size:.88rem;}
-  ul.ib>li{font-size:.95rem;padding:11px 0;}
-  .macro-grid{grid-template-columns:1fr 1fr;}
-  .macro-value{font-size:1.25rem;}
-  .full{padding:18px 16px 20px;}
+  .body .sec-head,.full .sec-head{margin-bottom:16px;padding-bottom:12px;}
+  .head-ident{gap:8px;}
+  .sec-icon{font-size:.94rem;}
+  .sec-title{font-size:1.2rem;}
+  .sec-code{font-size:.72rem;}
+  ul.ib{gap:16px;}
+  ul.ib>li{font-size:1rem;padding-top:12px;line-height:1.58;}
+  .b-label{font-size:.85rem;margin-bottom:4px;}
+  .b-text{line-height:1.56;}
+  .macro-grid{grid-template-columns:1fr;gap:12px;padding-top:14px;}
+  .macro-card{grid-template-columns:1fr;grid-template-areas:'label' 'value' 'sub';gap:3px;}
+  .macro-label{font-size:.69rem;padding-top:0;}
+  .macro-value{font-size:1rem;}
+  .full{margin-top:40px;padding:36px 16px 22px;}
+  .full::before{left:16px;right:16px;}
+  .major-head .sec-title,.col-head{font-size:1.04rem;}
+  .abox .alabel{font-size:1.16rem;}
+  .abox{padding:28px 20px 28px;}
   .sources-section{padding:18px 16px 20px;}
   .sources-grid{grid-template-columns:1fr;}
   .footer{flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;}
@@ -237,68 +300,103 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
     <div><b>SOURCES:</b> LIVE — SEE REFERENCES</div>
   </div>
 
-  <div class="price-strip">
-    <div class="pcard btc">
-      <div class="p-sym">BTC / USD</div>
-      <div class="p-price" id="btc-price">—</div>
-      <div class="p-deltas" id="btc-deltas"></div>
-      <div class="p-stats" id="btc-stats"></div>
-    </div>
-    <div class="pcard eth">
-      <div class="p-sym">ETH / USD</div>
-      <div class="p-price" id="eth-price">—</div>
-      <div class="p-deltas" id="eth-deltas"></div>
-      <div class="p-stats" id="eth-stats"></div>
-    </div>
-    <div class="pcard link">
-      <div class="p-sym">LINK / USD</div>
-      <div class="p-price" id="link-price">—</div>
-      <div class="p-deltas" id="link-deltas"></div>
-      <div class="p-stats" id="link-stats"></div>
+  <div class="market-summary">
+    <div class="market-summary-kicker">Market Summary</div>
+    <div class="price-strip">
+      <section class="pcard btc">
+        <div class="p-head">
+          <div class="p-sym">BTC / USD</div>
+        </div>
+        <div class="p-main">
+          <div class="p-price" id="btc-price">—</div>
+          <div class="p-deltas" id="btc-deltas"></div>
+        </div>
+        <dl class="p-stats" id="btc-stats"></dl>
+      </section>
+      <section class="pcard eth">
+        <div class="p-head">
+          <div class="p-sym">ETH / USD</div>
+        </div>
+        <div class="p-main">
+          <div class="p-price" id="eth-price">—</div>
+          <div class="p-deltas" id="eth-deltas"></div>
+        </div>
+        <dl class="p-stats" id="eth-stats"></dl>
+      </section>
+      <section class="pcard link">
+        <div class="p-head">
+          <div class="p-sym">LINK / USD</div>
+        </div>
+        <div class="p-main">
+          <div class="p-price" id="link-price">—</div>
+          <div class="p-deltas" id="link-deltas"></div>
+        </div>
+        <dl class="p-stats" id="link-stats"></dl>
+      </section>
     </div>
   </div>
 
   </div>
 
   <div class="body">
-    <div class="col-l">
-      <div class="sec">
-        <div class="sec-head">₿ &nbsp; Bitcoin — BTC</div>
-        <ul class="ib" id="btc-bullets"></ul>
+    <div class="sec asset-sec btc-sec">
+      <div class="sec-head">
+        <div class="head-ident">
+          <span class="sec-icon">₿</span>
+          <span class="sec-title">Bitcoin</span>
+          <span class="sec-code">BTC</span>
+        </div>
       </div>
-      <div class="sec">
-        <div class="sec-head">Ξ &nbsp; Ethereum — ETH</div>
-        <ul class="ib" id="eth-bullets"></ul>
-      </div>
+      <ul class="ib" id="btc-bullets"></ul>
     </div>
-    <div>
-      <div class="sec">
-        <div class="sec-head">Macro &amp; Threat Landscape</div>
-        <div class="macro-grid" id="macro-grid"></div>
-        <ul class="ib" id="macro-bullets"></ul>
+    <div class="sec asset-sec eth-sec">
+      <div class="sec-head">
+        <div class="head-ident">
+          <span class="sec-icon">Ξ</span>
+          <span class="sec-title">Ethereum</span>
+          <span class="sec-code">ETH</span>
+        </div>
       </div>
-      <div class="sec">
-        <div class="sec-head">⬡ &nbsp; Chainlink — LINK</div>
-        <ul class="ib" id="link-bullets"></ul>
+      <ul class="ib" id="eth-bullets"></ul>
+    </div>
+    <div class="sec asset-sec link-sec">
+      <div class="sec-head">
+        <div class="head-ident">
+          <span class="sec-icon">⬡</span>
+          <span class="sec-title">Chainlink</span>
+          <span class="sec-code">LINK</span>
+        </div>
       </div>
+      <ul class="ib" id="link-bullets"></ul>
+    </div>
+    <div class="sec macro-sec">
+      <div class="sec-head">
+        <div class="head-ident">
+          <span class="sec-title">Macro Regime</span>
+        </div>
+      </div>
+      <ul class="ib" id="macro-bullets"></ul>
+      <div class="macro-grid" id="macro-grid"></div>
     </div>
 
     <div class="psep">— END OF PAGE 1 · PAGE 2 FOLLOWS — HANDLE WITH CARE —</div>
 
     <div class="full">
-      <div class="sec-head">§ IV &nbsp;·&nbsp; Directorate Assessment &amp; Forward Watch</div>
+      <div class="sec-head major-head">
+        <span class="sec-title">Directorate Assessment</span>
+      </div>
       <div class="two-col">
         <div>
-          <div class="col-head">⚠ Active Threat Stack</div>
+          <div class="col-head">Active Threat Stack</div>
           <ul class="ib" id="threats"></ul>
         </div>
         <div>
-          <div class="col-head">📡 Forward Watch — Next 7 Days</div>
+          <div class="col-head">Forward Watch — Next 7 Days</div>
           <ul class="ib" id="watch"></ul>
         </div>
       </div>
       <div class="abox">
-        <div class="alabel">⚠ Analyst Verdict — Eyes Only</div>
+        <div class="alabel">Analyst Verdict</div>
         <div id="verdict-content"></div>
       </div>
     </div>
@@ -539,16 +637,36 @@ function renderCard(id, coin, support, resist) {
   const d7  = coin.price_change_percentage_7d_in_currency ?? 0;
   document.getElementById(id + '-price').textContent = fmtPrice(coin.current_price);
   document.getElementById(id + '-deltas').innerHTML  =
-    `<span class="${arrowCls(d24)}">${arrowChar(d24)} ${Math.abs(d24).toFixed(2)}% (24h)</span>
-     <span class="${arrowCls(d7)}">${arrowChar(d7)} ${Math.abs(d7).toFixed(2)}% (7d)</span>`;
+    `<div class="p-delta">
+       <span class="p-delta-label">24H</span>
+       <span class="p-delta-value ${arrowCls(d24)}">${arrowChar(d24)} ${Math.abs(d24).toFixed(2)}%</span>
+     </div>
+     <div class="p-delta">
+       <span class="p-delta-label">7D</span>
+       <span class="p-delta-value ${arrowCls(d7)}">${arrowChar(d7)} ${Math.abs(d7).toFixed(2)}%</span>
+     </div>`;
   document.getElementById(id + '-stats').innerHTML   =
-    `<span>Mkt Cap</span> ${fmtCap(coin.market_cap)} &nbsp;·&nbsp; <span>Vol</span> ${fmtCap(coin.total_volume)}<br/>
-     <span>Support</span> ${support}<br/><span>Resist</span> ${resist}`;
+    `<div class="p-stat">
+       <dt class="p-stat-label">Mkt Cap</dt>
+       <dd class="p-stat-value">${fmtCap(coin.market_cap)}</dd>
+     </div>
+     <div class="p-stat">
+       <dt class="p-stat-label">Vol</dt>
+       <dd class="p-stat-value">${fmtCap(coin.total_volume)}</dd>
+     </div>
+     <div class="p-stat">
+       <dt class="p-stat-label">Support</dt>
+       <dd class="p-stat-value">${support}</dd>
+     </div>
+     <div class="p-stat">
+       <dt class="p-stat-label">Resist</dt>
+       <dd class="p-stat-value">${resist}</dd>
+     </div>`;
 }
 
 function renderBullets(id, arr) {
   document.getElementById(id).innerHTML =
-    (arr ?? []).map(b => `<li><strong>${escapeHtml(b.label)}:</strong> ${escapeHtml(b.text)}</li>`).join('');
+    (arr ?? []).map(b => `<li><span class="b-label">${escapeHtml(b.label)}</span><span class="b-text">${escapeHtml(b.text)}</span></li>`).join('');
 }
 
 function renderMacroCards(macro) {
