@@ -118,11 +118,13 @@ body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%
 .sec-code{font-size:.73rem;font-family:var(--font);font-weight:600;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;white-space:nowrap;padding:2px 0 0;}
 .major-head .sec-title{font-size:2.08rem;}
 ul.ib{list-style:none;display:flex;flex-direction:column;gap:22px;}
-ul.ib>li{position:relative;padding:18px 0 0 0;border:none;border-top:1px solid rgba(170,188,210,.08);font-size:1.14rem;line-height:1.62;color:var(--text);font-weight:400;}
+ul.ib>li{display:grid;grid-template-columns:12px minmax(0,1fr);grid-template-areas:'marker label' '. text';column-gap:10px;position:relative;padding:18px 0 0 0;border:none;border-top:1px solid rgba(170,188,210,.08);font-size:1.14rem;line-height:1.62;color:var(--text);font-weight:400;}
 ul.ib>li:first-child{padding-top:0;border-top:none;}
-ul.ib>li::before{content:none;}
-.b-label{display:block;margin-bottom:5px;font-size:1rem;font-family:var(--font);font-weight:700;letter-spacing:.015em;color:#f1f5fb;line-height:1.32;}
-.b-text{display:block;font-size:1em;line-height:1.6;color:var(--text);}
+ul.ib>li::before{content:'•';grid-area:marker;position:static;display:block;font-size:1rem;line-height:1.32;color:rgba(195,171,118,.68);transform:translateY(.02em);}
+.macro-sec ul.ib>li::before{color:rgba(126,165,220,.72);}
+.full ul.ib>li::before{color:rgba(170,188,210,.72);}
+.b-label{grid-area:label;display:block;margin-bottom:5px;font-size:1rem;font-family:var(--font);font-weight:700;letter-spacing:.015em;color:#f1f5fb;line-height:1.32;}
+.b-text{grid-area:text;display:block;font-size:1em;line-height:1.6;color:var(--text);}
 
 /* ── MACRO CARDS ── */
 .macro-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 28px;margin:20px 0 0;padding:18px 0 0;border-top:1px solid rgba(170,188,210,.08);}
@@ -236,7 +238,8 @@ ul.ib>li::before{content:none;}
   .sec-title{font-size:1.24rem;}
   .sec-code{font-size:.72rem;}
   ul.ib{gap:16px;}
-  ul.ib>li{font-size:1rem;padding:12px 0 0 0;line-height:1.58;}
+  ul.ib>li{grid-template-columns:11px minmax(0,1fr);column-gap:9px;font-size:1rem;padding:12px 0 0 0;line-height:1.58;}
+  ul.ib>li::before{font-size:.95rem;}
   .b-label{font-size:.88rem;margin-bottom:4px;}
   .b-text{line-height:1.56;}
   .macro-grid{grid-template-columns:1fr;gap:12px;padding-top:14px;}
