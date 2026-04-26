@@ -130,6 +130,7 @@ For command-line deploys, `wrangler.jsonc` sets `GEMINI_MODEL` to `gemini-3-flas
 - `/macro` is edge-cached for 5 minutes and `/news` for 15 minutes.
 - `/macro?nocache=1` and `/news?nocache=1` bypass the Worker edge cache for debugging.
 - `/brief/save` is admin-token-only and is not used by the browser app.
+- Generated briefs are validated before caching; bad asset citations are rejected instead of saved.
 
 ---
 
@@ -139,14 +140,17 @@ Gemini receives:
 
 - Exact live prices
 - Exact macro figures
-- Up to 20 RSS articles sorted by recency, formatted as numbered `<doc>` blocks
+- Up to 20 RSS articles sorted by recency, formatted as numbered `<doc>` blocks with deterministic asset tags
 
 The model is instructed to:
 
 - Cite every BTC/ETH claim with a `[N]` doc reference
-- Cite LINK claims when source support exists, and label uncited LINK points as model inference
+- Cite LINK claims when source support exists, and label uncited asset points as model inference
+- Cite asset sections only with docs whose tags match that asset
 - Never restate macro card values in the macro bullet section
 - Never hallucinate events, prices, or dates not present in the source docs
+
+After Gemini returns JSON, the Worker checks every BTC, ETH, and LINK citation. If an asset bullet cites a doc that does not mention that asset, or makes an uncited non-price point without a model-inference label, the Worker returns an error and does not cache the brief.
 
 ---
 

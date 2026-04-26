@@ -141,6 +141,121 @@ export function resolveYahooQuotePct({ quote = {} }) {
   return null;
 }
 
+function decodeHtmlBasic(value = '') {
+  return String(value)
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .trim();
+}
+
+function newsText(item = {}) {
+  return decodeHtmlBasic([
+    item.title,
+    item.description,
+    item.content,
+  ].filter(Boolean).join(' '));
+}
+
+export function inferAssetMentions(item = {}) {
+  const text = newsText(item);
+  const mentions = [];
+
+  if (/\bbitcoin\b|\bbtc\b|\$btc\b/i.test(text)) mentions.push('btc');
+  if (/\bethereum\b|\bether\b|\beth\b|\$eth\b/i.test(text)) mentions.push('eth');
+  if (/\bchainlink\b|\$link\b|\blink\b(?=\s+(token|price|holders|staking|ccip|oracle|oracles|feeds?))/i.test(text)) mentions.push('link');
+
+  return mentions;
+}
+
+export function buildPromptNewsItems(items = []) {
+  return items.map(item => ({
+    ...item,
+    title: decodeHtmlBasic(item.title),
+    description: decodeHtmlBasic(item.description),
+    content: decodeHtmlBasic(item.content || item.description || ''),
+    assetMentions: inferAssetMentions(item),
+  }));
+}
+
+export function parseGeminiBriefJson(raw = '') {
+  let clean = String(raw)
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+    .replace(/```json|```/g, '')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .trim();
+
+  const start = clean.indexOf('{');
+  const end = clean.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error('No JSON object in Gemini response');
+  }
+
+  clean = clean.slice(start, end + 1);
+  try {
+    return JSON.parse(clean);
+  } catch {
+    return JSON.parse(clean.replace(/,\s*([}\]])/g, '$1'));
+  }
+}
+
+function extractCitationIds(text = '') {
+  const raw = String(text);
+  const ids = [
+    ...[...raw.matchAll(/\[(\d+)\]/g)].map(match => Number(match[1])),
+    ...[...raw.matchAll(/\bDoc(?:ument)?\.?\s*(\d+)\b/gi)].map(match => Number(match[1])),
+  ].filter(Number.isInteger);
+  return [...new Set(ids)];
+}
+
+function isLiveDataBullet(text = '') {
+  return /\b(live data|current price|24h|7d|market cap|volume|support|resistance|trading at|price)\b/i.test(text);
+}
+
+export function validateBriefCitations(brief = {}, newsItems = []) {
+  const promptItems = buildPromptNewsItems(newsItems);
+  const violations = [];
+  const sections = [
+    ['btc', brief.btc?.bullets || []],
+    ['eth', brief.eth?.bullets || []],
+    ['link', brief.link?.bullets || []],
+  ];
+
+  for (const [asset, bullets] of sections) {
+    for (const [bulletIndex, bullet] of bullets.entries()) {
+      const text = `${bullet?.label || ''}: ${bullet?.text || ''}`;
+      const citationIds = extractCitationIds(text);
+
+      if (citationIds.length === 0 && !/model inference/i.test(text) && !isLiveDataBullet(text)) {
+        violations.push({ asset, bulletIndex, reason: 'missing_citation', text });
+        continue;
+      }
+
+      for (const docId of citationIds) {
+        const item = promptItems[docId - 1];
+        if (!item) {
+          violations.push({ asset, bulletIndex, docId, reason: 'unknown_doc', text });
+          continue;
+        }
+        if (!item.assetMentions?.includes(asset)) {
+          violations.push({ asset, bulletIndex, docId, reason: 'asset_not_mentioned', text });
+        }
+      }
+    }
+  }
+
+  return { ok: violations.length === 0, violations };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const allowedOrigins = (env.ALLOWED_ORIGINS || 'https://blitzio.github.io')
@@ -308,10 +423,10 @@ export default {
         };
         const title = get('title').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
         const link  = get('link') || get('guid');
-        const desc  = get('description').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').trim();
+        const desc  = decodeHtmlBasic(get('description').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ');
         const date  = get('pubDate');
         if (title && link && link.startsWith('http')) {
-          items.push({ title, url: link, description: desc.slice(0, 300), pubDate: date, source: sourceName, topic });
+          items.push({ title: decodeHtmlBasic(title), url: link, description: desc.slice(0, 300), pubDate: date, source: sourceName, topic });
         }
       }
       return items;
@@ -440,10 +555,10 @@ export default {
 
       const topItems = filteredItems.slice(0, 20);
 
-      const withContent = topItems.map(item => ({
+      const withContent = buildPromptNewsItems(topItems.map(item => ({
         ...item,
         content: getDescription(item),
-      }));
+      })));
 
       const response = json(withContent, 200, { 'Cache-Control': 'public, max-age=900' });
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
@@ -567,24 +682,69 @@ export default {
           payload.systemInstruction = { parts: [{ text: systemText }] };
         }
 
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
-        );
+        let contentText = '{}';
+        let parsedBrief = null;
+        let citationCheck = { ok: false, violations: [] };
 
-        const data = await geminiRes.json();
-        if (!geminiRes.ok) return json(data, geminiRes.status);
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+          );
 
-        const contentText = (data?.candidates?.[0]?.content?.parts ?? [])
-          .map(p => p.text ?? '')
-          .join('')
-          .trim() || '{}';
+          const data = await geminiRes.json();
+          if (!geminiRes.ok) return json(data, geminiRes.status);
+
+          contentText = (data?.candidates?.[0]?.content?.parts ?? [])
+            .map(p => p.text ?? '')
+            .join('')
+            .trim() || '{}';
+
+          try {
+            parsedBrief = parseGeminiBriefJson(contentText);
+          } catch (parseErr) {
+            citationCheck = {
+              ok: false,
+              violations: [{ asset: 'json', bulletIndex: -1, reason: 'invalid_json', text: parseErr.message }],
+            };
+            payload.contents.push({
+              role: 'user',
+              parts: [{
+                text: `The previous response was invalid JSON (${parseErr.message}). Return the full corrected JSON object only, with no markdown and no commentary.`,
+              }],
+            });
+            continue;
+          }
+          citationCheck = validateBriefCitations(parsedBrief, body.cachePayload?.newsItems || []);
+          if (citationCheck.ok) break;
+
+          const feedback = citationCheck.violations
+            .slice(0, 10)
+            .map(v => `${v.asset.toUpperCase()} bullet ${v.bulletIndex + 1}: ${v.reason}${v.docId ? ` on doc [${v.docId}]` : ''}`)
+            .join('; ');
+          payload.contents.push({
+            role: 'user',
+            parts: [{
+              text: `The previous JSON failed citation validation: ${feedback}. Return the full corrected JSON only. Asset bullets may cite only docs whose ASSET_TAGS include that asset. If no matching source supports a useful point, keep the bullet but label it "Model inference:" and do not cite a generic doc.`,
+            }],
+          });
+        }
+
+        if (!citationCheck.ok) {
+          return json({
+            error: {
+              message: 'Generated brief failed citation validation. Refresh to retry with stricter source matching.',
+              citationViolations: citationCheck.violations,
+            },
+          }, 422);
+        }
 
         if (env.BRIEF_CACHE && body.cachePayload && typeof body.cachePayload === 'object') {
           try {
             await env.BRIEF_CACHE.put('latest', JSON.stringify({
               ...body.cachePayload,
-              brief: JSON.parse(contentText),
+              newsItems: buildPromptNewsItems(body.cachePayload.newsItems || []),
+              brief: parsedBrief,
               generatedAt: new Date().toISOString(),
             }), { expirationTtl: 3600 });
             console.log('[cache] generation saved server-side');

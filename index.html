@@ -478,17 +478,19 @@ LINK: ${fmtPrice(l.current_price)} | 24h: ${fmtPct(l.price_change_percentage_24h
 LIVE MACRO DATA (use exact figures below, do not substitute):
 ${macroLines || 'Macro data temporarily unavailable.'}
 
-RECENT FEED SOURCES (LAST 72H MAX) — CITE BY doc id FOR EVERY CLAIM:
+RECENT FEED SOURCES (LAST 72H MAX) — CITE BY doc id ONLY WHEN THE ASSET TAG MATCHES:
 ${newsItems.length
-  ? newsItems.map((n,i) => `<doc id="${i+1}">\nSOURCE: ${n.source}\nHEADLINE: ${n.title}\nCONTENT: ${n.content || n.description || 'No content available'}\n</doc>`).join('\n\n')
+  ? newsItems.map((n,i) => `<doc id="${i+1}">\nSOURCE: ${n.source}\nASSET_TAGS: ${(n.assetMentions || []).join(', ') || 'none'}\nHEADLINE: ${n.title}\nCONTENT: ${n.content || n.description || 'No content available'}\n</doc>`).join('\n\n')
   : 'No news retrieved — rely only on the live price and macro data above. Do not invent events.'}
 
 ANALYSIS INSTRUCTIONS:
 
 GENERAL:
-- Every BTC and ETH claim MUST reference a <doc id> — write it as [N] inline
-- LINK claims should cite a <doc id> when support exists; otherwise visibly label the point as model inference
-- If no <doc> supports a BTC or ETH claim, DO NOT include that claim — omit it entirely
+- Every BTC, ETH, and LINK news claim MUST reference a <doc id> — write it as [N] inline
+- If a useful asset point is not directly supported by a matching <doc>, visibly label it as "Model inference:"
+- If no <doc> supports an asset-specific news claim, DO NOT cite a loosely related or generic crypto doc
+- A BTC bullet may cite only docs tagged btc; ETH may cite only docs tagged eth; LINK may cite only docs tagged link
+- Docs tagged none can be used only for macro, threats, watch, verdict, or ranking — never as BTC/ETH/LINK evidence
 - For each asset: identify the most significant real developments from the docs, synthesize into sharp bullets
 - DO NOT hallucinate events, dates, prices, or developments not present in the docs above
 - Support and resistance levels must be actual dollar figures derived from the current price data
@@ -518,7 +520,7 @@ MACRO BULLETS — CRITICAL:
       messages: [
         {
           role:    'system',
-          content: "You are a senior crypto intelligence analyst. You MUST complete ALL sections of the JSON — btc (6 bullets), eth (6 bullets), link (6 bullets), macro (5 bullets), threats (5 items), watch (6 items), verdict, ranking, bullTrigger, bearTrigger. Every section must be fully populated — never leave any section empty or with fewer bullets than required. For BTC/ETH: cite sources with [N] where available. For LINK: cite sources with [N] where available; where coverage is thin, visibly label uncited points as model inference. Never write 'No Specific News'. Be concise — 1-2 sentences per bullet. MACRO BULLETS RULE: never restate the gauge values already shown in the cards — every macro bullet must combine at least 2 signals into a forward-looking cross-asset inference for crypto. Zero restatement, all synthesis.",
+          content: "You are a senior crypto intelligence analyst. You MUST complete ALL sections of the JSON — btc (6 bullets), eth (6 bullets), link (6 bullets), macro (5 bullets), threats (5 items), watch (6 items), verdict, ranking, bullTrigger, bearTrigger. Every section must be fully populated — never leave any section empty or with fewer bullets than required. For BTC/ETH/LINK: cite sources with [N] only when ASSET_TAGS includes that asset. Where coverage is thin, visibly label uncited asset points as Model inference. Never cite a loosely related or generic crypto doc as asset evidence. Never write 'No Specific News'. Be concise — 1-2 sentences per bullet. MACRO BULLETS RULE: never restate the gauge values already shown in the cards — every macro bullet must combine at least 2 signals into a forward-looking cross-asset inference for crypto. Zero restatement, all synthesis.",
         },
         { role: 'user', content: prompt },
       ],
@@ -530,7 +532,9 @@ MACRO BULLETS — CRITICAL:
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message ?? `Worker error ${res.status}`);
+    const citationCount = err?.error?.citationViolations?.length;
+    const suffix = citationCount ? ` (${citationCount} citation checks failed)` : '';
+    throw new Error((err?.error?.message ?? `Worker error ${res.status}`) + suffix);
   }
 
   const data = await res.json();
@@ -707,7 +711,7 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
   const debugEl = document.getElementById('debug-content');
   if (debugEl) {
     debugEl.textContent = newsItems.length
-      ? newsItems.map((n, i) => `[${i+1}] ${n.title} (${n.source})\n    ${n.url}\n    ${n.description || ''}`).join('\n\n' + '─'.repeat(50) + '\n\n')
+      ? newsItems.map((n, i) => `[${i+1}] ${n.title} (${n.source})\n    tags: ${(n.assetMentions || []).join(', ') || 'none'}\n    ${n.url}\n    ${n.description || ''}`).join('\n\n' + '─'.repeat(50) + '\n\n')
       : 'No news items retrieved.';
   }
 
