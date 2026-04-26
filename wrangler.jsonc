@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "crypto-brief-proxy",
+  "main": "worker.js",
+  "compatibility_date": "2026-03-26",
+  "vars": {
+    "GEMINI_MODEL": "gemini-3-flash-preview",
+    "ALLOWED_ORIGINS": "https://blitzio.github.io"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "BRIEF_CACHE",
+      "id": "296f56cf316b4fe49c132b7bf25bd482"
+    }
+  ]
+}

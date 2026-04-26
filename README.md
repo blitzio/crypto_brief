@@ -33,9 +33,10 @@ GitHub Pages (index.html)
        |               DefiLlama stablecoins
        |- GET /news -> 8 RSS feeds, 72h freshness filter,
        |              sorted by recency, top 20 articles
-       |- POST / -> Gemini 2.5 Flash brief generation
+       |- POST / -> Gemini 3 Flash Preview brief generation
+       |            + server-side KV save
        |- GET /brief -> serve KV-cached brief (< 1 hour old)
-       `- POST /brief/save -> persist brief to Cloudflare KV
+       `- POST /brief/save -> admin-token-only manual KV write
 ```
 
 The brief is cached in Cloudflare KV for 1 hour. On page load it serves the cache instantly; hitting `Refresh Brief` forces a fresh generation.
@@ -54,6 +55,18 @@ Fork this repo. Go to Settings -> Pages -> Source: `main` branch, `/ (root)`. Yo
 - Paste the contents of `worker.js`
 - Note your worker URL, for example `https://your-worker.workers.dev`
 
+This repo also includes `wrangler.jsonc` for command-line deploys to the existing `crypto-brief-proxy` Worker. After Cloudflare auth is active locally, deploy with:
+
+```bash
+npm run cf:deploy
+```
+
+To redeploy while explicitly forcing the current model variable:
+
+```bash
+npm run cf:model:gemini3
+```
+
 ### 3. Configure Worker secrets
 
 In your Worker settings -> Variables and Secrets, add:
@@ -61,7 +74,9 @@ In your Worker settings -> Variables and Secrets, add:
 | Variable | Value |
 |---|---|
 | `GEMINI_API_KEY` | Your [Google AI Studio](https://aistudio.google.com/) API key |
-| `GEMINI_MODEL` | `gemini-2.5-flash` |
+| `GEMINI_MODEL` | `gemini-3-flash-preview` |
+| `ALLOWED_ORIGINS` | `https://blitzio.github.io` |
+| `BRIEF_ADMIN_TOKEN` | Optional shared token for manual `/brief/save` admin writes |
 
 ### 4. Create the KV namespace
 
@@ -91,13 +106,17 @@ Push to GitHub and you are done.
 | DefiLlama | USDT + USDC circulating supply | Free |
 | Yahoo Finance | S&P 500, Gold, USD/SGD | Free via Worker proxy |
 | CoinDesk, CoinDesk Markets, The Block, Blockworks, Decrypt, DL News, Dow Jones Markets, FT Markets | News via RSS | Free |
-| Gemini 2.5 Flash | AI analysis | Free tier: 20 RPD, add billing for 1,000 RPD |
+| Gemini 3 Flash Preview | AI analysis | Free tier available; paid standard usage is low-cost per token |
 
 ---
 
-## Gemini quota
+## Gemini model and quota
 
-The free tier allows **20 requests per day**, which resets at midnight Pacific time (UTC-7/8). For normal daily use, one morning generation plus occasional refreshes is usually fine. If you hit the limit during development or testing, add billing in Google AI Studio to move to Tier 1. Actual cost at normal usage volume is near zero.
+The Worker uses `GEMINI_MODEL`, currently documented as `gemini-3-flash-preview`. Google AI Studio currently lists Gemini 3 Flash Preview with free-tier standard input/output usage and paid standard pricing at $0.50 per 1M input tokens and $3.00 per 1M output tokens. For normal daily use, one morning generation plus occasional refreshes should stay very low cost if billing is enabled.
+
+Preview model availability and free-tier rate limits can change. If generation fails with a model, quota, or API key error, confirm the model is still enabled in [Google AI Studio](https://aistudio.google.com/) and update the `GEMINI_API_KEY` or `GEMINI_MODEL` Worker variable as needed.
+
+For command-line deploys, `wrangler.jsonc` sets `GEMINI_MODEL` to `gemini-3-flash-preview` and limits browser CORS to the GitHub Pages origin. Keep `GEMINI_API_KEY` and any `BRIEF_ADMIN_TOKEN` as Cloudflare secrets; do not commit them to the repo.
 
 ---
 
@@ -105,11 +124,12 @@ The free tier allows **20 requests per day**, which resets at midnight Pacific t
 
 - On page load: checks Cloudflare KV for a brief generated within the last hour. If found, renders it instantly with no Gemini call.
 - `Refresh Brief`: bypasses the brief cache and generates a fully fresh brief.
-- After generation: saves to KV in the background without blocking render.
+- After generation: the Worker saves the generated brief to KV server-side.
 - KV entries auto-expire after 1 hour via `expirationTtl`.
 - The "Brief Generated" timestamp reflects when the brief was actually created, not when the page was loaded.
 - `/macro` is edge-cached for 5 minutes and `/news` for 15 minutes.
 - `/macro?nocache=1` and `/news?nocache=1` bypass the Worker edge cache for debugging.
+- `/brief/save` is admin-token-only and is not used by the browser app.
 
 ---
 
@@ -124,7 +144,7 @@ Gemini receives:
 The model is instructed to:
 
 - Cite every BTC/ETH claim with a `[N]` doc reference
-- Fill LINK bullets from market knowledge when news coverage is thin
+- Cite LINK claims when source support exists, and label uncited LINK points as model inference
 - Never restate macro card values in the macro bullet section
 - Never hallucinate events, prices, or dates not present in the source docs
 

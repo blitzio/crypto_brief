@@ -1,0 +1,14 @@
+{
+  "name": "crypto-brief",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "cf:whoami": "wrangler whoami",
+    "cf:deploy": "wrangler deploy --keep-vars",
+    "cf:model:gemini3": "wrangler deploy --keep-vars --var GEMINI_MODEL:gemini-3-flash-preview"
+  },
+  "devDependencies": {
+    "wrangler": "4.85.0"
+  }
+}

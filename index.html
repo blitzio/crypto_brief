@@ -233,7 +233,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
       &nbsp;·&nbsp;
       <b>News:</b> CoinDesk · The Block · Decrypt · Dow Jones · FT · more
       &nbsp;·&nbsp;
-      <b>Analysis:</b> Gemini 2.5 Flash
+      <b>Analysis:</b> Gemini 3 Flash Preview
     </div>
     <button class="accent-btn" onclick="run(true)">↻ Refresh Brief</button>
   </div>
@@ -486,8 +486,9 @@ ${newsItems.length
 ANALYSIS INSTRUCTIONS:
 
 GENERAL:
-- Every claim in BTC, ETH, and LINK sections MUST reference a <doc id> — write it as [N] inline
-- If no <doc> supports a claim, DO NOT include that claim — omit it entirely
+- Every BTC and ETH claim MUST reference a <doc id> — write it as [N] inline
+- LINK claims should cite a <doc id> when support exists; otherwise visibly label the point as model inference
+- If no <doc> supports a BTC or ETH claim, DO NOT include that claim — omit it entirely
 - For each asset: identify the most significant real developments from the docs, synthesize into sharp bullets
 - DO NOT hallucinate events, dates, prices, or developments not present in the docs above
 - Support and resistance levels must be actual dollar figures derived from the current price data
@@ -517,10 +518,11 @@ MACRO BULLETS — CRITICAL:
       messages: [
         {
           role:    'system',
-          content: "You are a senior crypto intelligence analyst. You MUST complete ALL sections of the JSON — btc (6 bullets), eth (6 bullets), link (6 bullets), macro (5 bullets), threats (5 items), watch (6 items), verdict, ranking, bullTrigger, bearTrigger. Every section must be fully populated — never leave any section empty or with fewer bullets than required. For BTC/ETH/LINK: cite sources with [N] where available; for LINK where coverage is thin, use knowledge of recent market conditions without citation. Never write 'No Specific News'. Be concise — 1-2 sentences per bullet. MACRO BULLETS RULE: never restate the gauge values already shown in the cards — every macro bullet must combine at least 2 signals into a forward-looking cross-asset inference for crypto. Zero restatement, all synthesis.",
+          content: "You are a senior crypto intelligence analyst. You MUST complete ALL sections of the JSON — btc (6 bullets), eth (6 bullets), link (6 bullets), macro (5 bullets), threats (5 items), watch (6 items), verdict, ranking, bullTrigger, bearTrigger. Every section must be fully populated — never leave any section empty or with fewer bullets than required. For BTC/ETH: cite sources with [N] where available. For LINK: cite sources with [N] where available; where coverage is thin, visibly label uncited points as model inference. Never write 'No Specific News'. Be concise — 1-2 sentences per bullet. MACRO BULLETS RULE: never restate the gauge values already shown in the cards — every macro bullet must combine at least 2 signals into a forward-looking cross-asset inference for crypto. Zero restatement, all synthesis.",
         },
         { role: 'user', content: prompt },
       ],
+      cachePayload: { prices, macro, newsItems },
       temperature: 0.3,
       max_tokens:  4000,
     }),
@@ -769,18 +771,6 @@ async function run(forceRefresh = false) {
       console.error('[render] failed for freshly generated brief:', renderErr);
       throw renderErr;
     }
-
-    fetch(WORKER_URL + '/brief/save', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ brief, prices, macro, newsItems }),
-    })
-      .then(r => r.json().catch(() => ({ ok: false, error: 'Non-JSON response' })))
-      .then(result => {
-        if (result.ok) console.log('[cache] save success');
-        else console.warn('[cache] save failed:', result.reason || result.error || 'unknown reason');
-      })
-      .catch((saveErr) => console.warn('[cache] save request failed:', saveErr));
 
   } catch (err) {
     console.error(err);

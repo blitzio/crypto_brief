@@ -8,7 +8,7 @@
  *
  * Secrets required (Settings → Variables and Secrets):
  *   GEMINI_API_KEY  — Google AI Studio key
- *   GEMINI_MODEL    — model name e.g. "gemini-2.5-flash" (update here to upgrade, no code change)
+ *   GEMINI_MODEL    — model name e.g. "gemini-3-flash-preview" (update here to upgrade, no code change)
  *
  * KV Namespace required (for brief caching):
  *   BRIEF_CACHE — bind a KV namespace called BRIEF_CACHE in Worker settings
@@ -143,10 +143,19 @@ export function resolveYahooQuotePct({ quote = {} }) {
 
 export default {
   async fetch(request, env, ctx) {
+    const allowedOrigins = (env.ALLOWED_ORIGINS || 'https://blitzio.github.io')
+      .split(',')
+      .map(origin => origin.trim())
+      .filter(Boolean);
+    const requestOrigin = request.headers.get('Origin') || '';
+    const corsOrigin = requestOrigin && allowedOrigins.includes(requestOrigin)
+      ? requestOrigin
+      : allowedOrigins[0] || '*';
     const cors = {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': corsOrigin,
       'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Brief-Admin-Token',
+      'Vary': 'Origin',
     };
 
     if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
@@ -474,6 +483,11 @@ export default {
     // ─────────────────────────────────────────────────────────────────
 
     if (request.method === 'POST' && pathname === '/brief/save') {
+      const adminToken = env.BRIEF_ADMIN_TOKEN || '';
+      const requestToken = request.headers.get('X-Brief-Admin-Token') || '';
+      if (!adminToken || requestToken !== adminToken) {
+        return json({ ok: false, reason: 'Unauthorized' }, 403);
+      }
       if (!env.BRIEF_CACHE) {
         console.log('[cache] /brief/save failed: KV not configured');
         return json({ ok: false, reason: 'KV not configured' });
@@ -523,12 +537,12 @@ export default {
           type: 'object',
           required: ['btc','eth','link','macro','threats','watch','verdict','ranking','bullTrigger','bearTrigger'],
           properties: {
-            btc:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', items: bulletSchema } } },
-            eth:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', items: bulletSchema } } },
-            link:  { type: 'object', required: ['support','resist','badge','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, badge: { type: 'string' }, bullets: { type: 'array', items: bulletSchema } } },
-            macro: { type: 'object', required: ['bullets'], properties: { bullets: { type: 'array', items: bulletSchema } } },
-            threats:     { type: 'array', items: bulletSchema },
-            watch:       { type: 'array', items: bulletSchema },
+            btc:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 6, maxItems: 6, items: bulletSchema } } },
+            eth:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 6, maxItems: 6, items: bulletSchema } } },
+            link:  { type: 'object', required: ['support','resist','badge','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, badge: { type: 'string' }, bullets: { type: 'array', minItems: 6, maxItems: 6, items: bulletSchema } } },
+            macro: { type: 'object', required: ['bullets'], properties: { bullets: { type: 'array', minItems: 5, maxItems: 5, items: bulletSchema } } },
+            threats:     { type: 'array', minItems: 5, maxItems: 5, items: bulletSchema },
+            watch:       { type: 'array', minItems: 6, maxItems: 6, items: bulletSchema },
             verdict:     { type: 'string' },
             ranking:     { type: 'string' },
             bullTrigger: { type: 'string' },
@@ -536,14 +550,14 @@ export default {
           },
         };
 
-        const model   = env.GEMINI_MODEL || 'gemini-2.5-flash';
+        const model   = env.GEMINI_MODEL || 'gemini-3-flash-preview';
         const payload = {
           contents: contents.length
             ? contents
             : [{ role: 'user', parts: [{ text: 'Generate the brief.' }] }],
           generationConfig: {
             temperature:      typeof body.temperature === 'number' ? body.temperature : 0.3,
-            maxOutputTokens:  8192,
+            maxOutputTokens:  16384,
             responseMimeType: 'application/json',
             responseJsonSchema: responseSchema,
           },
@@ -565,6 +579,19 @@ export default {
           .map(p => p.text ?? '')
           .join('')
           .trim() || '{}';
+
+        if (env.BRIEF_CACHE && body.cachePayload && typeof body.cachePayload === 'object') {
+          try {
+            await env.BRIEF_CACHE.put('latest', JSON.stringify({
+              ...body.cachePayload,
+              brief: JSON.parse(contentText),
+              generatedAt: new Date().toISOString(),
+            }), { expirationTtl: 3600 });
+            console.log('[cache] generation saved server-side');
+          } catch (cacheErr) {
+            console.log(`[cache] generation save skipped: ${cacheErr.message}`);
+          }
+        }
 
         return json({ choices: [{ message: { content: contentText } }] });
 
