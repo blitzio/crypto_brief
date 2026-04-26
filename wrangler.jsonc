@@ -5,6 +5,7 @@
   "compatibility_date": "2026-03-26",
   "vars": {
     "GEMINI_MODEL": "gemini-3-flash-preview",
+    "GEMINI_FALLBACK_MODEL": "gemini-2.5-flash",
     "ALLOWED_ORIGINS": "https://blitzio.github.io"
   },
   "kv_namespaces": [

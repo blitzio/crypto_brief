@@ -235,7 +235,8 @@ function extractCitationIds(text = '') {
 }
 
 function isLiveDataBullet(text = '') {
-  return /\b(live data|current price|24h|7d|market cap|volume|support|resistance|trading at|price)\b/i.test(text);
+  return /live market data/i.test(text) &&
+    /\b(current price|24h|7d|market cap|volume|support|resistance|trading at|priced at|price|relative strength|liquidity|momentum|level|invalidation|break below|break above|retest)\b/i.test(text);
 }
 
 export function validateBriefCitations(brief = {}, newsItems = []) {
@@ -276,6 +277,16 @@ export function validateBriefCitations(brief = {}, newsItems = []) {
   }
 
   return { ok: violations.length === 0, violations };
+}
+
+export function resolveModelFallbacks(env = {}) {
+  const primary = env.GEMINI_MODEL || 'gemini-3-flash-preview';
+  const configuredFallback = env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash';
+  const models = [primary];
+  if (/gemini-3/i.test(primary) && configuredFallback && configuredFallback !== primary) {
+    models.push(configuredFallback);
+  }
+  return models;
 }
 
 export default {
@@ -674,9 +685,9 @@ export default {
           type: 'object',
           required: ['btc','eth','link','macro','threats','watch','verdict','ranking','bullTrigger','bearTrigger'],
           properties: {
-            btc:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 2, maxItems: 6, items: bulletSchema } } },
-            eth:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 2, maxItems: 6, items: bulletSchema } } },
-            link:  { type: 'object', required: ['support','resist','badge','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, badge: { type: 'string' }, bullets: { type: 'array', minItems: 2, maxItems: 6, items: bulletSchema } } },
+            btc:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 4, maxItems: 6, items: bulletSchema } } },
+            eth:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 4, maxItems: 6, items: bulletSchema } } },
+            link:  { type: 'object', required: ['support','resist','badge','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, badge: { type: 'string' }, bullets: { type: 'array', minItems: 4, maxItems: 6, items: bulletSchema } } },
             macro: { type: 'object', required: ['bullets'], properties: { bullets: { type: 'array', minItems: 5, maxItems: 5, items: bulletSchema } } },
             threats:     { type: 'array', minItems: 5, maxItems: 5, items: bulletSchema },
             watch:       { type: 'array', minItems: 6, maxItems: 6, items: bulletSchema },
@@ -687,7 +698,6 @@ export default {
           },
         };
 
-        const model   = env.GEMINI_MODEL || 'gemini-3-flash-preview';
         const payload = {
           contents: contents.length
             ? contents
@@ -707,15 +717,31 @@ export default {
         let contentText = '{}';
         let parsedBrief = null;
         let citationCheck = { ok: false, violations: [] };
+        let lastGeminiError = null;
+        const models = resolveModelFallbacks(env);
 
         for (let attempt = 0; attempt < 2; attempt++) {
-          const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
-            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
-          );
+          let data = null;
+          for (const model of models) {
+            const geminiRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
+              { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+            );
 
-          const data = await geminiRes.json();
-          if (!geminiRes.ok) return json(data, geminiRes.status);
+            data = await geminiRes.json();
+            if (geminiRes.ok) {
+              lastGeminiError = null;
+              break;
+            }
+
+            lastGeminiError = { data, status: geminiRes.status };
+            const retryable = geminiRes.status === 429 || geminiRes.status === 503;
+            if (!retryable || model === models[models.length - 1]) {
+              return json(data, geminiRes.status);
+            }
+          }
+
+          if (lastGeminiError) return json(lastGeminiError.data, lastGeminiError.status);
 
           contentText = (data?.candidates?.[0]?.content?.parts ?? [])
             .map(p => p.text ?? '')
@@ -748,7 +774,7 @@ export default {
           payload.contents.push({
             role: 'user',
             parts: [{
-              text: `The previous JSON failed citation validation: ${feedback}. Return the full corrected JSON only. Asset bullets may cite only docs whose ASSET_TAGS include that asset. If no matching source supports an asset point, use only exact live market data from the prompt and label it "Live market data:"; do not write broad uncited model inference.`,
+              text: `The previous JSON failed citation validation: ${feedback}. Return the full corrected JSON only. Asset bullets may cite only docs whose ASSET_TAGS include that asset. If no matching source supports an asset point, use exact live market data from the prompt and label it "Live market data:"; cover price action, relative strength, liquidity/volume, and support/resistance. Do not write broad uncited model inference.`,
             }],
           });
         }

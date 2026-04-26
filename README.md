@@ -75,6 +75,7 @@ In your Worker settings -> Variables and Secrets, add:
 |---|---|
 | `GEMINI_API_KEY` | Your [Google AI Studio](https://aistudio.google.com/) API key |
 | `GEMINI_MODEL` | `gemini-3-flash-preview` |
+| `GEMINI_FALLBACK_MODEL` | `gemini-2.5-flash` |
 | `ALLOWED_ORIGINS` | `https://blitzio.github.io` |
 | `BRIEF_ADMIN_TOKEN` | Optional shared token for manual `/brief/save` admin writes |
 
@@ -148,7 +149,7 @@ The model is instructed to:
 - Cite LINK claims when source support exists
 - Cite asset sections only with docs whose tags match that asset
 - Use only exact live market data for uncited asset bullets, labelled as `Live market data`
-- Prefer fewer grounded asset bullets over filler when source coverage is thin
+- Keep asset sections substantial with 4-6 grounded bullets, using live price, volume, relative strength, support, and resistance when source coverage is thin
 - Never restate macro card values in the macro bullet section
 - Never hallucinate events, prices, or dates not present in the source docs
 

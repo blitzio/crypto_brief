@@ -4,8 +4,14 @@ import {
   inferAssetMentions,
   parseGeminiBriefJson,
   normalizeCitationMarkers,
+  resolveModelFallbacks,
   validateBriefCitations,
 } from '../worker.js';
+
+{
+  assert.deepEqual(resolveModelFallbacks({ GEMINI_MODEL: 'gemini-3-flash-preview' }), ['gemini-3-flash-preview', 'gemini-2.5-flash']);
+  assert.deepEqual(resolveModelFallbacks({ GEMINI_MODEL: 'gemini-2.5-flash' }), ['gemini-2.5-flash']);
+}
 
 {
   assert.equal(
@@ -86,6 +92,21 @@ import {
   assert.equal(result.violations.length, 1);
   assert.equal(result.violations[0].asset, 'eth');
   assert.equal(result.violations[0].reason, 'missing_citation_or_live_data');
+}
+
+{
+  const result = validateBriefCitations({
+    btc: { bullets: [] },
+    eth: { bullets: [
+      { label: 'Relative Strength', text: 'Live market data: ETH is up 0.62% over 24h while down 0.18% over 7d, showing short-term bounce inside weak weekly momentum.' },
+      { label: 'Liquidity', text: 'Live market data: ETH volume is $6.9B against $281.1B market cap, giving enough liquidity for positioning but not a breakout signal.' },
+      { label: 'Invalidation', text: 'Live market data: A break below $2,200 would invalidate the current consolidation range.' },
+      { label: 'Valuation', text: 'Live market data: ETH is priced at $2,329 with a $281.1B market cap.' },
+    ] },
+    link: { bullets: [] },
+  }, []);
+
+  assert.equal(result.ok, true);
 }
 
 {
