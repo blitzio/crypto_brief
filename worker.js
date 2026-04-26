@@ -208,6 +208,23 @@ export function parseGeminiBriefJson(raw = '') {
   }
 }
 
+export function normalizeCitationMarkers(text = '') {
+  return String(text)
+    .replace(/\s*\((?:Doc|Document)\.?\s*(\d+)\)/gi, ' [$1]')
+    .replace(/\b(?:Doc|Document)\.?\s*(\d+)\b/gi, '[$1]');
+}
+
+function normalizeBriefCitationMarkers(value) {
+  if (Array.isArray(value)) return value.map(normalizeBriefCitationMarkers);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, normalizeBriefCitationMarkers(entry)])
+    );
+  }
+  if (typeof value === 'string') return normalizeCitationMarkers(value);
+  return value;
+}
+
 function extractCitationIds(text = '') {
   const raw = String(text);
   const ids = [
@@ -701,7 +718,8 @@ export default {
             .trim() || '{}';
 
           try {
-            parsedBrief = parseGeminiBriefJson(contentText);
+          parsedBrief = normalizeBriefCitationMarkers(parseGeminiBriefJson(contentText));
+          contentText = JSON.stringify(parsedBrief);
           } catch (parseErr) {
             citationCheck = {
               ok: false,

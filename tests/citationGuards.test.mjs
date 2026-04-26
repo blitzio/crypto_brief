@@ -3,8 +3,16 @@ import {
   buildPromptNewsItems,
   inferAssetMentions,
   parseGeminiBriefJson,
+  normalizeCitationMarkers,
   validateBriefCitations,
 } from '../worker.js';
+
+{
+  assert.equal(
+    normalizeCitationMarkers('IBIT options topped Deribit (Doc 8), while recovery uses Document 15.'),
+    'IBIT options topped Deribit [8], while recovery uses [15].'
+  );
+}
 
 {
   const brief = parseGeminiBriefJson('```json\n{"btc":{"bullets":[]},"eth":{"bullets":[]},"link":{"bullets":[]},}\n```');
