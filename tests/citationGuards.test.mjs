@@ -6,8 +6,20 @@ import {
   normalizeCitationMarkers,
   resolveModelFallbacks,
   selectTopNewsItems,
+  sanitizeNewsDescription,
   validateBriefCitations,
 } from '../worker.js';
+
+{
+  assert.equal(
+    sanitizeNewsDescription('<a href="https://news.google.com/rss/articles/abc" target="_blank">Amazon Web Services Marketplace Adds Chainlink Crypto Oracle Services - Decrypt</a>&nbsp;&nbsp;<font color="#6f6f6f">Decrypt</font>'),
+    'Amazon Web Services Marketplace Adds Chainlink Crypto Oracle Services - Decrypt Decrypt'
+  );
+  assert.equal(
+    sanitizeNewsDescription('&lt;a href=&quot;https://news.google.com/rss/articles/abc&quot; target=&quot;_blank&quot;&gt;Deloitte Gives Chainlink Top Security Certification - Bitget&lt;/a&gt;'),
+    'Deloitte Gives Chainlink Top Security Certification - Bitget'
+  );
+}
 
 {
   const selected = selectTopNewsItems([
@@ -15,10 +27,14 @@ import {
     { title: 'Ethereum staking demand rises', description: 'ETH staking inflows increased across liquid staking protocols.', pubDate: 'Sun, 26 Apr 2026 09:00:00 GMT', source: 'ETH Search', topic: 'eth' },
     { title: 'Chainlink CCIP adoption expands', description: 'Chainlink oracle infrastructure usage grew across tokenization pilots.', pubDate: 'Sun, 26 Apr 2026 08:00:00 GMT', source: 'LINK Search', topic: 'link' },
     { title: 'Bitcoin ETF options hit milestone', description: 'IBIT options open interest topped Deribit.', pubDate: 'Sun, 26 Apr 2026 07:00:00 GMT', source: 'BTC Search', topic: 'btc' },
+    { title: 'Bitcoin liquidity moves to Monad', description: 'cbBTC liquidity expanded through a new bridge.', pubDate: 'Sun, 26 Apr 2026 06:00:00 GMT', source: 'Google News LINK', topic: 'link' },
+    { title: 'AI agents get a coding plugin', description: 'The story discusses developer tooling without naming any tracked asset.', pubDate: 'Sun, 26 Apr 2026 05:00:00 GMT', source: 'Decrypt', topic: 'eth' },
   ], 3);
 
   assert.ok(selected.some(item => item.assetMentions.includes('eth')), 'ETH item should survive source selection');
   assert.ok(selected.some(item => item.assetMentions.includes('link')), 'LINK item should survive source selection');
+  assert.ok(!selected.some(item => item.title.includes('Monad')), 'mismatched LINK-feed BTC item should be dropped');
+  assert.ok(!selected.some(item => item.title.includes('coding plugin')), 'mismatched ETH-feed generic item should be dropped');
 }
 
 {

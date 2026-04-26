@@ -155,6 +155,16 @@ function decodeHtmlBasic(value = '') {
     .trim();
 }
 
+export function sanitizeNewsDescription(value = '') {
+  return decodeHtmlBasic(value)
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function newsText(item = {}) {
   return decodeHtmlBasic([
     item.title,
@@ -178,8 +188,8 @@ export function buildPromptNewsItems(items = []) {
   return items.map(item => ({
     ...item,
     title: decodeHtmlBasic(item.title),
-    description: decodeHtmlBasic(item.description),
-    content: decodeHtmlBasic(item.content || item.description || ''),
+    description: sanitizeNewsDescription(item.description),
+    content: sanitizeNewsDescription(item.content || item.description || ''),
     assetMentions: inferAssetMentions(item),
   }));
 }
@@ -194,9 +204,15 @@ function isLowSignalNews(item = {}) {
   return /price prediction|price forecast|current price of|goes parabolic|be a millionaire|2026[, -]+2027|2028[- ]2032|best crypto to buy|could .* make you rich/i.test(text);
 }
 
+function isMismatchedAssetFeedItem(item = {}) {
+  if (!['btc', 'eth', 'link'].includes(item.topic)) return false;
+  return !item.assetMentions.includes(item.topic);
+}
+
 export function selectTopNewsItems(items = [], limit = 20) {
   const prepared = buildPromptNewsItems(items)
     .filter(item => !isLowSignalNews(item))
+    .filter(item => !isMismatchedAssetFeedItem(item))
     .sort((a, b) => itemTime(b) - itemTime(a));
 
   const selected = [];
@@ -503,7 +519,7 @@ export default {
         };
         const title = get('title').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
         const link  = get('link') || get('guid');
-        const desc  = decodeHtmlBasic(get('description').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ');
+        const desc  = sanitizeNewsDescription(get('description'));
         const date  = get('pubDate');
         if (title && link && link.startsWith('http')) {
           items.push({ title: decodeHtmlBasic(title), url: link, description: desc.slice(0, 300), pubDate: date, source: sourceName, topic, maxAgeHours });
