@@ -145,12 +145,14 @@ Gemini receives:
 The model is instructed to:
 
 - Cite every BTC/ETH claim with a `[N]` doc reference
-- Cite LINK claims when source support exists, and label uncited asset points as model inference
+- Cite LINK claims when source support exists
 - Cite asset sections only with docs whose tags match that asset
+- Use only exact live market data for uncited asset bullets, labelled as `Live market data`
+- Prefer fewer grounded asset bullets over filler when source coverage is thin
 - Never restate macro card values in the macro bullet section
 - Never hallucinate events, prices, or dates not present in the source docs
 
-After Gemini returns JSON, the Worker checks every BTC, ETH, and LINK citation. If an asset bullet cites a doc that does not mention that asset, or makes an uncited non-price point without a model-inference label, the Worker returns an error and does not cache the brief.
+After Gemini returns JSON, the Worker checks every BTC, ETH, and LINK citation. If an asset bullet cites a doc that does not mention that asset, or makes a broad uncited model-inference claim, the Worker returns an error and does not cache the brief.
 
 ---
 

@@ -487,11 +487,12 @@ ANALYSIS INSTRUCTIONS:
 
 GENERAL:
 - Every BTC, ETH, and LINK news claim MUST reference a <doc id> — write it as [N] inline
-- If a useful asset point is not directly supported by a matching <doc>, visibly label it as "Model inference:"
+- If a useful asset point is not directly supported by a matching <doc>, use only exact live price/volume/24h/7d/support/resistance data and label it "Live market data:"
 - If no <doc> supports an asset-specific news claim, DO NOT cite a loosely related or generic crypto doc
 - A BTC bullet may cite only docs tagged btc; ETH may cite only docs tagged eth; LINK may cite only docs tagged link
 - Docs tagged none can be used only for macro, threats, watch, verdict, or ranking — never as BTC/ETH/LINK evidence
-- For each asset: identify the most significant real developments from the docs, synthesize into sharp bullets
+- For each asset: write 2-6 bullets; prefer fewer grounded bullets over filler
+- For source-backed bullets, identify the most significant real developments from the docs and synthesize into sharp bullets
 - DO NOT hallucinate events, dates, prices, or developments not present in the docs above
 - Support and resistance levels must be actual dollar figures derived from the current price data
 - Avoid explicit buy/sell language; frame verdict as market conditions and levels to monitor
@@ -520,7 +521,7 @@ MACRO BULLETS — CRITICAL:
       messages: [
         {
           role:    'system',
-          content: "You are a senior crypto intelligence analyst. You MUST complete ALL sections of the JSON — btc (6 bullets), eth (6 bullets), link (6 bullets), macro (5 bullets), threats (5 items), watch (6 items), verdict, ranking, bullTrigger, bearTrigger. Every section must be fully populated — never leave any section empty or with fewer bullets than required. For BTC/ETH/LINK: cite sources with [N] only when ASSET_TAGS includes that asset. Where coverage is thin, visibly label uncited asset points as Model inference. Never cite a loosely related or generic crypto doc as asset evidence. Never write 'No Specific News'. Be concise — 1-2 sentences per bullet. MACRO BULLETS RULE: never restate the gauge values already shown in the cards — every macro bullet must combine at least 2 signals into a forward-looking cross-asset inference for crypto. Zero restatement, all synthesis.",
+          content: "You are a senior crypto intelligence analyst. You MUST complete all sections of the JSON. Asset sections may contain 2-6 bullets; macro must contain 5 bullets, threats 5 items, watch 6 items, plus verdict, ranking, bullTrigger, bearTrigger. Prefer fewer grounded asset bullets over filler. For BTC/ETH/LINK: cite sources with [N] only when ASSET_TAGS includes that asset. Where coverage is thin, use only exact live price/volume/24h/7d/support/resistance data and visibly label uncited asset points as Live market data. Do not write broad uncited Model inference in asset sections. Never cite a loosely related or generic crypto doc as asset evidence. Never write 'No Specific News'. Be concise but analytical — each bullet should explain signal, implication, and what matters next when evidence supports it. MACRO BULLETS RULE: never restate the gauge values already shown in the cards — every macro bullet must combine at least 2 signals into a forward-looking cross-asset inference for crypto. Zero restatement, all synthesis.",
         },
         { role: 'user', content: prompt },
       ],

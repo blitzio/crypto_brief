@@ -64,7 +64,7 @@ import {
   const brief = {
     btc: { bullets: [{ label: 'ETF', text: 'IBIT options open interest topped Deribit [1].' }] },
     eth: { bullets: [{ label: 'Wrong Citation', text: 'Regulated derivatives growth supports Ethereum exposure [1].' }] },
-    link: { bullets: [{ label: 'Inference', text: 'Model inference: LINK may benefit from oracle demand.' }] },
+    link: { bullets: [{ label: 'Live Volume', text: 'Live market data: LINK volume is below BTC and ETH, signaling thinner liquidity.' }] },
   };
 
   const result = validateBriefCitations(brief, newsItems);
@@ -77,7 +77,7 @@ import {
 
 {
   const result = validateBriefCitations({
-    btc: { bullets: [{ label: 'Unbacked', text: 'Model inference: BTC liquidity remains sensitive to macro risk.' }] },
+    btc: { bullets: [{ label: 'Live Volume', text: 'Live market data: BTC liquidity remains sensitive to 24h volume changes.' }] },
     eth: { bullets: [{ label: 'Unbacked', text: 'Ethereum liquidity remains sensitive to macro risk.' }] },
     link: { bullets: [] },
   }, []);
@@ -85,7 +85,18 @@ import {
   assert.equal(result.ok, false);
   assert.equal(result.violations.length, 1);
   assert.equal(result.violations[0].asset, 'eth');
-  assert.equal(result.violations[0].reason, 'missing_citation');
+  assert.equal(result.violations[0].reason, 'missing_citation_or_live_data');
+}
+
+{
+  const result = validateBriefCitations({
+    btc: { bullets: [] },
+    eth: { bullets: [{ label: 'Filler', text: 'Model inference: ETH lacks a clear institutional narrative versus BTC.' }] },
+    link: { bullets: [] },
+  }, []);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.violations[0].reason, 'unsupported_model_inference');
 }
 
 {

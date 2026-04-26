@@ -252,8 +252,13 @@ export function validateBriefCitations(brief = {}, newsItems = []) {
       const text = `${bullet?.label || ''}: ${bullet?.text || ''}`;
       const citationIds = extractCitationIds(text);
 
-      if (citationIds.length === 0 && !/model inference/i.test(text) && !isLiveDataBullet(text)) {
-        violations.push({ asset, bulletIndex, reason: 'missing_citation', text });
+      if (citationIds.length === 0 && /model inference/i.test(text) && !isLiveDataBullet(text)) {
+        violations.push({ asset, bulletIndex, reason: 'unsupported_model_inference', text });
+        continue;
+      }
+
+      if (citationIds.length === 0 && !isLiveDataBullet(text)) {
+        violations.push({ asset, bulletIndex, reason: 'missing_citation_or_live_data', text });
         continue;
       }
 
@@ -669,9 +674,9 @@ export default {
           type: 'object',
           required: ['btc','eth','link','macro','threats','watch','verdict','ranking','bullTrigger','bearTrigger'],
           properties: {
-            btc:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 6, maxItems: 6, items: bulletSchema } } },
-            eth:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 6, maxItems: 6, items: bulletSchema } } },
-            link:  { type: 'object', required: ['support','resist','badge','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, badge: { type: 'string' }, bullets: { type: 'array', minItems: 6, maxItems: 6, items: bulletSchema } } },
+            btc:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 2, maxItems: 6, items: bulletSchema } } },
+            eth:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 2, maxItems: 6, items: bulletSchema } } },
+            link:  { type: 'object', required: ['support','resist','badge','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, badge: { type: 'string' }, bullets: { type: 'array', minItems: 2, maxItems: 6, items: bulletSchema } } },
             macro: { type: 'object', required: ['bullets'], properties: { bullets: { type: 'array', minItems: 5, maxItems: 5, items: bulletSchema } } },
             threats:     { type: 'array', minItems: 5, maxItems: 5, items: bulletSchema },
             watch:       { type: 'array', minItems: 6, maxItems: 6, items: bulletSchema },
@@ -743,7 +748,7 @@ export default {
           payload.contents.push({
             role: 'user',
             parts: [{
-              text: `The previous JSON failed citation validation: ${feedback}. Return the full corrected JSON only. Asset bullets may cite only docs whose ASSET_TAGS include that asset. If no matching source supports a useful point, keep the bullet but label it "Model inference:" and do not cite a generic doc.`,
+              text: `The previous JSON failed citation validation: ${feedback}. Return the full corrected JSON only. Asset bullets may cite only docs whose ASSET_TAGS include that asset. If no matching source supports an asset point, use only exact live market data from the prompt and label it "Live market data:"; do not write broad uncited model inference.`,
             }],
           });
         }
