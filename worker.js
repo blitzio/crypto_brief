@@ -184,6 +184,51 @@ export function buildPromptNewsItems(items = []) {
   }));
 }
 
+function itemTime(item = {}) {
+  const ts = item.pubDate ? new Date(item.pubDate).getTime() : 0;
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function isLowSignalNews(item = {}) {
+  const text = newsText(item);
+  return /price prediction|price forecast|current price of|goes parabolic|be a millionaire|2026[, -]+2027|2028[- ]2032|best crypto to buy|could .* make you rich/i.test(text);
+}
+
+export function selectTopNewsItems(items = [], limit = 20) {
+  const prepared = buildPromptNewsItems(items)
+    .filter(item => !isLowSignalNews(item))
+    .sort((a, b) => itemTime(b) - itemTime(a));
+
+  const selected = [];
+  const seen = new Set();
+  const add = (item) => {
+    const key = item.url || `${item.source}:${item.title}`;
+    if (!key || seen.has(key) || selected.length >= limit) return;
+    seen.add(key);
+    selected.push(item);
+  };
+
+  const buckets = [
+    { tag: 'btc', quota: 5 },
+    { tag: 'eth', quota: 5 },
+    { tag: 'link', quota: 5 },
+  ];
+
+  for (const { tag, quota } of buckets) {
+    let count = 0;
+    for (const item of prepared) {
+      if (count >= quota) break;
+      if (item.assetMentions.includes(tag)) {
+        add(item);
+        count++;
+      }
+    }
+  }
+
+  for (const item of prepared) add(item);
+  return selected;
+}
+
 export function parseGeminiBriefJson(raw = '') {
   let clean = String(raw)
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
@@ -438,13 +483,15 @@ export default {
       { url: 'https://blockworks.co/feed/',                                       source: 'Blockworks',       topic: 'btc' },
       { url: 'https://theblock.co/rss.xml',                                       source: 'The Block',        topic: 'eth' },
       { url: 'https://decrypt.co/feed',                                           source: 'Decrypt',          topic: 'eth' },
+      { url: 'https://news.google.com/rss/search?q=%28Ethereum%20OR%20ETH%20OR%20staking%20OR%20rsETH%29%20crypto%20when%3A7d&hl=en-US&gl=US&ceid=US:en', source: 'Google News ETH', topic: 'eth', maxItems: 12, maxAgeHours: 168 },
+      { url: 'https://news.google.com/rss/search?q=%28Chainlink%20OR%20%22LINK%22%20OR%20CCIP%20OR%20oracle%29%20crypto%20when%3A7d&hl=en-US&gl=US&ceid=US:en', source: 'Google News LINK', topic: 'link', maxItems: 12, maxAgeHours: 168 },
       { url: 'https://www.dlnews.com/arc/outboundfeeds/rss/',                     source: 'DL News',          topic: 'general' },
       { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',                   source: 'CoinDesk',         topic: 'general' },
       { url: 'https://feeds.content.dowjones.io/public/rss/RSSMarketsMain',       source: 'Dow Jones Markets', topic: 'macro' },
       { url: 'https://www.ft.com/markets?format=rss',                             source: 'FT Markets',       topic: 'macro' },
     ];
 
-    function parseRSS(xml, sourceName, topic) {
+    function parseRSS(xml, sourceName, topic, maxAgeHours) {
       const items = [];
       const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
       let match;
@@ -459,13 +506,13 @@ export default {
         const desc  = decodeHtmlBasic(get('description').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ');
         const date  = get('pubDate');
         if (title && link && link.startsWith('http')) {
-          items.push({ title: decodeHtmlBasic(title), url: link, description: desc.slice(0, 300), pubDate: date, source: sourceName, topic });
+          items.push({ title: decodeHtmlBasic(title), url: link, description: desc.slice(0, 300), pubDate: date, source: sourceName, topic, maxAgeHours });
         }
       }
       return items;
     }
 
-    async function fetchFeed(feedUrl, sourceName, topic) {
+    async function fetchFeed(feedUrl, sourceName, topic, maxItems = 8, maxAgeHours = null) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 4000);
       try {
@@ -476,7 +523,7 @@ export default {
         clearTimeout(timeout);
         if (!res.ok) return [];
         const xml = await res.text();
-        return parseRSS(xml, sourceName, topic).slice(0, 8);
+        return parseRSS(xml, sourceName, topic, maxAgeHours).slice(0, maxItems);
       } catch {
         clearTimeout(timeout);
         return [];
@@ -543,7 +590,7 @@ export default {
       if (cached) return cached;
 
       const feedSettled = await Promise.allSettled(
-        RSS_FEEDS.map(f => fetchFeed(f.url, f.source, f.topic))
+        RSS_FEEDS.map(f => fetchFeed(f.url, f.source, f.topic, f.maxItems, f.maxAgeHours))
       );
       const feedResults = feedSettled.map(r => r.status === 'fulfilled' ? r.value : []);
 
@@ -563,12 +610,11 @@ export default {
       // 1) Keep only recent items from the last 72 hours
       // 2) Exclude obvious low-signal Dow Jones roundup items
       const now = Date.now();
-      const MAX_AGE_MS = 72 * 60 * 60 * 1000;
-
       const filteredItems = items.filter(item => {
         const ts = item.pubDate ? new Date(item.pubDate).getTime() : 0;
         if (!ts || Number.isNaN(ts)) return false;
-        if ((now - ts) > MAX_AGE_MS) return false;
+        const maxAgeHours = Number.isFinite(item.maxAgeHours) ? item.maxAgeHours : 72;
+        if ((now - ts) > (maxAgeHours * 60 * 60 * 1000)) return false;
 
         if (
           item.source === 'Dow Jones Markets' &&
@@ -580,18 +626,12 @@ export default {
         return true;
       });
 
-      filteredItems.sort((a, b) => {
-        const da = a.pubDate ? new Date(a.pubDate).getTime() : 0;
-        const db = b.pubDate ? new Date(b.pubDate).getTime() : 0;
-        return db - da;
-      });
+      const topItems = selectTopNewsItems(filteredItems, 20);
 
-      const topItems = filteredItems.slice(0, 20);
-
-      const withContent = buildPromptNewsItems(topItems.map(item => ({
+      const withContent = topItems.map(item => ({
         ...item,
         content: getDescription(item),
-      })));
+      }));
 
       const response = json(withContent, 200, { 'Cache-Control': 'public, max-age=900' });
       ctx.waitUntil(cache.put(cacheKey, response.clone()));

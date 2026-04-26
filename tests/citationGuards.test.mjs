@@ -5,8 +5,21 @@ import {
   parseGeminiBriefJson,
   normalizeCitationMarkers,
   resolveModelFallbacks,
+  selectTopNewsItems,
   validateBriefCitations,
 } from '../worker.js';
+
+{
+  const selected = selectTopNewsItems([
+    { title: 'Generic macro story', description: 'Stocks and oil moved.', pubDate: 'Sun, 26 Apr 2026 10:00:00 GMT', source: 'Macro', topic: 'macro' },
+    { title: 'Ethereum staking demand rises', description: 'ETH staking inflows increased across liquid staking protocols.', pubDate: 'Sun, 26 Apr 2026 09:00:00 GMT', source: 'ETH Search', topic: 'eth' },
+    { title: 'Chainlink CCIP adoption expands', description: 'Chainlink oracle infrastructure usage grew across tokenization pilots.', pubDate: 'Sun, 26 Apr 2026 08:00:00 GMT', source: 'LINK Search', topic: 'link' },
+    { title: 'Bitcoin ETF options hit milestone', description: 'IBIT options open interest topped Deribit.', pubDate: 'Sun, 26 Apr 2026 07:00:00 GMT', source: 'BTC Search', topic: 'btc' },
+  ], 3);
+
+  assert.ok(selected.some(item => item.assetMentions.includes('eth')), 'ETH item should survive source selection');
+  assert.ok(selected.some(item => item.assetMentions.includes('link')), 'LINK item should survive source selection');
+}
 
 {
   assert.deepEqual(resolveModelFallbacks({ GEMINI_MODEL: 'gemini-3-flash-preview' }), ['gemini-3-flash-preview', 'gemini-2.5-flash']);
