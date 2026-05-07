@@ -17,7 +17,7 @@ Generates a formatted two-page crypto intelligence brief every morning or on dem
 - News-grounded analysis for each asset, cited by source number
 - Active threat stack and 7-day forward watch
 - Analyst verdict with bull/bear triggers and conviction ranking
-- Full source grid linking to every article used
+- Source grid linking to every RSS item used
 - Raw-source debug view showing the exact RSS items fed into Gemini
 
 ---
@@ -31,8 +31,9 @@ GitHub Pages (index.html)
        |- GET /macro -> Yahoo Finance quote/chart fallback, NY Fed EFFR,
        |               BLS CPI, Alternative.me Fear & Greed,
        |               DefiLlama stablecoins
-       |- GET /news -> 8 RSS feeds, 72h freshness filter,
-       |              sorted by recency, top 20 articles
+       |- GET /news -> RSS feeds, 72h freshness filter,
+       |              sorted by recency, top 20 sanitized snippets
+       |- GET /health -> read-only macro/news/cache diagnostics
        |- POST / -> Gemini 3 Flash Preview brief generation
        |            + server-side KV save
        |- GET /brief -> serve KV-cached brief (< 1 hour old)
@@ -130,6 +131,7 @@ For command-line deploys, `wrangler.jsonc` sets `GEMINI_MODEL` to `gemini-3-flas
 - The "Brief Generated" timestamp reflects when the brief was actually created, not when the page was loaded.
 - `/macro` is edge-cached for 5 minutes and `/news` for 15 minutes.
 - `/macro?nocache=1` and `/news?nocache=1` bypass the Worker edge cache for debugging.
+- `/health` returns read-only macro/news/cache diagnostics without making a Gemini call or exposing secrets, and is lightly cached for 60 seconds.
 - `/brief/save` is admin-token-only and is not used by the browser app.
 - Generated briefs are validated before caching; bad asset citations are rejected instead of saved.
 
@@ -141,7 +143,7 @@ Gemini receives:
 
 - Exact live prices
 - Exact macro figures
-- Up to 20 RSS articles sorted by recency, formatted as numbered `<doc>` blocks with deterministic asset tags
+- Up to 20 RSS snippets sorted by recency, formatted as numbered `<doc>` blocks with deterministic asset tags
 
 The model is instructed to:
 
@@ -175,8 +177,11 @@ This prevents the old failure mode where the S&P 500 could show `0.00%` even tho
 
 ```text
 index.html   - frontend: UI, data fetching, AI prompt, rendering
-worker.js    - Cloudflare Worker: macro data, RSS news, Gemini proxy, KV caching
+worker.js    - Cloudflare Worker: macro data, RSS news snippets, Gemini proxy, KV caching
+src/yahoo.js - pure Yahoo previous-close / percentage helpers
 tests/selectYahooPreviousClose.test.mjs - regression tests for Yahoo previous-close / percent logic
+tests/citationGuards.test.mjs - regression tests for source cleanup and citation validation
+tests/workerRoutes.test.mjs - route-level Worker safety and health diagnostics tests
 README.md    - this file
 ```
 

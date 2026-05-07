@@ -398,6 +398,40 @@ const escapeHtml = (s = '') => String(s)
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#39;');
 
+function parseBriefJson(raw) {
+  let clean = String(raw)
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
+    .replace(/```json|```/g, '')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .trim();
+
+  const start = clean.indexOf('{');
+  const end   = clean.lastIndexOf('}');
+  if (start === -1 || end === -1) throw new Error('No JSON in response - try refreshing.');
+  clean = clean.slice(start, end + 1);
+
+  let brief;
+  try {
+    brief = JSON.parse(clean);
+  } catch {
+    try {
+      brief = JSON.parse(clean.replace(/,\s*([}\]])/g, '$1'));
+    } catch(e2) {
+      throw new Error('Could not parse AI response as JSON. Try refreshing. Detail: ' + e2.message);
+    }
+  }
+
+  const keys = Object.keys(brief);
+  if (keys.length === 1 && typeof brief[keys[0]] === 'object' && brief[keys[0]].btc) {
+    brief = brief[keys[0]];
+  }
+
+  return brief;
+}
+
 // ─── DATA FETCHERS ──────────────────────────────────────────────────
 async function fetchPrices() {
   const res = await fetch(
@@ -538,36 +572,7 @@ MACRO BULLETS — CRITICAL:
 
   const data = await res.json();
   const raw  = data?.choices?.[0]?.message?.content ?? '';
-
-  let clean = raw
-    .replace(/<think>[\s\S]*?<\/think>/gi, '')
-    .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, '')
-    .replace(/```json|```/g, '')
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u2013\u2014]/g, '-')
-    .trim();
-
-  const start = clean.indexOf('{');
-  const end   = clean.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error('No JSON in response — try refreshing.');
-  clean = clean.slice(start, end + 1);
-
-  let brief;
-  try {
-    brief = JSON.parse(clean);
-  } catch {
-    try {
-      brief = JSON.parse(clean.replace(/,\s*([}\]])/g, '$1'));
-    } catch(e2) {
-      throw new Error('Could not parse AI response as JSON. Try refreshing. Detail: ' + e2.message);
-    }
-  }
-
-  const keys = Object.keys(brief);
-  if (keys.length === 1 && typeof brief[keys[0]] === 'object' && brief[keys[0]].btc) {
-    brief = brief[keys[0]];
-  }
+  const brief = parseBriefJson(raw);
 
   return { brief };
 }

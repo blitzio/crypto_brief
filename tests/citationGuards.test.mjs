@@ -7,6 +7,7 @@ import {
   resolveModelFallbacks,
   selectTopNewsItems,
   sanitizeNewsDescription,
+  summarizeNewsSourceHealth,
   validateBriefCitations,
 } from '../worker.js';
 
@@ -18,6 +19,10 @@ import {
   assert.equal(
     sanitizeNewsDescription('&lt;a href=&quot;https://news.google.com/rss/articles/abc&quot; target=&quot;_blank&quot;&gt;Deloitte Gives Chainlink Top Security Certification - Bitget&lt;/a&gt;'),
     'Deloitte Gives Chainlink Top Security Certification - Bitget'
+  );
+  assert.equal(
+    sanitizeNewsDescription('<font color="#6f6f6f">CoinDesk</font>&nbsp;&nbsp;<a href="https://news.google.com/rss/articles/abc">Bitcoin ETF demand rises</a>'),
+    'CoinDesk Bitcoin ETF demand rises'
   );
 }
 
@@ -162,6 +167,48 @@ import {
   const result = validateBriefCitations(brief, newsItems);
 
   assert.equal(result.ok, true);
+}
+
+{
+  const result = validateBriefCitations({
+    btc: { bullets: [] },
+    eth: { bullets: [] },
+    link: { bullets: [
+      { label: 'Price Action', text: 'Live market data: LINK is trading near support while liquidity remains thinner than BTC and ETH.' },
+      { label: 'Invalidation', text: 'Live market data: A break below LINK support would weaken the current setup.' },
+    ] },
+  }, []);
+
+  assert.equal(result.ok, true, 'LINK should be allowed to use explicit live-market fallback bullets when source coverage is zero');
+}
+
+{
+  const newsItems = buildPromptNewsItems([
+    { title: 'Bitcoin ETF options hit milestone', description: 'IBIT options open interest topped Deribit.', source: 'CoinDesk', topic: 'btc' },
+  ]);
+  const brief = {
+    btc: { bullets: [] },
+    eth: { bullets: [] },
+    link: { bullets: [{ label: 'Wrong Citation', text: 'Chainlink adoption expanded [1].' }] },
+  };
+
+  const result = validateBriefCitations(brief, newsItems);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.violations[0].asset, 'link');
+  assert.equal(result.violations[0].reason, 'asset_not_mentioned');
+}
+
+{
+  const summary = summarizeNewsSourceHealth(buildPromptNewsItems([
+    { title: 'Bitcoin ETF demand rises', description: 'BTC ETF flows accelerated.', source: 'CoinDesk', topic: 'btc' },
+    { title: 'Chainlink CCIP adoption expands', description: 'Chainlink oracle usage grew.', source: 'Example', topic: 'link' },
+    { title: 'Macro liquidity shifts', description: 'Stocks and gold diverged.', source: 'Macro', topic: 'macro' },
+  ]));
+
+  assert.deepEqual(summary.assetMentionCounts, { btc: 1, eth: 0, link: 1, none: 1 });
+  assert.equal(summary.count, 3);
+  assert.equal(summary.avgContentChars > 0, true);
 }
 
 {
