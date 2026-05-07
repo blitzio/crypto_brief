@@ -3,7 +3,7 @@
  *
  * Routes:
  *   GET  /macro       → live macro data (Yahoo Finance, NY Fed, BLS, Alternative.me)
- *   GET  /news        → RSS feeds with full article content extraction
+ *   GET  /news        → RSS feeds with sanitized snippet content
  *   POST /            → Gemini AI brief generation with JSON schema enforcement
  *
  * Secrets required (Settings → Variables and Secrets):
@@ -18,128 +18,8 @@
  * All news via free RSS feeds — no Tavily, no paid news API.
  */
 
-export function selectYahooPreviousClose({ rawCloses = [], rawTimestamps = [], meta = {}, price }) {
-  const lastCloseIdx = (() => {
-    for (let i = rawCloses.length - 1; i >= 0; i--) {
-      if (Number.isFinite(rawCloses[i])) return i;
-    }
-    return -1;
-  })();
-  const priorCloseIdx = (() => {
-    for (let i = lastCloseIdx - 1; i >= 0; i--) {
-      if (Number.isFinite(rawCloses[i])) return i;
-    }
-    return -1;
-  })();
-
-  const lastClose = lastCloseIdx >= 0 ? rawCloses[lastCloseIdx] : null;
-  const priorClose = priorCloseIdx >= 0 ? rawCloses[priorCloseIdx] : null;
-  const lastCloseTs = lastCloseIdx >= 0 ? rawTimestamps[lastCloseIdx] : null;
-  const metaPrev = [meta.regularMarketPreviousClose, meta.previousClose, meta.chartPreviousClose]
-    .find(v => Number.isFinite(v) && v > 0) ?? null;
-
-  let prev = null;
-  if (Number.isFinite(lastClose) && lastClose > 0) {
-    const hasPrior = Number.isFinite(priorClose) && priorClose > 0;
-    const marketTime = Number.isFinite(meta?.regularMarketTime) ? meta.regularMarketTime : null;
-    const exchangeTz = meta?.exchangeTimezoneName || 'UTC';
-    const dayKey = (ts) => new Intl.DateTimeFormat('en-CA', {
-      timeZone: exchangeTz,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).format(new Date(ts * 1000));
-
-    // If the latest chart close is from the same exchange day as regularMarketTime,
-    // treat it as current-session and use the prior close baseline when available.
-    // Yahoo daily bars can be timestamped at period start (e.g. 00:00 UTC),
-    // which may appear as a different local exchange day even for the current session.
-    // In that case, matching UTC calendar day is a safer signal than local-day equality.
-    if (marketTime && Number.isFinite(lastCloseTs)) {
-      const sameTradingDay = dayKey(marketTime) === dayKey(lastCloseTs);
-      const utcDay = (ts) => new Date(ts * 1000).toISOString().slice(0, 10);
-      const sameUtcDay = utcDay(marketTime) === utcDay(lastCloseTs);
-      const treatAsCurrentSession = sameTradingDay || sameUtcDay;
-      if (treatAsCurrentSession && hasPrior) {
-        prev = priorClose;
-      } else if (treatAsCurrentSession && Number.isFinite(metaPrev)) {
-        // Some Yahoo responses only include one finite close for the current session.
-        // In that case, use metadata previous close instead of zeroing intraday change.
-        prev = metaPrev;
-      } else if (!treatAsCurrentSession) {
-        prev = lastClose;
-      }
-    }
-
-    // Fallback when timestamps are missing/ambiguous: infer via drift threshold.
-    // Only allow prior-close drift fallback when the latest close has a usable timestamp.
-    if (!Number.isFinite(prev)) {
-      const drift = Math.abs(price - lastClose) / lastClose;
-      const canUsePriorOnDrift = hasPrior && Number.isFinite(lastCloseTs);
-      if (drift <= 0.002 && canUsePriorOnDrift) {
-        prev = priorClose;
-      } else if (drift <= 0.002 && Number.isFinite(metaPrev) && metaPrev > 0) {
-        // When chart close is effectively equal to price and prior bar is unavailable,
-        // prefer metadata previous close to avoid collapsing 1D change to ~0%.
-        prev = metaPrev;
-      } else {
-        prev = lastClose;
-      }
-    }
-  }
-
-  if (!Number.isFinite(prev)) {
-    prev = metaPrev;
-  }
-
-  if (!Number.isFinite(prev) && Number.isFinite(lastClose) && lastClose > 0) {
-    prev = lastClose;
-  }
-
-  return { prev, lastClose, priorClose, lastCloseTs };
-}
-
-export function resolveYahooPct({ rawCloses = [], rawTimestamps = [], meta = {}, price }) {
-  if (Number.isFinite(meta?.regularMarketChangePercent)) {
-    return { pct: meta.regularMarketChangePercent, pctSource: 'regularMarketChangePercent' };
-  }
-
-  if (Number.isFinite(meta?.regularMarketPreviousClose) && meta.regularMarketPreviousClose > 0) {
-    return {
-      pct: ((price - meta.regularMarketPreviousClose) / meta.regularMarketPreviousClose) * 100,
-      pctSource: 'derivedPreviousClose'
-    };
-  }
-
-  const { prev } = selectYahooPreviousClose({ rawCloses, rawTimestamps, meta, price });
-  if (!Number.isFinite(prev) || prev <= 0) throw new Error('No previous close baseline');
-  return { pct: ((price - prev) / prev) * 100, pctSource: 'derivedPreviousClose' };
-}
-
-export function resolveYahooQuotePct({ quote = {} }) {
-  const price = Number.isFinite(quote?.regularMarketPrice) ? quote.regularMarketPrice : null;
-  if (!Number.isFinite(price)) return null;
-
-  if (Number.isFinite(quote?.regularMarketChangePercent)) {
-    return {
-      price,
-      pct: quote.regularMarketChangePercent,
-      pctSource: 'quoteRegularMarketChangePercent'
-    };
-  }
-
-  const prev = [quote.regularMarketPreviousClose, quote.previousClose]
-    .find(v => Number.isFinite(v) && v > 0) ?? null;
-  if (Number.isFinite(prev)) {
-    return {
-      price,
-      pct: ((price - prev) / prev) * 100,
-      pctSource: 'quoteDerivedPreviousClose'
-    };
-  }
-
-  return null;
-}
+import { resolveYahooPct, resolveYahooQuotePct } from './src/yahoo.js';
+export { selectYahooPreviousClose, resolveYahooPct, resolveYahooQuotePct } from './src/yahoo.js';
 
 function decodeHtmlBasic(value = '') {
   return String(value)
@@ -340,6 +220,39 @@ export function validateBriefCitations(brief = {}, newsItems = []) {
   return { ok: violations.length === 0, violations };
 }
 
+export function summarizeNewsSourceHealth(items = []) {
+  const assetMentionCounts = { btc: 0, eth: 0, link: 0, none: 0 };
+  let totalContentChars = 0;
+
+  for (const item of items) {
+    const mentions = Array.isArray(item.assetMentions) && item.assetMentions.length
+      ? item.assetMentions
+      : ['none'];
+    for (const mention of mentions) {
+      if (Object.hasOwn(assetMentionCounts, mention)) assetMentionCounts[mention] += 1;
+    }
+    totalContentChars += String(item.content || item.description || '').length;
+  }
+
+  return {
+    count: items.length,
+    assetMentionCounts,
+    avgContentChars: items.length ? Math.round(totalContentChars / items.length) : 0,
+  };
+}
+
+export function listUnavailableMacroFields(macro = {}) {
+  const unavailableFields = [];
+  if (!macro.fedRate?.rateStr || macro.fedRate.rateStr === 'UNAVAILABLE') unavailableFields.push('fedRate');
+  if (!Number.isFinite(macro.usdsgd?.price)) unavailableFields.push('usdsgd');
+  if (!Number.isFinite(macro.sp500?.price)) unavailableFields.push('sp500');
+  if (!Number.isFinite(macro.gold?.price)) unavailableFields.push('gold');
+  if (!macro.stablecoins?.total || macro.stablecoins.total === 'N/A') unavailableFields.push('stablecoins');
+  if (!Number.isFinite(macro.cryptoSentiment?.value)) unavailableFields.push('cryptoSentiment');
+  if (!macro.cpi?.yoy || macro.cpi.yoy === 'N/A') unavailableFields.push('cpi');
+  return unavailableFields;
+}
+
 export function resolveModelFallbacks(env = {}) {
   const primary = env.GEMINI_MODEL || 'gemini-3-flash-preview';
   const configuredFallback = env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash';
@@ -491,7 +404,7 @@ export default {
     };
 
     // ─────────────────────────────────────────────────────────────────
-    // RSS + ARTICLE CONTENT
+    // RSS + SNIPPET CONTENT
     // ─────────────────────────────────────────────────────────────────
 
     const RSS_FEEDS = [
@@ -550,16 +463,7 @@ export default {
       return item.description || '';
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // GET /macro
-    // ─────────────────────────────────────────────────────────────────
-
-    if (request.method === 'GET' && pathname === '/macro') {
-      const cache    = caches.default;
-      const cacheKey = new Request(new URL(request.url).origin + '/macro-v5');
-      const cached   = debugNoCache ? null : await cache.match(cacheKey);
-      if (cached) return cached;
-
+    async function collectMacroData() {
       const [goldR, sp500R, usdsgdR, stablecoinsR, fedRateR, cpiR, sentimentR] = await Promise.allSettled([
         fetchYahoo('GC=F'),
         fetchYahoo('^GSPC'),
@@ -587,30 +491,15 @@ export default {
         console.log(`[macro] SP500 ok: source=${sp500?.source} pctSource=${sp500?.pctSource ?? 'none'} price=${sp500?.price ?? 'n/a'} pct=${sp500?.pct ?? 'n/a'}`);
       }
 
-      const response = json(
-        { snapshotTime: new Date().toISOString(), fedRate, usdsgd, sp500, gold, stablecoins, cryptoSentiment: sentiment, cpi },
-        200, { 'Cache-Control': 'public, max-age=300' }
-      );
-      ctx.waitUntil(cache.put(cacheKey, response.clone()));
-      return response;
+      return { snapshotTime: new Date().toISOString(), fedRate, usdsgd, sp500, gold, stablecoins, cryptoSentiment: sentiment, cpi };
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // GET /news — fetch RSS + content, filter freshness, sort by recency
-    // ─────────────────────────────────────────────────────────────────
-
-    if (request.method === 'GET' && pathname === '/news') {
-      const cache    = caches.default;
-      const cacheKey = new Request(new URL(request.url).origin + '/news-rss-v4');
-      const cached   = debugNoCache ? null : await cache.match(cacheKey);
-      if (cached) return cached;
-
+    async function collectNewsItems() {
       const feedSettled = await Promise.allSettled(
         RSS_FEEDS.map(f => fetchFeed(f.url, f.source, f.topic, f.maxItems, f.maxAgeHours))
       );
       const feedResults = feedSettled.map(r => r.status === 'fulfilled' ? r.value : []);
 
-      // Flatten + deduplicate
       const seen  = new Set();
       const items = [];
       for (const feedItems of feedResults) {
@@ -622,9 +511,6 @@ export default {
         }
       }
 
-      // SAFE FIX:
-      // 1) Keep only recent items from the last 72 hours
-      // 2) Exclude obvious low-signal Dow Jones roundup items
       const now = Date.now();
       const filteredItems = items.filter(item => {
         const ts = item.pubDate ? new Date(item.pubDate).getTime() : 0;
@@ -642,14 +528,98 @@ export default {
         return true;
       });
 
-      const topItems = selectTopNewsItems(filteredItems, 20);
-
-      const withContent = topItems.map(item => ({
+      return selectTopNewsItems(filteredItems, 20).map(item => ({
         ...item,
         content: getDescription(item),
       }));
+    }
 
-      const response = json(withContent, 200, { 'Cache-Control': 'public, max-age=900' });
+    // ─────────────────────────────────────────────────────────────────
+    // GET /macro
+    // ─────────────────────────────────────────────────────────────────
+
+    if (request.method === 'GET' && pathname === '/macro') {
+      const cache    = caches.default;
+      const cacheKey = new Request(new URL(request.url).origin + '/macro-v5');
+      const cached   = debugNoCache ? null : await cache.match(cacheKey);
+      if (cached) return cached;
+
+      const macroData = await collectMacroData();
+
+      const response = json(
+        macroData,
+        200, { 'Cache-Control': 'public, max-age=300' }
+      );
+      ctx.waitUntil(cache.put(cacheKey, response.clone()));
+      return response;
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // GET /news — fetch RSS snippets, filter freshness, sort by recency
+    // ─────────────────────────────────────────────────────────────────
+
+    if (request.method === 'GET' && pathname === '/news') {
+      const cache    = caches.default;
+      const cacheKey = new Request(new URL(request.url).origin + '/news-rss-v4');
+      const cached   = debugNoCache ? null : await cache.match(cacheKey);
+      if (cached) return cached;
+
+      const response = json(await collectNewsItems(), 200, { 'Cache-Control': 'public, max-age=900' });
+      ctx.waitUntil(cache.put(cacheKey, response.clone()));
+      return response;
+    }
+
+    // GET /health - read-only source/cache diagnostics, no Gemini call
+    if (request.method === 'GET' && pathname === '/health') {
+      const cache = caches.default;
+      const cacheKey = new Request(new URL(request.url).origin + '/health-v1');
+      const cached = debugNoCache ? null : await cache.match(cacheKey);
+      if (cached) return cached;
+
+      let macroCheck = { ok: false, unavailableFields: ['macro'], error: null };
+      try {
+        const macro = await collectMacroData();
+        const unavailableFields = listUnavailableMacroFields(macro);
+        macroCheck = { ok: unavailableFields.length === 0, unavailableFields };
+      } catch (err) {
+        macroCheck = { ok: false, unavailableFields: ['macro'], error: err?.message ?? 'unknown' };
+      }
+
+      let newsCheck = {
+        ok: false,
+        count: 0,
+        assetMentionCounts: { btc: 0, eth: 0, link: 0, none: 0 },
+        avgContentChars: 0,
+        error: null,
+      };
+      try {
+        const newsSummary = summarizeNewsSourceHealth(await collectNewsItems());
+        newsCheck = { ok: newsSummary.count > 0, ...newsSummary };
+      } catch (err) {
+        newsCheck = { ...newsCheck, error: err?.message ?? 'unknown' };
+      }
+
+      let briefCache = { cached: false, ageSeconds: null };
+      if (env.BRIEF_CACHE) {
+        try {
+          const cached = await env.BRIEF_CACHE.get('latest', { type: 'json' });
+          if (cached?.generatedAt) {
+            const ageMs = Date.now() - new Date(cached.generatedAt).getTime();
+            briefCache = {
+              cached: true,
+              ageSeconds: Number.isFinite(ageMs) ? Math.max(0, Math.round(ageMs / 1000)) : null,
+            };
+          }
+        } catch (err) {
+          briefCache = { cached: false, ageSeconds: null, error: err?.message ?? 'unknown' };
+        }
+      }
+
+      const response = json({
+        ok: macroCheck.ok && newsCheck.ok,
+        timestamp: new Date().toISOString(),
+        checks: { macro: macroCheck, news: newsCheck, briefCache },
+      }, 200, { 'Cache-Control': 'public, max-age=60' });
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
       return response;
     }
