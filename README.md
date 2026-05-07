@@ -176,12 +176,17 @@ This prevents the old failure mode where the S&P 500 could show `0.00%` even tho
 ## File structure
 
 ```text
-index.html   - frontend: UI, data fetching, AI prompt, rendering
-worker.js    - Cloudflare Worker: macro data, RSS news snippets, Gemini proxy, KV caching
-src/yahoo.js - pure Yahoo previous-close / percentage helpers
+index.html    - frontend: UI, data fetching, AI prompt, rendering
+worker.js     - Cloudflare Worker entrypoint and route glue
+src/gemini.js - Gemini JSON parsing, fallback model selection, citation validation
+src/news.js   - RSS snippet cleanup, asset tagging, source selection, source health
+src/yahoo.js  - pure Yahoo previous-close / percentage helpers
+docs/         - operational notes for health checks and deploys
+.github/      - PR template and GitHub Actions test workflow
 tests/selectYahooPreviousClose.test.mjs - regression tests for Yahoo previous-close / percent logic
 tests/citationGuards.test.mjs - regression tests for source cleanup and citation validation
 tests/workerRoutes.test.mjs - route-level Worker safety and health diagnostics tests
+tests/frontendSmoke.test.mjs - front-end script parse and helper smoke tests
 README.md    - this file
 ```
 
