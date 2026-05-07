@@ -432,6 +432,10 @@ function parseBriefJson(raw) {
   return brief;
 }
 
+function setLoadStatus(message = '') {
+  document.getElementById('load-sub').textContent = message;
+}
+
 // ─── DATA FETCHERS ──────────────────────────────────────────────────
 async function fetchPrices() {
   const res = await fetch(
@@ -740,13 +744,13 @@ async function run(forceRefresh = false) {
 
   try {
     if (!shouldForceRefresh) {
-      document.getElementById('load-sub').textContent = 'Checking for cached brief…';
+      setLoadStatus('Checking for cached brief…');
       try {
         const cacheRes  = await fetch(WORKER_URL + '/brief', { cache: 'no-store' });
         const cacheData = await cacheRes.json();
         if (cacheData.cached && cacheData.brief) {
           console.log('[cache] hit: rendering cached brief');
-          document.getElementById('load-sub').textContent = 'Loading cached brief…';
+          setLoadStatus('Loading cached brief…');
           try {
             renderBrief(
               cacheData.brief,
@@ -759,17 +763,17 @@ async function run(forceRefresh = false) {
             console.error('[cache] render failed for cached brief:', renderErr);
             throw renderErr;
           }
-          document.getElementById('load-sub').textContent = '';
+          setLoadStatus();
           return;
         }
         console.log(`[cache] miss: ${cacheData.reason || 'no usable cached brief'}`);
       } catch (e) { console.warn('[cache] miss: cache check failed', e); }
     }
 
-    document.getElementById('load-sub').textContent = 'Fetching live prices, macro and news…';
+    setLoadStatus('Fetching live prices, macro and news…');
     const [prices, macro, newsItems] = await Promise.all([fetchPrices(), fetchMacro(), fetchNews()]);
 
-    document.getElementById('load-sub').textContent = 'Generating analysis via Gemini…';
+    setLoadStatus('Generating analysis via Gemini…');
     const { brief } = await callAI(prices, macro, newsItems);
     const generatedTime = sgtNow();
 
@@ -782,7 +786,7 @@ async function run(forceRefresh = false) {
 
   } catch (err) {
     console.error(err);
-    document.getElementById('load-sub').textContent = '❌ ' + err.message + ' — refresh to retry.';
+    setLoadStatus('❌ ' + err.message + ' — refresh to retry.');
   }
 }
 

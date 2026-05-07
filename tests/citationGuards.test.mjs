@@ -2,14 +2,16 @@ import assert from 'node:assert/strict';
 import {
   buildPromptNewsItems,
   inferAssetMentions,
-  parseGeminiBriefJson,
-  normalizeCitationMarkers,
-  resolveModelFallbacks,
   selectTopNewsItems,
   sanitizeNewsDescription,
   summarizeNewsSourceHealth,
+} from '../src/news.js';
+import {
+  parseGeminiBriefJson,
+  normalizeCitationMarkers,
+  resolveModelFallbacks,
   validateBriefCitations,
-} from '../worker.js';
+} from '../src/gemini.js';
 
 {
   assert.equal(
