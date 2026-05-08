@@ -195,3 +195,7 @@ README.md    - this file
 ## Not financial advice
 
 This tool is for informational purposes only. Nothing in the brief constitutes financial advice.
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
