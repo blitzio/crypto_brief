@@ -69,6 +69,26 @@ async function jsonResponse(response) {
 
 {
   const response = await worker.fetch(
+    new Request('https://worker.test/version'),
+    {
+      ALLOWED_ORIGINS: 'https://blitzio.github.io',
+      DEPLOY_COMMIT_SHA: 'abc123',
+      DEPLOY_SOURCE: 'github-actions',
+    },
+    { waitUntil() {} }
+  );
+
+  const body = await jsonResponse(response);
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+  assert.equal(body.worker, 'crypto-brief-proxy');
+  assert.equal(body.commit, 'abc123');
+  assert.equal(body.source, 'github-actions');
+  assert.equal(typeof body.timestamp, 'string');
+}
+
+{
+  const response = await worker.fetch(
     new Request('https://worker.test/brief'),
     { ALLOWED_ORIGINS: 'https://blitzio.github.io' },
     { waitUntil() {} }

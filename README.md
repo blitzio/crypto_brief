@@ -132,6 +132,7 @@ For command-line deploys, `wrangler.jsonc` sets `GEMINI_MODEL` to `gemini-3-flas
 - `/macro` is edge-cached for 5 minutes and `/news` for 15 minutes.
 - `/macro?nocache=1` and `/news?nocache=1` bypass the Worker edge cache for debugging.
 - `/health` returns read-only macro/news/cache diagnostics without making a Gemini call or exposing secrets, and is lightly cached for 60 seconds.
+- `/version` returns deployment identity metadata only, such as the deployed GitHub commit SHA when the Worker is deployed from GitHub Actions.
 - `/brief/save` is admin-token-only and is not used by the browser app.
 - Generated briefs are validated before caching; bad asset citations are rejected instead of saved.
 
