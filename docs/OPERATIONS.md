@@ -28,13 +28,22 @@ curl "https://crypto-brief-proxy.blitzio.workers.dev/brief"
 
 ## Deploy
 
-Deploy the Worker from a clean branch after tests pass:
+The Worker deploys automatically from GitHub Actions after changes land on `main` and tests pass.
+
+For a manual fallback from a clean branch after tests pass:
 
 ```bash
 npm run cf:deploy
 ```
 
 GitHub Pages serves `index.html` from `main`.
+
+After deploy, verify:
+
+```bash
+curl "https://crypto-brief-proxy.blitzio.workers.dev/version"
+curl "https://crypto-brief-proxy.blitzio.workers.dev/health"
+```
 
 ## If Something Looks Wrong
 

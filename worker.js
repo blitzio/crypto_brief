@@ -78,6 +78,17 @@ export default {
         headers: { ...cors, 'Content-Type': 'application/json', ...extra },
       });
 
+    // GET /version - deployment identity only, no secrets
+    if (request.method === 'GET' && pathname === '/version') {
+      return json({
+        ok: true,
+        worker: 'crypto-brief-proxy',
+        commit: env.DEPLOY_COMMIT_SHA || null,
+        source: env.DEPLOY_SOURCE || 'manual',
+        timestamp: new Date().toISOString(),
+      }, 200, { 'Cache-Control': 'no-store' });
+    }
+
     // ─────────────────────────────────────────────────────────────────
     // MACRO HELPERS
     // ─────────────────────────────────────────────────────────────────
