@@ -19,6 +19,19 @@ assert.ok(scriptMatch[1].includes('marketSignals'), 'market evidence should be p
 assert.ok(scriptMatch[1].includes("WORKER_URL + '/market'"), 'market data should come from the Worker first');
 assert.ok(scriptMatch[1].includes('return { prices, marketSignals }'), 'market fetch should preserve prices and expose signals');
 assert.ok(scriptMatch[1].includes('https://api.coingecko.com/api/v3/coins/markets'), 'direct CoinGecko should remain as a fallback');
+assert.ok(html.indexOf('id="bottom-line"') < html.indexOf('class="market-summary"'), 'bottom line should lead market cards');
+assert.ok(html.indexOf('id="key-judgments"') < html.indexOf('id="btc-price"'), 'key judgments should lead asset cards');
+assert.ok(html.includes('id="scenario-outlook"'), 'v3 should render scenario outlook');
+assert.ok(html.includes('id="opportunities"'), 'v3 should separate opportunities from threats');
+assert.ok(html.includes('id="intelligence-gaps"'), 'v3 should render intelligence gaps');
+assert.ok(html.includes('<details class="sources-section" id="sources-annex">'), 'source annex should be collapsed by default');
+assert.ok(scriptMatch[1].includes("brief?.briefVersion === 'v3'"), 'renderer should dispatch v3 explicitly');
+assert.ok(scriptMatch[1].includes('function renderLegacyBrief'), 'legacy cached briefs should retain a renderer');
+assert.ok(scriptMatch[1].includes('function renderV3Brief'), 'v3 should have a dedicated renderer');
+assert.ok(scriptMatch[1].includes('function renderConfidence'), 'v3 should display confidence safely');
+assert.ok(scriptMatch[1].includes('evidence-link'), 'news evidence should link to source entries');
+assert.ok(scriptMatch[1].includes('function openEvidence'), 'evidence links should reveal the collapsed source annex');
+assert.ok(scriptMatch[1].includes('annex.open = true'), 'source evidence should become visible before navigation');
 assert.equal(
   /const shouldForceRefresh = forceRefresh === true;\s*document\.getElementById\('brief'\)\.classList\.remove\('active'\)/.test(scriptMatch[1]),
   false,
