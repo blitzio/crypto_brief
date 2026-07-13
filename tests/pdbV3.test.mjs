@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   PDB_V3_RESPONSE_SCHEMA,
+  buildPdbV3Prompt,
   countBriefWords,
   measurePdbV3Depth,
   validatePdbV3Brief,
@@ -162,6 +163,40 @@ const evidenceIndex = new Map([
 
 assert.equal(validatePdbV3Evidence(valid, evidenceIndex).ok, true);
 assert.equal(validatePdbV3Brief(valid, evidenceIndex).ok, true);
+
+const prompt = buildPdbV3Prompt({
+  prices: {
+    bitcoin: { current_price: 100 },
+    ethereum: { current_price: 50 },
+    chainlink: { current_price: 10 },
+  },
+  marketSignals: {
+    btc: { rangePosition30d: 0.5 },
+    eth: { rangePosition30d: 0.4 },
+    link: { rangePosition30d: 0.3 },
+  },
+  macro: { sp500: { pct: 1.2 } },
+  newsItems: [{
+    title: 'Bitcoin liquidity improves',
+    source: 'Fixture News',
+    description: 'BTC liquidity conditions improved.',
+    topic: 'btc',
+    pubDate: '2026-07-13T00:00:00Z',
+    url: 'https://example.com/btc',
+  }],
+});
+assert.match(prompt.systemInstruction, /PDB v3/);
+assert.match(prompt.systemInstruction, /Singapore/);
+assert.match(prompt.systemInstruction, /1,500-2,200/);
+assert.match(prompt.systemInstruction, /observed facts/i);
+assert.match(prompt.systemInstruction, /buy or sell/i);
+assert.match(prompt.userPrompt, /BOTTOM LINE/);
+assert.match(prompt.userPrompt, /KEY JUDGMENTS/);
+assert.match(prompt.userPrompt, /SCENARIOS/);
+assert.match(prompt.userPrompt, /INTELLIGENCE GAPS/);
+assert.match(prompt.userPrompt, /market:btc:current/);
+assert.match(prompt.userPrompt, /news:1/);
+assert.equal((prompt.userPrompt.match(/<doc id=/g) || []).length, 1);
 
 const unknown = structuredClone(valid);
 unknown.executive.keyJudgments[0].evidenceIds = ['news:999'];

@@ -1,3 +1,6 @@
+import { buildEvidenceIndex } from './gemini.js';
+import { buildPromptNewsItems } from './news.js';
+
 const confidenceSchema = { type: 'string', enum: ['high', 'medium', 'low'] };
 const evidenceIdsSchema = {
   type: 'array',
@@ -204,6 +207,63 @@ export const PDB_V3_DEPTH = Object.freeze({
   threatsAndOpportunities: { min: 180, max: 320 },
   watchAndGaps: { min: 180, max: 340 },
 });
+
+function formatEvidenceValue(value) {
+  if (typeof value === 'string') return value;
+  return JSON.stringify(value);
+}
+
+export function buildPdbV3Prompt(cachePayload = {}, options = {}) {
+  const evidenceIndex = buildEvidenceIndex(cachePayload);
+  const newsItems = buildPromptNewsItems(options.newsItems ?? cachePayload.newsItems ?? []).slice(0, 20);
+  const deterministicEvidence = [...evidenceIndex.values()]
+    .filter(evidence => evidence.type !== 'news')
+    .map(evidence => `${evidence.id} | ${formatEvidenceValue(evidence.value)}`)
+    .join('\n');
+  const newsDocuments = newsItems.length
+    ? newsItems.map((item, index) => [
+        `<doc id="${index + 1}">`,
+        `EVIDENCE_ID: news:${index + 1}`,
+        `PUBLISHER: ${item.source || 'Unknown'}`,
+        `PUBLISHED: ${item.pubDate || 'Unknown'}`,
+        `ASSET_TAGS: ${(item.assetMentions || []).join(', ') || 'none'}`,
+        `HEADLINE: ${item.title || 'Untitled'}`,
+        `CONTENT: ${item.enrichedContent || item.content || item.description || 'No additional context available.'}`,
+        '</doc>',
+      ].join('\n')).join('\n\n')
+    : 'No news documents were available. Use deterministic evidence and state the resulting intelligence gaps.';
+
+  const systemInstruction = `You are the senior crypto intelligence analyst responsible for PDB v3, an eight-to-ten-minute decision brief for a sophisticated investor in Singapore.
+
+Produce 1,500-2,200 useful words of analysis. Separate observed facts from analytical judgments and scenarios. Explain what matters, why it matters, what is likely next over the next 1-7 days, what would invalidate the view, and why confidence is high, medium, or low.
+
+Use only supplied evidence IDs. Preserve [N] markers for claims supported by news:N. Never fabricate an event, publisher claim, date, probability, price, percentage, or level. Deterministic market and macro evidence is authoritative for numbers. Major judgments should synthesize at least two facts when the dossier permits it. Identify contradictions and missing information instead of smoothing them away.
+
+Do not give direct instructions to buy or sell, personalized position sizes, or invented numeric probabilities. Return only JSON matching the supplied schema.`;
+
+  const userPrompt = `PDB v3 EVIDENCE DOSSIER
+
+DETERMINISTIC MARKET AND MACRO EVIDENCE
+${deterministicEvidence || 'No deterministic evidence available.'}
+
+NEWS DOCUMENTS
+${newsDocuments}
+
+REQUIRED ANALYTICAL PRODUCT
+
+1. BOTTOM LINE: State the regime, the most important development, the 1-7 day implication, and the principal invalidator.
+2. KEY JUDGMENTS: Prioritize four or five decision-relevant judgments by importance, not by asset order.
+3. ASSET ASSESSMENTS: Give substantial BTC, ETH, and LINK assessments with drivers, deterministic support/resistance, confirmation, and invalidation.
+4. MACRO AND CROSS-ASSET REGIME: Explain transmission, confluence, divergence, and what would change the regime; do not merely repeat data.
+5. SCENARIOS: Provide base, bullish, and bearish causal paths with qualitative likelihoods and observable triggers.
+6. THREATS AND OPPORTUNITIES: Separate impact, likelihood, horizon, and the indicator showing each is materializing.
+7. FORWARD WATCH: Identify observable signals for the next 24 hours and next 7 days.
+8. INTELLIGENCE GAPS: State unresolved contradictions or missing evidence and what would close each gap.
+
+Every analytical object must include known evidenceIds and confidence. Keep claims within the evidence dossier.`;
+
+  return { systemInstruction, userPrompt };
+}
 
 function wordCount(value) {
   const normalized = String(value || '').trim();

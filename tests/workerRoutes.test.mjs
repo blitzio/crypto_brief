@@ -97,6 +97,129 @@ function validV2Brief() {
   };
 }
 
+const v3Prose = (count, prefix = 'analysis') =>
+  Array.from({ length: count }, (_, index) => `${prefix}${index + 1}`).join(' ');
+
+function v3CachePayload() {
+  return {
+    prices: {
+      bitcoin: { current_price: 100 },
+      ethereum: { current_price: 50 },
+      chainlink: { current_price: 10 },
+    },
+    marketSignals: {
+      btc: { rangePosition30d: 0.5, support: 95, resistance: 105 },
+      eth: { rangePosition30d: 0.4, support: 45, resistance: 55 },
+      link: { rangePosition30d: 0.3, support: 9, resistance: 11 },
+    },
+    macro: {
+      sp500: { pct: 1.2 },
+      cryptoSentiment: { value: 50 },
+    },
+    newsItems: [],
+  };
+}
+
+function validV3Brief() {
+  const judgment = index => ({
+    title: `Judgment ${index}`,
+    assessment: v3Prose(66, 'assessment'),
+    whyItMatters: v3Prose(18, 'implication'),
+    evidenceIds: ['market:btc:current', 'market:btc:rangePosition'],
+    confidence: 'medium',
+    confidenceBasis: v3Prose(12, 'basis'),
+    invalidators: [v3Prose(9, 'invalidator')],
+  });
+  const asset = (symbol, support, resistance) => ({
+    assessment: v3Prose(72, `${symbol}assessment`),
+    support,
+    resistance,
+    evidenceIds: [`market:${symbol}:current`, `market:${symbol}:rangePosition`],
+    confidence: 'medium',
+    confidenceBasis: v3Prose(12, 'basis'),
+    drivers: [1, 2, 3].map(index => ({
+      title: `Driver ${index}`,
+      analysis: v3Prose(42, `${symbol}driver`),
+      evidenceIds: [`market:${symbol}:current`, `market:${symbol}:rangePosition`],
+      confidence: 'medium',
+    })),
+    confirmation: v3Prose(18, 'confirmation'),
+    invalidation: v3Prose(18, 'invalidation'),
+  });
+  const scenario = likelihood => ({
+    outlook: v3Prose(28, 'outlook'),
+    causalPath: v3Prose(24, 'causal'),
+    triggers: [v3Prose(12, 'trigger')],
+    horizon: 'next 1-7 days',
+    likelihood,
+    evidenceIds: ['macro:sp500:change1d', 'macro:sentiment:current'],
+    confidence: 'medium',
+  });
+  const risk = title => ({
+    title,
+    assessment: v3Prose(33, 'risk'),
+    impact: 'high',
+    likelihood: 'credible',
+    horizon: 'next 7 days',
+    indicator: v3Prose(13, 'indicator'),
+    evidenceIds: ['macro:sp500:change1d'],
+    confidence: 'medium',
+  });
+  const watch = title => ({
+    title,
+    whyItMatters: v3Prose(18, 'watch'),
+    signal: v3Prose(10, 'signal'),
+    evidenceIds: ['macro:sp500:change1d'],
+    confidence: 'medium',
+  });
+  return {
+    briefVersion: 'v3',
+    executive: {
+      bottomLine: v3Prose(112, 'bottom'),
+      evidenceIds: ['market:btc:current', 'macro:sp500:change1d'],
+      confidence: 'medium',
+      confidenceBasis: v3Prose(14, 'basis'),
+      keyJudgments: [1, 2, 3, 4].map(judgment),
+    },
+    assets: {
+      btc: asset('btc', '$95', '$105'),
+      eth: asset('eth', '$45', '$55'),
+      link: asset('link', '$9', '$11'),
+    },
+    macro: {
+      assessment: v3Prose(92, 'macro'),
+      evidenceIds: ['macro:sp500:change1d', 'macro:sentiment:current'],
+      confidence: 'medium',
+      confidenceBasis: v3Prose(12, 'basis'),
+      transmissionChannels: [1, 2, 3].map(index => ({
+        title: `Channel ${index}`,
+        analysis: v3Prose(38, 'channel'),
+        evidenceIds: ['macro:sp500:change1d', 'macro:sentiment:current'],
+        confidence: 'medium',
+      })),
+    },
+    scenarios: {
+      base: scenario('most likely'),
+      bullish: scenario('credible'),
+      bearish: scenario('lower probability'),
+    },
+    threats: [risk('Threat one'), risk('Threat two')],
+    opportunities: [risk('Opportunity one'), risk('Opportunity two')],
+    watch: {
+      next24Hours: [watch('Watch 24A'), watch('Watch 24B'), watch('Watch 24C')],
+      next7Days: [watch('Watch 7A'), watch('Watch 7B'), watch('Watch 7C')],
+    },
+    intelligenceGaps: [1, 2].map(index => ({
+      title: `Gap ${index}`,
+      gap: v3Prose(16, 'gap'),
+      whyItMatters: v3Prose(12, 'meaning'),
+      closureEvidence: v3Prose(12, 'closure'),
+      evidenceIds: ['macro:sp500:change1d'],
+      confidence: 'low',
+    })),
+  };
+}
+
 function validV1Brief() {
   const liveItems = (count, asset) => Array.from({ length: count }, (_, index) => ({
     label: `${asset} ${index + 1}`,
@@ -437,6 +560,55 @@ function yahooCryptoChart(base = 100) {
   assert.ok(cacheWrite);
   assert.equal(cacheWrite.options.expirationTtl, 7 * 24 * 60 * 60);
   assert.equal(JSON.parse(cacheWrite.body).meta.model, 'gemini-3.1-flash-lite');
+}
+
+{
+  const kv = makeKv();
+  const calls = [];
+  await withGlobals({
+    fetch: async (url, options) => {
+      calls.push({ url: String(url), body: JSON.parse(options.body) });
+      return Response.json({
+        candidates: [{ content: { parts: [{ text: JSON.stringify(validV3Brief()) }] } }],
+      });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'browser override sentinel' },
+            { role: 'user', content: 'Generate brief' },
+          ],
+          cachePayload: v3CachePayload(),
+        }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.1-flash-lite',
+        GEMINI_THINKING_LEVEL: 'low',
+        GEMINI_V3_THINKING_LEVEL: 'medium',
+        BRIEF_PIPELINE_VERSION: 'v3',
+        BRIEF_CACHE: kv,
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].body.generationConfig.responseJsonSchema.properties.briefVersion.enum[0], 'v3');
+    assert.equal(calls[0].body.generationConfig.thinkingConfig.thinkingLevel, 'medium');
+    assert.match(calls[0].body.systemInstruction.parts[0].text, /PDB v3/);
+    assert.doesNotMatch(calls[0].body.systemInstruction.parts[0].text, /browser override sentinel/);
+    assert.equal(body.meta.pipelineVersion, 'v3');
+    assert.equal(body.meta.validation.type, 'pdb-v3');
+    assert.equal(body.meta.quality.totalWords >= 1300, true);
+  });
+  assert.equal(kv.calls.some(call => call.op === 'put'), true);
 }
 
 {

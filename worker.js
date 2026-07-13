@@ -44,6 +44,11 @@ import {
   validateBriefCitations,
   validateBriefEvidence,
 } from './src/gemini.js';
+import {
+  PDB_V3_RESPONSE_SCHEMA,
+  buildPdbV3Prompt,
+  validatePdbV3Brief,
+} from './src/pdb-v3.js';
 export { selectYahooPreviousClose, resolveYahooPct, resolveYahooQuotePct } from './src/yahoo.js';
 export {
   buildPromptNewsItems,
@@ -783,14 +788,19 @@ export default {
         const pipelineInstruction = pipelineVersion === 'v2'
           ? `EVIDENCE PIPELINE V2: Every btc, eth, link, macro, threats, and watch bullet must include evidenceIds (a non-empty array) and confidence (high, medium, or low). Use only these exact available IDs: ${[...evidenceIndex.keys()].join(', ') || 'none'}. Asset bullets may use only matching news IDs or market IDs for that asset. Macro, threats, and watch may use news or macro IDs. Keep [N] inline in text when using news:N so readers can match the visible source list. Produce 3-5 asset bullets, 3-5 macro bullets, 3-5 threats, and 3-6 watch items; do not add filler when evidence is thin.`
           : 'EVIDENCE PIPELINE V1 ROLLBACK: Use the legacy label/text bullet shape with no required evidenceIds or confidence. Produce 4-6 asset bullets, exactly 5 macro bullets, exactly 5 threats, and exactly 6 watch items. Preserve valid inline [N] news citations and Live market data labels.';
-        const systemText = [baseSystemText, pipelineInstruction].filter(Boolean).join('\n\n');
+        const v3Prompt = pipelineVersion === 'v3' ? buildPdbV3Prompt(body.cachePayload || {}) : null;
+        const systemText = pipelineVersion === 'v3'
+          ? v3Prompt.systemInstruction
+          : [baseSystemText, pipelineInstruction].filter(Boolean).join('\n\n');
 
-        const contents = messages
-          .filter(m => m.role !== 'system')
-          .map(m => ({
-            role:  m.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }],
-          }));
+        const contents = pipelineVersion === 'v3'
+          ? [{ role: 'user', parts: [{ text: v3Prompt.userPrompt }] }]
+          : messages
+              .filter(m => m.role !== 'system')
+              .map(m => ({
+                role:  m.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) }],
+              }));
 
         const bulletSchema = {
           type: 'object',
@@ -811,7 +821,7 @@ export default {
         const threatRange = pipelineVersion === 'v2' ? { minItems: 3, maxItems: 5 } : { minItems: 5, maxItems: 5 };
         const watchRange = pipelineVersion === 'v2' ? { minItems: 3, maxItems: 6 } : { minItems: 6, maxItems: 6 };
 
-        const responseSchema = {
+        const legacyResponseSchema = {
           type: 'object',
           required: ['btc','eth','link','macro','threats','watch','verdict','ranking','bullTrigger','bearTrigger'],
           properties: {
@@ -827,6 +837,7 @@ export default {
             bearTrigger: { type: 'string' },
           },
         };
+        const responseSchema = pipelineVersion === 'v3' ? PDB_V3_RESPONSE_SCHEMA : legacyResponseSchema;
 
         const payload = {
           contents: contents.length
@@ -846,12 +857,19 @@ export default {
         let contentText = '{}';
         let parsedBrief = null;
         let validationCheck = { ok: false, violations: [] };
-        const validationType = pipelineVersion === 'v2' ? 'evidence' : 'citation';
+        const validationType = pipelineVersion === 'v3'
+          ? 'pdb-v3'
+          : pipelineVersion === 'v2' ? 'evidence' : 'citation';
         const models = resolveModelFallbacks(env);
-        const configuredThinkingLevel = String(env.GEMINI_THINKING_LEVEL || 'low').toLowerCase();
+        const defaultThinkingLevel = pipelineVersion === 'v3' ? 'medium' : 'low';
+        const configuredThinkingLevel = String(
+          pipelineVersion === 'v3'
+            ? env.GEMINI_V3_THINKING_LEVEL || defaultThinkingLevel
+            : env.GEMINI_THINKING_LEVEL || defaultThinkingLevel
+        ).toLowerCase();
         const thinkingLevel = ['minimal', 'low', 'medium', 'high'].includes(configuredThinkingLevel)
           ? configuredThinkingLevel
-          : 'low';
+          : defaultThinkingLevel;
         let selectedModel = models[0] ?? null;
         let attemptCount = 0;
 
@@ -958,18 +976,22 @@ export default {
             );
             continue;
           }
-          validationCheck = pipelineVersion === 'v2'
-            ? validateBriefEvidence(parsedBrief, evidenceIndex)
-            : validateBriefCitations(parsedBrief, body.cachePayload?.newsItems || []);
+          validationCheck = pipelineVersion === 'v3'
+            ? validatePdbV3Brief(parsedBrief, evidenceIndex)
+            : pipelineVersion === 'v2'
+              ? validateBriefEvidence(parsedBrief, evidenceIndex)
+              : validateBriefCitations(parsedBrief, body.cachePayload?.newsItems || []);
           if (validationCheck.ok) break;
 
           const feedback = validationCheck.violations
             .slice(0, 10)
             .map(v => `${String(v.section || v.asset || 'json').toUpperCase()} bullet ${v.bulletIndex + 1}: ${v.reason}${v.evidenceId ? ` (${v.evidenceId})` : ''}${v.docId ? ` on doc [${v.docId}]` : ''}`)
             .join('; ');
-          const correctionText = pipelineVersion === 'v2'
-            ? `The previous JSON failed evidence validation: ${feedback}. Return the full corrected JSON only. Every bullet must use known evidenceIds from the provided list, matching the asset where applicable, and confidence must be high, medium, or low.`
-            : `The previous JSON failed citation validation: ${feedback}. Return the full corrected JSON only. Asset bullets may cite only docs whose ASSET_TAGS include that asset. If no matching source supports an asset point, use exact live market data from the prompt and label it "Live market data:"; cover price action, relative strength, liquidity/volume, and support/resistance. Do not write broad uncited model inference.`;
+          const correctionText = pipelineVersion === 'v3'
+            ? `The previous PDB v3 JSON failed validation: ${feedback}. Return the full corrected JSON only, using known evidence IDs and the required analytical depth.`
+            : pipelineVersion === 'v2'
+              ? `The previous JSON failed evidence validation: ${feedback}. Return the full corrected JSON only. Every bullet must use known evidenceIds from the provided list, matching the asset where applicable, and confidence must be high, medium, or low.`
+              : `The previous JSON failed citation validation: ${feedback}. Return the full corrected JSON only. Asset bullets may cite only docs whose ASSET_TAGS include that asset. If no matching source supports an asset point, use exact live market data from the prompt and label it "Live market data:"; cover price action, relative strength, liquidity/volume, and support/resistance. Do not write broad uncited model inference.`;
           payload.contents.push(
             { role: 'model', parts: [{ text: contentText }] },
             { role: 'user', parts: [{ text: correctionText }] }
@@ -977,20 +999,26 @@ export default {
         }
 
         if (!validationCheck.ok) {
-          const error = pipelineVersion === 'v2'
+          const error = pipelineVersion === 'v3'
             ? {
-                message: 'Generated brief failed evidence validation. Refresh to retry.',
-                evidenceViolations: validationCheck.violations,
+                message: 'Generated PDB v3 brief failed quality validation. The previous valid brief was preserved.',
+                qualityViolations: validationCheck.violations,
               }
-            : {
-                message: 'Generated brief failed citation validation. Refresh to retry with stricter source matching.',
-                citationViolations: validationCheck.violations,
-              };
+            : pipelineVersion === 'v2'
+              ? {
+                  message: 'Generated brief failed evidence validation. Refresh to retry.',
+                  evidenceViolations: validationCheck.violations,
+                }
+              : {
+                  message: 'Generated brief failed citation validation. Refresh to retry with stricter source matching.',
+                  citationViolations: validationCheck.violations,
+                };
           return json({
             error,
             meta: {
               ...responseMeta(),
               validation: { type: validationType, ok: false, violationCount: validationCheck.violations.length },
+              ...(pipelineVersion === 'v3' ? { quality: validationCheck.metrics } : {}),
             },
           }, 422);
         }
@@ -998,6 +1026,7 @@ export default {
         const meta = {
           ...responseMeta(),
           validation: { type: validationType, ok: true, violationCount: 0 },
+          ...(pipelineVersion === 'v3' ? { quality: validationCheck.metrics } : {}),
         };
         if (env.BRIEF_CACHE && body.cachePayload && typeof body.cachePayload === 'object') {
           try {
