@@ -14,13 +14,14 @@ This runbook covers read-only health checks, safe rollout, and rollback for Cryp
 Open `/health` and confirm:
 
 - top-level `ok` is `true`;
+- `checks.market.ok` is `true`; `provider` identifies CoinGecko or the Yahoo Finance fallback;
 - `checks.news.count` is at least 8 and normally close to 20;
 - `checks.news.sources` shows which feed failed, timed out, parsed empty, or contributed no selected items;
 - `degraded` is `false`, or its cause is understood (for example missing LINK coverage or one editorial feed outage);
 - `checks.macro.ok` is `true`;
 - `checks.briefCache.cached` is `true`, or the site can generate a fresh brief.
 
-`degraded: true` does not necessarily mean the site is down. It means the evidence set is thinner than intended and should be inspected before trusting the analysis quality.
+`degraded: true` does not necessarily mean the site is down. It means the evidence set is thinner than intended or the market route is using its Yahoo Finance fallback and should be inspected before trusting the analysis quality.
 
 ## Read-Only Endpoint Checks
 
@@ -56,6 +57,10 @@ The active direct editorial sources are CoinDesk, The Block, and Decrypt. DL New
 - `BRIEF_PIPELINE_VERSION=v2`
 
 The Worker retries only model-not-found, timeout, rate-limit, and transient server failures. Authentication, permission, safety, and malformed-request failures return immediately. Generation has a 90-second total budget and at most one validation correction.
+
+## Market Provider Fallback
+
+CoinGecko is the primary market provider. If its keyless public endpoint is blocked or rate-limited, `/market` automatically builds the same three-asset response from Yahoo Finance daily charts and reports `provider: "yahoo-finance"` with `degraded: true`. An optional CoinGecko Demo key can be stored as the `COINGECKO_DEMO_API_KEY` Cloudflare secret; never commit it or place it in `wrangler.jsonc`.
 
 If v2 analysis quality or evidence validation causes a production problem, set `BRIEF_PIPELINE_VERSION=v1` and redeploy. This restores the legacy prompt/schema and citation validator while preserving the feed, caching, timeout, model, and market-data reliability fixes. Change it back to `v2` after the issue is understood.
 

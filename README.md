@@ -28,13 +28,13 @@ Generates a formatted two-page crypto intelligence brief every morning or on dem
 GitHub Pages (index.html)
   `- Cloudflare Worker (worker.js)
        |- GET /market -> CoinGecko current prices + deterministic 30-day signals
-       |                 (browser retains direct CoinGecko price fallback)
+       |                 with automatic Yahoo Finance server fallback
        |- GET /macro -> Yahoo Finance quote/chart fallback, NY Fed EFFR,
        |               BLS CPI, Alternative.me Fear & Greed,
        |               DefiLlama stablecoin levels and trends
        |- GET /news -> RSS/Atom feeds, freshness/diversity filters,
        |              balanced top 20 sanitized snippets
-       |- GET /health -> read-only macro/news/source/cache diagnostics
+       |- GET /health -> read-only market/macro/news/source/cache diagnostics
        |- POST / -> Gemini 3.5 Flash evidence-validated generation
        |            + server-side KV save
        |- GET /brief -> serve fresh KV brief; opt-in stale fallback
@@ -82,6 +82,7 @@ In your Worker settings -> Variables and Secrets, add:
 | `BRIEF_PIPELINE_VERSION` | `v2`; temporarily set `v1` to roll back only the analysis contract |
 | `ALLOWED_ORIGINS` | `https://blitzio.github.io` |
 | `BRIEF_ADMIN_TOKEN` | Optional shared token for manual `/brief/save` admin writes |
+| `COINGECKO_DEMO_API_KEY` | Optional CoinGecko Demo key for more reliable server-side market requests |
 
 ### 4. Create the KV namespace
 
@@ -104,12 +105,12 @@ Push to GitHub and you are done.
 
 | Source | Data | Cost |
 |---|---|---|
-| CoinGecko | BTC, ETH, LINK prices and 30-day history | Free, no key |
+| CoinGecko | Primary BTC, ETH, LINK prices and 30-day history | Keyless public access or optional Demo key |
 | NY Fed EFFR API | Federal Funds Rate | Free |
 | BLS Public API | CPI inflation | Free |
 | Alternative.me | Crypto Fear & Greed Index | Free |
 | DefiLlama | USDT + USDC supply and stablecoin-market trends | Free |
-| Yahoo Finance | S&P 500, Gold, USD/SGD | Free via Worker proxy |
+| Yahoo Finance | Market-data fallback plus S&P 500, Gold, USD/SGD | Free via Worker proxy |
 | CoinDesk, The Block, Decrypt, Dow Jones Markets, FT Markets, Google News ETH/LINK discovery | News via RSS | Free |
 | Gemini 3.5 Flash with Gemini 3.1 Flash-Lite fallback | AI analysis | Check current Google AI pricing and quotas |
 
@@ -119,7 +120,7 @@ Push to GitHub and you are done.
 
 The Worker defaults to stable `gemini-3.5-flash`, with stable `gemini-3.1-flash-lite` as a bounded fallback for model unavailability, rate limits, timeouts, and transient server failures. Authentication and malformed-request failures do not fan out to another model. Generation has a 90-second total Worker deadline and at most one evidence-correction response.
 
-Pricing, free-tier quotas, and model availability can change. Check [Google AI Studio](https://aistudio.google.com/) rather than relying on hard-coded pricing in this repository. Keep `GEMINI_API_KEY` and `BRIEF_ADMIN_TOKEN` as Cloudflare secrets; do not commit them.
+Pricing, free-tier quotas, and model availability can change. Check [Google AI Studio](https://aistudio.google.com/) rather than relying on hard-coded pricing in this repository. Keep `GEMINI_API_KEY`, `BRIEF_ADMIN_TOKEN`, and an optional `COINGECKO_DEMO_API_KEY` as Cloudflare secrets; do not commit them.
 
 ---
 

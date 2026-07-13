@@ -133,6 +133,27 @@ function marketHistory(base = 100) {
   };
 }
 
+function yahooCryptoChart(base = 100) {
+  const history = marketHistory(base);
+  return {
+    chart: {
+      result: [{
+        meta: { regularMarketPrice: base, chartPreviousClose: base * 0.99 },
+        timestamp: history.ohlc.map(bar => Math.floor(bar[0] / 1000)),
+        indicators: {
+          quote: [{
+            open: history.ohlc.map(bar => bar[1]),
+            high: history.ohlc.map(bar => bar[2]),
+            low: history.ohlc.map(bar => bar[3]),
+            close: history.ohlc.map(bar => bar[4]),
+            volume: history.chart.total_volumes.map(point => point[1]),
+          }],
+        },
+      }],
+    },
+  };
+}
+
 {
   const env = { ALLOWED_ORIGINS: 'https://blitzio.github.io' };
   const response = await worker.fetch(
@@ -301,6 +322,9 @@ function marketHistory(base = 100) {
     fetch: async (url) => {
       const value = String(url);
       if (value.includes('/coins/markets')) return Response.json(current);
+      if (value.includes('query1.finance.yahoo.com') && value.includes('ETH-USD')) {
+        return Response.json(yahooCryptoChart(50));
+      }
       const id = ['bitcoin', 'ethereum', 'chainlink'].find(asset => value.includes(`/coins/${asset}/`));
       if (id === 'ethereum') return new Response('unavailable', { status: 502 });
       if (value.includes('/ohlc')) return Response.json(histories[id].ohlc);
@@ -317,8 +341,39 @@ function marketHistory(base = 100) {
     assert.equal(response.status, 200);
     assert.equal(body.prices.ethereum.current_price, 50);
     assert.equal(body.signals.eth.current, 50);
-    assert.equal(body.signals.eth.range30d, null);
-    assert.equal(body.signals.eth.unavailableFields.includes('range30d'), true);
+    assert.notEqual(body.signals.eth.range30d, null);
+    assert.equal(body.signals.eth.unavailableFields.includes('range30d'), false);
+    assert.equal(body.signalProviders.eth, 'yahoo-finance');
+  });
+}
+
+{
+  const histories = { bitcoin: marketHistory(100), ethereum: marketHistory(50), chainlink: marketHistory(10) };
+  await withGlobals({
+    caches: { default: makeCache() },
+    fetch: async (url) => {
+      const value = String(url);
+      if (value.includes('api.coingecko.com')) return new Response('forbidden', { status: 403 });
+      if (value.includes('query1.finance.yahoo.com')) {
+        const base = value.includes('BTC-USD') ? 100 : value.includes('ETH-USD') ? 50 : 10;
+        return Response.json(yahooCryptoChart(base));
+      }
+      throw new Error(`unexpected URL ${value}`);
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/market?nocache=1'),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io' },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.provider, 'yahoo-finance');
+    assert.equal(body.prices.bitcoin.current_price, 100);
+    assert.equal(body.prices.ethereum.current_price, 50);
+    assert.equal(body.prices.chainlink.current_price, 10);
+    assert.equal(body.signals.btc.current, 100);
+    assert.equal(body.degraded, true);
   });
 }
 
@@ -668,6 +723,9 @@ function marketHistory(base = 100) {
     assert.equal(response.headers.get('Cache-Control'), 'public, max-age=60');
     assert.equal(body.ok, true, JSON.stringify(body));
     assert.equal(typeof body.timestamp, 'string');
+    assert.equal(body.checks.market.ok, true);
+    assert.equal(body.checks.market.provider, 'yahoo-finance');
+    assert.equal(body.checks.market.degraded, true);
     assert.equal(body.checks.macro.ok, true);
     assert.deepEqual(body.checks.macro.unavailableFields, []);
     assert.equal(body.checks.news.ok, true);

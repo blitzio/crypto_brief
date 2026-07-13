@@ -26,7 +26,7 @@ import {
 } from './src/news.js';
 import { detectFeedFormat, parseSyndicationFeed } from './src/feed-parser.js';
 import { NEWS_SOURCES } from './src/news-sources.js';
-import { deriveMarketSignals } from './src/market.js';
+import { deriveMarketSignals, percentChange } from './src/market.js';
 import {
   deriveCpiTrend,
   deriveRateChange,
@@ -384,9 +384,14 @@ export default {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       try {
+        const headers = {
+          Accept: 'application/json',
+          'User-Agent': 'crypto-brief/1.0',
+        };
+        if (env.COINGECKO_DEMO_API_KEY) headers['x-cg-demo-api-key'] = env.COINGECKO_DEMO_API_KEY;
         const response = await fetch(upstreamUrl, {
           signal: controller.signal,
-          headers: { Accept: 'application/json' },
+          headers,
         });
         if (!response.ok) throw new Error(`CoinGecko returned HTTP ${response.status}`);
         return await response.json();
@@ -395,17 +400,29 @@ export default {
       }
     }
 
-    async function collectMarketData() {
-      const assets = [
-        { id: 'bitcoin', symbol: 'btc' },
-        { id: 'ethereum', symbol: 'eth' },
-        { id: 'chainlink', symbol: 'link' },
-      ];
+    const marketAssets = [
+      { id: 'bitcoin', symbol: 'btc', yahooSymbol: 'BTC-USD', name: 'Bitcoin' },
+      { id: 'ethereum', symbol: 'eth', yahooSymbol: 'ETH-USD', name: 'Ethereum' },
+      { id: 'chainlink', symbol: 'link', yahooSymbol: 'LINK-USD', name: 'Chainlink' },
+    ];
+
+    async function collectCoinGeckoMarketData() {
       const baseUrl = 'https://api.coingecko.com/api/v3';
       const currentPromise = fetchCoinGeckoJson(
         `${baseUrl}/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,chainlink&order=market_cap_desc&per_page=3&page=1&sparkline=false&price_change_percentage=24h,7d`
       );
-      const historyPromises = assets.map(async asset => {
+      const currentItems = await currentPromise;
+      if (!Array.isArray(currentItems)) throw new Error('CoinGecko current prices returned an invalid response');
+      const prices = Object.fromEntries(currentItems.filter(item => item?.id).map(item => [item.id, item]));
+      const missingAssets = marketAssets.filter(asset => {
+        const value = prices[asset.id]?.current_price;
+        return value === null || value === undefined || value === '' || !Number.isFinite(Number(value));
+      });
+      if (missingAssets.length) {
+        throw new Error(`CoinGecko current prices missing: ${missingAssets.map(asset => asset.id).join(', ')}`);
+      }
+
+      const histories = await Promise.all(marketAssets.map(async asset => {
         const [ohlcResult, chartResult] = await Promise.allSettled([
           fetchCoinGeckoJson(`${baseUrl}/coins/${asset.id}/ohlc?vs_currency=usd&days=30`),
           fetchCoinGeckoJson(`${baseUrl}/coins/${asset.id}/market_chart?vs_currency=usd&days=30`),
@@ -417,29 +434,131 @@ export default {
             ? chartResult.value
             : {},
         };
-      });
+      }));
 
-      const [currentItems, histories] = await Promise.all([currentPromise, Promise.all(historyPromises)]);
-      if (!Array.isArray(currentItems)) throw new Error('CoinGecko current prices returned an invalid response');
-      const prices = Object.fromEntries(currentItems.filter(item => item?.id).map(item => [item.id, item]));
-      const missingAssets = assets.filter(asset => {
-        const value = prices[asset.id]?.current_price;
-        return value === null || value === undefined || value === '' || !Number.isFinite(Number(value));
-      });
-      if (missingAssets.length) {
-        throw new Error(`CoinGecko current prices missing: ${missingAssets.map(asset => asset.id).join(', ')}`);
-      }
-
-      const signals = Object.fromEntries(histories.map(history => [
-        history.symbol,
-        deriveMarketSignals({
+      const signalResults = await Promise.all(histories.map(async history => {
+        let signal = deriveMarketSignals({
           current: prices[history.id].current_price,
           ohlc: history.ohlc,
           marketChart: history.marketChart,
-        }),
-      ]));
+        });
+        let signalProvider = 'coingecko';
+        if (signal.unavailableFields.length > 0) {
+          try {
+            const yahoo = await fetchYahooCryptoAsset(history);
+            if (yahoo.signal.unavailableFields.length < signal.unavailableFields.length) {
+              signal = yahoo.signal;
+              signalProvider = 'yahoo-finance';
+            }
+          } catch (error) {
+            console.log(`[market] Yahoo history fallback unavailable for ${history.symbol}: ${error?.message ?? 'unknown'}`);
+          }
+        }
+        return { symbol: history.symbol, signal, signalProvider };
+      }));
+      const signals = Object.fromEntries(signalResults.map(result => [result.symbol, result.signal]));
+      const signalProviders = Object.fromEntries(signalResults.map(result => [result.symbol, result.signalProvider]));
+      const degraded = signalResults.some(result => result.signal.unavailableFields.includes('range30d'));
 
-      return { snapshotTime: new Date().toISOString(), prices, signals };
+      return {
+        snapshotTime: new Date().toISOString(),
+        provider: 'coingecko',
+        degraded,
+        prices,
+        signals,
+        signalProviders,
+      };
+    }
+
+    async function fetchYahooCryptoAsset(asset, timeoutMs = 8000) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(asset.yahooSymbol)}?interval=1d&range=1mo`,
+          {
+            signal: controller.signal,
+            headers: {
+              Accept: 'application/json',
+              'User-Agent': 'Mozilla/5.0',
+              Referer: 'https://finance.yahoo.com/',
+            },
+          }
+        );
+        if (!response.ok) throw new Error(`Yahoo Finance ${asset.yahooSymbol} returned HTTP ${response.status}`);
+        const data = await response.json();
+        const chart = data?.chart?.result?.[0];
+        const quote = chart?.indicators?.quote?.[0];
+        const timestamps = Array.isArray(chart?.timestamp) ? chart.timestamp : [];
+        const closes = Array.isArray(quote?.close) ? quote.close : [];
+        const current = Number(chart?.meta?.regularMarketPrice ?? closes.at(-1));
+        if (!Number.isFinite(current)) throw new Error(`Yahoo Finance ${asset.yahooSymbol} omitted current price`);
+
+        const ohlc = [];
+        const prices = [];
+        const totalVolumes = [];
+        for (let index = 0; index < timestamps.length; index += 1) {
+          const timestamp = Number(timestamps[index]) * 1000;
+          const close = Number(closes[index]);
+          const open = Number(quote?.open?.[index]);
+          const high = Number(quote?.high?.[index]);
+          const low = Number(quote?.low?.[index]);
+          const volume = Number(quote?.volume?.[index]);
+          if (!Number.isFinite(timestamp) || !Number.isFinite(close)) continue;
+          prices.push([timestamp, close]);
+          if ([open, high, low].every(Number.isFinite)) ohlc.push([timestamp, open, high, low, close]);
+          if (Number.isFinite(volume)) totalVolumes.push([timestamp, volume]);
+        }
+
+        const previousClose = Number(chart?.meta?.chartPreviousClose);
+        const prior7dClose = prices.length >= 8 ? prices.at(-8)[1] : null;
+        const price = {
+          id: asset.id,
+          symbol: asset.symbol,
+          name: asset.name,
+          current_price: current,
+          price_change_percentage_24h: percentChange(current, previousClose),
+          price_change_percentage_7d_in_currency: percentChange(current, prior7dClose),
+        };
+        return {
+          asset,
+          price,
+          signal: deriveMarketSignals({
+            current,
+            ohlc,
+            marketChart: { prices, total_volumes: totalVolumes },
+          }),
+        };
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    async function collectYahooMarketData() {
+      const results = await Promise.all(marketAssets.map(asset => fetchYahooCryptoAsset(asset)));
+      return {
+        snapshotTime: new Date().toISOString(),
+        provider: 'yahoo-finance',
+        degraded: true,
+        prices: Object.fromEntries(results.map(result => [result.asset.id, result.price])),
+        signals: Object.fromEntries(results.map(result => [result.asset.symbol, result.signal])),
+        signalProviders: Object.fromEntries(results.map(result => [result.asset.symbol, 'yahoo-finance'])),
+      };
+    }
+
+    async function collectMarketData() {
+      try {
+        return await collectCoinGeckoMarketData();
+      } catch (primaryError) {
+        console.log(`[market] CoinGecko unavailable; using Yahoo Finance fallback: ${primaryError?.message ?? 'unknown'}`);
+        try {
+          return await collectYahooMarketData();
+        } catch (fallbackError) {
+          throw new Error(
+            `Market providers unavailable (CoinGecko: ${primaryError?.message ?? 'unknown'}; Yahoo Finance: ${fallbackError?.message ?? 'unknown'})`
+          );
+        }
+      }
     }
 
     // GET /market - current CoinGecko prices plus deterministic 30-day signals
@@ -500,9 +619,25 @@ export default {
     // GET /health - read-only source/cache diagnostics, no Gemini call
     if (request.method === 'GET' && pathname === '/health') {
       const cache = caches.default;
-      const cacheKey = new Request(new URL(request.url).origin + '/health-v2');
+      const cacheKey = new Request(new URL(request.url).origin + '/health-v3');
       const cached = debugNoCache ? null : await cache.match(cacheKey);
       if (cached) return cached;
+
+      let marketCheck = { ok: false, provider: null, degraded: true, error: null };
+      try {
+        const market = await collectMarketData();
+        const requiredAssets = ['bitcoin', 'ethereum', 'chainlink'];
+        const hasCurrentPrices = requiredAssets.every(id => Number.isFinite(Number(market?.prices?.[id]?.current_price)));
+        marketCheck = {
+          ok: hasCurrentPrices,
+          provider: market?.provider ?? null,
+          degraded: Boolean(market?.degraded),
+          snapshotTime: market?.snapshotTime ?? null,
+          error: hasCurrentPrices ? null : 'missing-current-price',
+        };
+      } catch (err) {
+        marketCheck = { ok: false, provider: null, degraded: true, error: err?.message ?? 'unknown' };
+      }
 
       let macroCheck = { ok: false, unavailableFields: ['macro'], error: null };
       try {
@@ -556,10 +691,10 @@ export default {
       }
 
       const response = json({
-        ok: macroCheck.ok && newsCheck.ok,
-        degraded: Boolean(newsCheck.degraded),
+        ok: marketCheck.ok && macroCheck.ok && newsCheck.ok,
+        degraded: Boolean(marketCheck.degraded || newsCheck.degraded),
         timestamp: new Date().toISOString(),
-        checks: { macro: macroCheck, news: newsCheck, briefCache },
+        checks: { market: marketCheck, macro: macroCheck, news: newsCheck, briefCache },
       }, 200, { 'Cache-Control': 'public, max-age=60' });
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
       return response;
