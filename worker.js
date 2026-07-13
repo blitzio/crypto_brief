@@ -26,6 +26,7 @@ import {
 } from './src/news.js';
 import { detectFeedFormat, parseSyndicationFeed } from './src/feed-parser.js';
 import { NEWS_SOURCES } from './src/news-sources.js';
+import { deriveMarketSignals } from './src/market.js';
 import {
   isRetryableGeminiStatus,
   listUnavailableMacroFields,
@@ -52,6 +53,7 @@ export {
   resolvePipelineVersion,
   validateBriefCitations,
 } from './src/gemini.js';
+export { deriveMarketSignals } from './src/market.js';
 
 const BRIEF_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
 
@@ -328,6 +330,87 @@ export default {
       }
 
       return { items: selected, sources: feedResults.map(result => result.health) };
+    }
+
+    async function fetchCoinGeckoJson(upstreamUrl, timeoutMs = 8000) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(upstreamUrl, {
+          signal: controller.signal,
+          headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) throw new Error(`CoinGecko returned HTTP ${response.status}`);
+        return await response.json();
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    async function collectMarketData() {
+      const assets = [
+        { id: 'bitcoin', symbol: 'btc' },
+        { id: 'ethereum', symbol: 'eth' },
+        { id: 'chainlink', symbol: 'link' },
+      ];
+      const baseUrl = 'https://api.coingecko.com/api/v3';
+      const currentPromise = fetchCoinGeckoJson(
+        `${baseUrl}/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,chainlink&order=market_cap_desc&per_page=3&page=1&sparkline=false&price_change_percentage=24h,7d`
+      );
+      const historyPromises = assets.map(async asset => {
+        const [ohlcResult, chartResult] = await Promise.allSettled([
+          fetchCoinGeckoJson(`${baseUrl}/coins/${asset.id}/ohlc?vs_currency=usd&days=30`),
+          fetchCoinGeckoJson(`${baseUrl}/coins/${asset.id}/market_chart?vs_currency=usd&days=30`),
+        ]);
+        return {
+          ...asset,
+          ohlc: ohlcResult.status === 'fulfilled' && Array.isArray(ohlcResult.value) ? ohlcResult.value : [],
+          marketChart: chartResult.status === 'fulfilled' && chartResult.value && typeof chartResult.value === 'object'
+            ? chartResult.value
+            : {},
+        };
+      });
+
+      const [currentItems, histories] = await Promise.all([currentPromise, Promise.all(historyPromises)]);
+      if (!Array.isArray(currentItems)) throw new Error('CoinGecko current prices returned an invalid response');
+      const prices = Object.fromEntries(currentItems.filter(item => item?.id).map(item => [item.id, item]));
+      const missingAssets = assets.filter(asset => {
+        const value = prices[asset.id]?.current_price;
+        return value === null || value === undefined || value === '' || !Number.isFinite(Number(value));
+      });
+      if (missingAssets.length) {
+        throw new Error(`CoinGecko current prices missing: ${missingAssets.map(asset => asset.id).join(', ')}`);
+      }
+
+      const signals = Object.fromEntries(histories.map(history => [
+        history.symbol,
+        deriveMarketSignals({
+          current: prices[history.id].current_price,
+          ohlc: history.ohlc,
+          marketChart: history.marketChart,
+        }),
+      ]));
+
+      return { snapshotTime: new Date().toISOString(), prices, signals };
+    }
+
+    // GET /market - current CoinGecko prices plus deterministic 30-day signals
+    if (request.method === 'GET' && pathname === '/market') {
+      const cache = caches.default;
+      const cacheKey = new Request(new URL(request.url).origin + '/market-v1');
+      const cached = debugNoCache ? null : await cache.match(cacheKey);
+      if (cached) return cached;
+
+      try {
+        const marketData = await collectMarketData();
+        const response = json(marketData, 200, { 'Cache-Control': 'public, max-age=300' });
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        return response;
+      } catch (error) {
+        return json({ error: { message: error?.message ?? 'Market data unavailable' } }, 502, {
+          'Cache-Control': 'no-store',
+        });
+      }
     }
 
     // ─────────────────────────────────────────────────────────────────

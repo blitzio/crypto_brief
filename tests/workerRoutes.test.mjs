@@ -65,6 +65,19 @@ function validBrief() {
   };
 }
 
+function marketHistory(base = 100) {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const start = Date.UTC(2026, 5, 1);
+  const closes = Array.from({ length: 30 }, (_, index) => base * (0.9 + index / 290));
+  return {
+    ohlc: closes.map((close, index) => [start + index * dayMs, close, close * 1.02, close * 0.98, close]),
+    chart: {
+      prices: closes.map((close, index) => [start + index * dayMs, close]),
+      total_volumes: closes.map((_, index) => [start + index * dayMs, 1_000_000 + index * 10_000]),
+    },
+  };
+}
+
 {
   const env = { ALLOWED_ORIGINS: 'https://blitzio.github.io' };
   const response = await worker.fetch(
@@ -144,6 +157,103 @@ function validBrief() {
   assert.equal(staleBody.fresh, false);
   assert.equal(staleBody.reason, 'stale');
   assert.deepEqual(staleBody.brief, stale.brief);
+}
+
+{
+  const histories = {
+    bitcoin: marketHistory(100),
+    ethereum: marketHistory(50),
+    chainlink: marketHistory(10),
+  };
+  const current = [
+    { id: 'bitcoin', current_price: 100, price_change_percentage_24h: 1, price_change_percentage_7d_in_currency: 2 },
+    { id: 'ethereum', current_price: 50, price_change_percentage_24h: 2, price_change_percentage_7d_in_currency: 3 },
+    { id: 'chainlink', current_price: 10, price_change_percentage_24h: 3, price_change_percentage_7d_in_currency: 4 },
+  ];
+  let fetchCount = 0;
+  await withGlobals({
+    caches: { default: makeCache() },
+    fetch: async (url) => {
+      fetchCount += 1;
+      const value = String(url);
+      if (value.includes('/coins/markets')) return Response.json(current);
+      const id = ['bitcoin', 'ethereum', 'chainlink'].find(asset => value.includes(`/coins/${asset}/`));
+      if (value.includes('/ohlc')) return Response.json(histories[id].ohlc);
+      if (value.includes('/market_chart')) return Response.json(histories[id].chart);
+      throw new Error(`unexpected URL ${value}`);
+    },
+  }, async () => {
+    const env = { ALLOWED_ORIGINS: 'https://blitzio.github.io' };
+    const ctx = { waitUntil() {} };
+    const response = await worker.fetch(new Request('https://worker.test/market'), env, ctx);
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.deepEqual(Object.keys(body.prices).sort(), ['bitcoin', 'chainlink', 'ethereum']);
+    assert.deepEqual(Object.keys(body.signals).sort(), ['btc', 'eth', 'link']);
+    assert.equal(body.signals.btc.current, 100);
+
+    const firstFetchCount = fetchCount;
+    const cachedResponse = await worker.fetch(new Request('https://worker.test/market'), env, ctx);
+    assert.equal(cachedResponse.status, 200);
+    assert.equal(fetchCount, firstFetchCount, 'second /market request should use edge cache');
+  });
+}
+
+{
+  const histories = { bitcoin: marketHistory(100), ethereum: marketHistory(50), chainlink: marketHistory(10) };
+  const current = [
+    { id: 'bitcoin', current_price: 100 },
+    { id: 'ethereum', current_price: 50 },
+    { id: 'chainlink', current_price: 10 },
+  ];
+  await withGlobals({
+    caches: { default: makeCache() },
+    fetch: async (url) => {
+      const value = String(url);
+      if (value.includes('/coins/markets')) return Response.json(current);
+      const id = ['bitcoin', 'ethereum', 'chainlink'].find(asset => value.includes(`/coins/${asset}/`));
+      if (id === 'ethereum') return new Response('unavailable', { status: 502 });
+      if (value.includes('/ohlc')) return Response.json(histories[id].ohlc);
+      if (value.includes('/market_chart')) return Response.json(histories[id].chart);
+      throw new Error(`unexpected URL ${value}`);
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/market?nocache=1'),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io' },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.prices.ethereum.current_price, 50);
+    assert.equal(body.signals.eth.current, 50);
+    assert.equal(body.signals.eth.range30d, null);
+    assert.equal(body.signals.eth.unavailableFields.includes('range30d'), true);
+  });
+}
+
+{
+  const histories = { bitcoin: marketHistory(100), ethereum: marketHistory(50), chainlink: marketHistory(10) };
+  await withGlobals({
+    caches: { default: makeCache() },
+    fetch: async (url) => {
+      const value = String(url);
+      if (value.includes('/coins/markets')) return new Response('unavailable', { status: 502 });
+      const id = ['bitcoin', 'ethereum', 'chainlink'].find(asset => value.includes(`/coins/${asset}/`));
+      if (value.includes('/ohlc')) return Response.json(histories[id].ohlc);
+      if (value.includes('/market_chart')) return Response.json(histories[id].chart);
+      throw new Error(`unexpected URL ${value}`);
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/market?nocache=1'),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io' },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 502);
+    assert.match(body.error.message, /CoinGecko returned HTTP 502/);
+  });
 }
 
 {
