@@ -9,13 +9,72 @@ import {
   summarizeNewsSourceHealth,
 } from '../src/news.js';
 import {
+  buildEvidenceIndex,
   isRetryableGeminiStatus,
   parseGeminiBriefJson,
   normalizeCitationMarkers,
   resolveModelFallbacks,
   resolvePipelineVersion,
   validateBriefCitations,
+  validateBriefEvidence,
 } from '../src/gemini.js';
+
+{
+  const evidenceIndex = buildEvidenceIndex({
+    newsItems: [
+      { title: 'Bitcoin ETF demand rises', description: 'BTC ETF inflows increased.', source: 'CoinDesk', topic: 'general' },
+      { title: 'Global liquidity conditions shift', description: 'Rates and liquidity moved.', source: 'FT', topic: 'macro' },
+    ],
+    prices: {
+      bitcoin: { current_price: 100, price_change_percentage_24h: 1, price_change_percentage_7d_in_currency: 2 },
+      ethereum: { current_price: 50 },
+      chainlink: { current_price: 10 },
+    },
+    marketSignals: {
+      btc: { rangePosition30d: 0.5, support: 90, resistance: 110 },
+      eth: { rangePosition30d: 0.4 },
+      link: { volumeTrend: 0.2 },
+    },
+    macro: { sp500: { pct: 1.2, change5dPct: 2.5 }, stablecoins: { change7dPct: 1.1 } },
+  });
+
+  assert.equal(evidenceIndex.has('news:1'), true);
+  assert.equal(evidenceIndex.has('market:btc:rangePosition'), true);
+  assert.equal(evidenceIndex.has('market:link:volumeTrend'), true);
+  assert.equal(evidenceIndex.has('macro:sp500:change1d'), true);
+  assert.equal(evidenceIndex.has('macro:stablecoins:change7d'), true);
+  assert.equal(buildEvidenceIndex({ macro: { cpi: { yoy: 'N/A' } } }).has('macro:cpi:current'), false);
+
+  const valid = validateBriefEvidence({
+    btc: { bullets: [{ label: 'Flows', text: 'ETF demand improved [1].', evidenceIds: ['news:1', 'market:btc:rangePosition'], confidence: 'high' }] },
+    eth: { bullets: [{ label: 'Range', text: 'ETH remains mid-range.', evidenceIds: ['market:eth:rangePosition'], confidence: 'medium' }] },
+    link: { bullets: [{ label: 'Volume', text: 'Volume expanded.', evidenceIds: ['market:link:volumeTrend'], confidence: 'low' }] },
+    macro: { bullets: [{ label: 'Risk', text: 'Equities improved.', evidenceIds: ['macro:sp500:change1d'], confidence: 'medium' }] },
+    threats: [{ label: 'Liquidity', text: 'Liquidity is shifting.', evidenceIds: ['news:2'], confidence: 'low' }],
+    watch: [{ label: 'Supply', text: 'Watch stablecoin supply.', evidenceIds: ['macro:stablecoins:change7d'], confidence: 'high' }],
+  }, evidenceIndex);
+  assert.equal(valid.ok, true);
+
+  const unknown = validateBriefEvidence({
+    btc: { bullets: [{ label: 'Bad', text: 'Unknown.', evidenceIds: ['market:btc:unknown'], confidence: 'high' }] },
+  }, evidenceIndex);
+  assert.equal(unknown.violations.some(violation => violation.reason === 'unknown_evidence'), true);
+
+  const crossed = validateBriefEvidence({
+    btc: { bullets: [{ label: 'Bad', text: 'Wrong asset.', evidenceIds: ['market:eth:rangePosition'], confidence: 'high' }] },
+  }, evidenceIndex);
+  assert.equal(crossed.violations.some(violation => violation.reason === 'cross_asset_evidence'), true);
+
+  const confidence = validateBriefEvidence({
+    btc: { bullets: [{ label: 'Bad', text: 'Invalid confidence.', evidenceIds: ['news:1'], confidence: 'certain' }] },
+  }, evidenceIndex);
+  assert.equal(confidence.violations.some(violation => violation.reason === 'invalid_confidence'), true);
+
+  const v1 = validateBriefCitations({
+    btc: { bullets: [{ label: 'Live', text: 'Live market data: BTC price is above support.' }] },
+  }, []);
+  assert.equal(v1.ok, true);
+}
 
 {
   assert.equal(

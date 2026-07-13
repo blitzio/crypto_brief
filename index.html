@@ -502,7 +502,7 @@ async function fetchNews() {
 }
 
 // ─── AI CALL ────────────────────────────────────────────────────────
-async function callAI(prices, macro, newsItems = []) {
+async function callAI(prices, macro, newsItems = [], marketSignals = {}) {
   const b = prices['bitcoin'];
   const e = prices['ethereum'];
   const l = prices['chainlink'];
@@ -510,55 +510,85 @@ async function callAI(prices, macro, newsItems = []) {
 
   const macroLines = [
     macro.fedRate?.rateStr && macro.fedRate.rateStr !== 'UNAVAILABLE'
-      ? `Fed Funds Rate (NY Fed EFFR): ${macro.fedRate.rateStr}${macro.fedRate.date ? ` as of ${macro.fedRate.date}` : ''}`
+      ? `macro:fedRate:current | Fed Funds Rate (NY Fed EFFR): ${macro.fedRate.rateStr}${macro.fedRate.date ? ` as of ${macro.fedRate.date}` : ''}`
+      : null,
+    Number.isFinite(macro.fedRate?.change)
+      ? `macro:fedRate:change | EFFR change: ${macro.fedRate.change.toFixed(2)} percentage points (${macro.fedRate.direction})`
       : null,
     Number.isFinite(macro.usdsgd?.price)
-      ? `USD/SGD: ${macro.usdsgd.price.toFixed(4)} (${fmtPct(macro.usdsgd.pct)} today)`
+      ? `macro:usdsgd:current | USD/SGD: ${macro.usdsgd.price.toFixed(4)}`
       : null,
+    Number.isFinite(macro.usdsgd?.pct) ? `macro:usdsgd:change1d | USD/SGD 1D: ${fmtPct(macro.usdsgd.pct)}` : null,
+    Number.isFinite(macro.usdsgd?.change5dPct) ? `macro:usdsgd:change5d | USD/SGD 5D: ${fmtPct(macro.usdsgd.change5dPct)}` : null,
     Number.isFinite(macro.sp500?.price)
-      ? `S&P 500: $${macro.sp500.price.toLocaleString('en-US', { maximumFractionDigits: 0 })} (${fmtPct(macro.sp500.pct)} today)`
+      ? `macro:sp500:current | S&P 500: $${macro.sp500.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
       : null,
+    Number.isFinite(macro.sp500?.pct) ? `macro:sp500:change1d | S&P 500 1D: ${fmtPct(macro.sp500.pct)}` : null,
+    Number.isFinite(macro.sp500?.change5dPct) ? `macro:sp500:change5d | S&P 500 5D: ${fmtPct(macro.sp500.change5dPct)}` : null,
     Number.isFinite(macro.gold?.price)
-      ? `Gold: $${macro.gold.price.toLocaleString('en-US', { maximumFractionDigits: 0 })} (${fmtPct(macro.gold.pct)} today)`
+      ? `macro:gold:current | Gold: $${macro.gold.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
       : null,
+    Number.isFinite(macro.gold?.pct) ? `macro:gold:change1d | Gold 1D: ${fmtPct(macro.gold.pct)}` : null,
+    Number.isFinite(macro.gold?.change5dPct) ? `macro:gold:change5d | Gold 5D: ${fmtPct(macro.gold.change5dPct)}` : null,
     macro.stablecoins?.total && macro.stablecoins.total !== 'N/A'
-      ? `Stablecoin Supply (DefiLlama): Total ${macro.stablecoins.total} — USDT ${macro.stablecoins.usdt}, USDC ${macro.stablecoins.usdc}`
+      ? `macro:stablecoins:total | Stablecoin Supply: ${macro.stablecoins.total} — USDT ${macro.stablecoins.usdt}, USDC ${macro.stablecoins.usdc}`
       : null,
+    Number.isFinite(macro.stablecoins?.change7dPct) ? `macro:stablecoins:change7d | Stablecoin supply 7D: ${fmtPct(macro.stablecoins.change7dPct)}` : null,
+    Number.isFinite(macro.stablecoins?.change30dPct) ? `macro:stablecoins:change30d | Stablecoin supply 30D: ${fmtPct(macro.stablecoins.change30dPct)}` : null,
     Number.isFinite(macro.cryptoSentiment?.value)
-      ? `Crypto Fear & Greed: ${macro.cryptoSentiment.value}/100 (${macro.cryptoSentiment.classification})`
+      ? `macro:sentiment:current | Crypto Fear & Greed: ${macro.cryptoSentiment.value}/100 (${macro.cryptoSentiment.classification})`
       : null,
     macro.cpi?.yoy && macro.cpi.yoy !== 'N/A'
-      ? `CPI Inflation (BLS): ${macro.cpi.yoy} YoY — ${macro.cpi.period}`
+      ? `macro:cpi:current | CPI Inflation: ${macro.cpi.yoy} YoY — ${macro.cpi.period}`
       : null,
+    Number.isFinite(macro.cpi?.change) ? `macro:cpi:change | CPI YoY change: ${macro.cpi.change.toFixed(2)} percentage points (${macro.cpi.direction})` : null,
   ].filter(Boolean).join('\n');
+
+  const marketLines = [
+    ['btc', b], ['eth', e], ['link', l],
+  ].flatMap(([asset, coin]) => {
+    const signals = marketSignals?.[asset] || {};
+    const lines = [
+      `market:${asset}:current | ${asset.toUpperCase()} current price: ${fmtPrice(coin.current_price)}`,
+      Number.isFinite(coin.price_change_percentage_24h) ? `market:${asset}:change24h | ${asset.toUpperCase()} 24H: ${fmtPct(coin.price_change_percentage_24h)}` : null,
+      Number.isFinite(coin.price_change_percentage_7d_in_currency) ? `market:${asset}:change7d | ${asset.toUpperCase()} 7D: ${fmtPct(coin.price_change_percentage_7d_in_currency)}` : null,
+      Number.isFinite(coin.market_cap) ? `market:${asset}:marketCap | ${asset.toUpperCase()} market cap: ${fmtCap(coin.market_cap)}` : null,
+      Number.isFinite(coin.total_volume) ? `market:${asset}:volume | ${asset.toUpperCase()} volume: ${fmtCap(coin.total_volume)}` : null,
+      signals.range7d ? `market:${asset}:range7d | ${asset.toUpperCase()} 7D range: ${fmtPrice(signals.range7d.low)} to ${fmtPrice(signals.range7d.high)}` : null,
+      signals.range30d ? `market:${asset}:range30d | ${asset.toUpperCase()} 30D range: ${fmtPrice(signals.range30d.low)} to ${fmtPrice(signals.range30d.high)}` : null,
+      Number.isFinite(signals.rangePosition30d) ? `market:${asset}:rangePosition | ${asset.toUpperCase()} 30D range position: ${(signals.rangePosition30d * 100).toFixed(1)}%` : null,
+      Number.isFinite(signals.momentum7dPctPoints) ? `market:${asset}:momentum | ${asset.toUpperCase()} latest-vs-prior 7D momentum: ${signals.momentum7dPctPoints.toFixed(2)} percentage points` : null,
+      Number.isFinite(signals.volumeTrend) ? `market:${asset}:volumeTrend | ${asset.toUpperCase()} volume vs prior 7-day mean: ${(signals.volumeTrend * 100).toFixed(1)}%` : null,
+      Number.isFinite(signals.realizedVolatilityAnnualized) ? `market:${asset}:volatility | ${asset.toUpperCase()} annualized realized volatility: ${(signals.realizedVolatilityAnnualized * 100).toFixed(1)}%` : null,
+      Number.isFinite(signals.support) ? `market:${asset}:support | ${asset.toUpperCase()} deterministic support: ${fmtPrice(signals.support)}` : null,
+      Number.isFinite(signals.resistance) ? `market:${asset}:resistance | ${asset.toUpperCase()} deterministic resistance: ${fmtPrice(signals.resistance)}` : null,
+    ];
+    return lines.filter(Boolean);
+  }).join('\n');
 
   const prompt =
 `You are a senior crypto intelligence analyst producing a classified daily brief for a sophisticated investor in Singapore. Today is ${today}.
 
-LIVE PRICES (CoinGecko — use exact figures below, do not substitute):
-BTC:  ${fmtPrice(b.current_price)} | 24h: ${fmtPct(b.price_change_percentage_24h)} | 7d: ${fmtPct(b.price_change_percentage_7d_in_currency)} | MCap: ${fmtCap(b.market_cap)} | Vol: ${fmtCap(b.total_volume)}
-ETH:  ${fmtPrice(e.current_price)} | 24h: ${fmtPct(e.price_change_percentage_24h)} | 7d: ${fmtPct(e.price_change_percentage_7d_in_currency)} | MCap: ${fmtCap(e.market_cap)} | Vol: ${fmtCap(e.total_volume)}
-LINK: ${fmtPrice(l.current_price)} | 24h: ${fmtPct(l.price_change_percentage_24h)} | 7d: ${fmtPct(l.price_change_percentage_7d_in_currency)} | MCap: ${fmtCap(l.market_cap)} | Vol: ${fmtCap(l.total_volume)}
+DETERMINISTIC MARKET EVIDENCE (use exact IDs and values; do not substitute):
+${marketLines}
 
-LIVE MACRO DATA (use exact figures below, do not substitute):
+DETERMINISTIC MACRO EVIDENCE (use exact IDs and values; do not substitute):
 ${macroLines || 'Macro data temporarily unavailable.'}
 
 RECENT FEED SOURCES (LAST 72H MAX) — CITE BY doc id ONLY WHEN THE ASSET TAG MATCHES:
 ${newsItems.length
-  ? newsItems.map((n,i) => `<doc id="${i+1}">\nSOURCE: ${n.source}\nASSET_TAGS: ${(n.assetMentions || []).join(', ') || 'none'}\nHEADLINE: ${n.title}\nCONTENT: ${n.content || n.description || 'No content available'}\n</doc>`).join('\n\n')
+  ? newsItems.map((n,i) => `<doc id="${i+1}">\nEVIDENCE_ID: news:${i+1}\nSOURCE: ${n.source}\nASSET_TAGS: ${(n.assetMentions || []).join(', ') || 'none'}\nHEADLINE: ${n.title}\nCONTENT: ${n.content || n.description || 'No content available'}\n</doc>`).join('\n\n')
   : 'No news retrieved — rely only on the live price and macro data above. Do not invent events.'}
 
 ANALYSIS INSTRUCTIONS:
 
 GENERAL:
-- Every BTC, ETH, and LINK news claim MUST reference a <doc id> — write it as [N] inline
-- If a useful asset point is not directly supported by a matching <doc>, use only exact live price/volume/24h/7d/support/resistance data and label it "Live market data:"
-- If no <doc> supports an asset-specific news claim, DO NOT cite a loosely related or generic crypto doc
-- A BTC bullet may cite only docs tagged btc; ETH may cite only docs tagged eth; LINK may cite only docs tagged link
-- Docs tagged none can be used only for macro, threats, watch, verdict, or ranking — never as BTC/ETH/LINK evidence
-- For each asset: write 4-6 bullets; keep the section visually substantial without inventing news
-- For source-backed bullets, identify the most significant real developments from the docs and synthesize into sharp bullets
-- For uncited live-data bullets, cover price action, relative strength, liquidity/volume, support/resistance, and what invalidates the setup
+- Every bullet in BTC, ETH, LINK, macro, threats, and watch MUST include evidenceIds with at least one exact ID above and confidence set to high, medium, or low
+- BTC bullets may use only news tagged btc or market:btc IDs; apply the equivalent rule to ETH and LINK
+- Macro, threats, and watch may use news or macro IDs; do not use asset market IDs in those sections
+- When a bullet uses news:N, also write [N] inline in its text so the reader can match the visible source list
+- For each asset write 3-5 evidence-backed bullets; write 3-5 macro bullets, 3-5 threats, and 3-6 watch items
+- Prefer fewer high-value bullets over filler. Thin selected news does not imply no real-world activity; use deterministic market facts without claiming news absence
 - DO NOT hallucinate events, dates, prices, or developments not present in the docs above
 - Support and resistance levels must be actual dollar figures derived from the current price data
 - Avoid explicit buy/sell language; frame verdict as market conditions and levels to monitor
@@ -587,11 +617,11 @@ MACRO BULLETS — CRITICAL:
       messages: [
         {
           role:    'system',
-          content: "You are a senior crypto intelligence analyst. You MUST complete all sections of the JSON. Asset sections must contain 4-6 bullets; macro must contain 5 bullets, threats 5 items, watch 6 items, plus verdict, ranking, bullTrigger, bearTrigger. Keep asset sections visually substantial without inventing news. For BTC/ETH/LINK: cite sources with [N] only when ASSET_TAGS includes that asset. Where coverage is thin, use exact live price/volume/24h/7d/support/resistance data and visibly label uncited asset points as Live market data. Cover price action, relative strength, liquidity/volume, support/resistance, and invalidation levels. Do not write broad uncited Model inference in asset sections. Never cite a loosely related or generic crypto doc as asset evidence. Never write 'No Specific News'. Be concise but analytical — each bullet should explain signal, implication, and what matters next when evidence supports it. MACRO BULLETS RULE: never restate the gauge values already shown in the cards — every macro bullet must combine at least 2 signals into a forward-looking cross-asset inference for crypto. Zero restatement, all synthesis.",
+          content: "You are a senior crypto intelligence analyst using evidence pipeline v2. Complete every section, but prefer 3-5 high-value asset and macro bullets, 3-5 threats, and 3-6 watch items over filler. Every bullet must include evidenceIds using only exact IDs supplied in the prompt and confidence set to high, medium, or low. Asset evidence must match that asset. When using news:N, retain [N] inline in text. Explain signal, implication, invalidation, and what matters next without inventing claims. Macro bullets should synthesize at least two available macro facts when possible rather than restating cards.",
         },
         { role: 'user', content: prompt },
       ],
-      cachePayload: { prices, macro, newsItems },
+      cachePayload: { prices, macro, newsItems, marketSignals },
       temperature: 0.3,
       max_tokens:  4000,
     }),
@@ -599,8 +629,8 @@ MACRO BULLETS — CRITICAL:
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    const citationCount = err?.error?.citationViolations?.length;
-    const suffix = citationCount ? ` (${citationCount} citation checks failed)` : '';
+    const validationCount = err?.error?.evidenceViolations?.length ?? err?.error?.citationViolations?.length;
+    const suffix = validationCount ? ` (${validationCount} evidence checks failed)` : '';
     throw new Error((err?.error?.message ?? `Worker error ${res.status}`) + suffix);
   }
 
@@ -813,7 +843,7 @@ async function run(forceRefresh = false) {
     const [prices, macro, newsItems] = await Promise.all([fetchPrices(), fetchMacro(), fetchNews()]);
 
     setRefreshStatus('Generating analysis via Gemini…');
-    const { brief } = await callAI(prices, macro, newsItems);
+    const { brief } = await callAI(prices, macro, newsItems, {});
     const generatedTime = sgtNow();
 
     try {

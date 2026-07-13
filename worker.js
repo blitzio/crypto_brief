@@ -34,6 +34,7 @@ import {
   deriveYahooChange5d,
 } from './src/macro.js';
 import {
+  buildEvidenceIndex,
   isRetryableGeminiStatus,
   listUnavailableMacroFields,
   normalizeBriefCitationMarkers,
@@ -41,6 +42,7 @@ import {
   resolveModelFallbacks,
   resolvePipelineVersion,
   validateBriefCitations,
+  validateBriefEvidence,
 } from './src/gemini.js';
 export { selectYahooPreviousClose, resolveYahooPct, resolveYahooQuotePct } from './src/yahoo.js';
 export {
@@ -51,6 +53,7 @@ export {
   summarizeNewsSourceHealth,
 } from './src/news.js';
 export {
+  buildEvidenceIndex,
   isRetryableGeminiStatus,
   listUnavailableMacroFields,
   normalizeCitationMarkers,
@@ -58,6 +61,7 @@ export {
   resolveModelFallbacks,
   resolvePipelineVersion,
   validateBriefCitations,
+  validateBriefEvidence,
 } from './src/gemini.js';
 export { deriveMarketSignals } from './src/market.js';
 export {
@@ -632,10 +636,15 @@ export default {
         const body     = await request.json();
         const messages = Array.isArray(body.messages) ? body.messages : [];
 
-        const systemText = messages
+        const baseSystemText = messages
           .filter(m => m.role === 'system')
           .map(m => typeof m.content === 'string' ? m.content : JSON.stringify(m.content))
           .join('\n\n');
+        const evidenceIndex = buildEvidenceIndex(body.cachePayload || {});
+        const pipelineInstruction = pipelineVersion === 'v2'
+          ? `EVIDENCE PIPELINE V2: Every btc, eth, link, macro, threats, and watch bullet must include evidenceIds (a non-empty array) and confidence (high, medium, or low). Use only these exact available IDs: ${[...evidenceIndex.keys()].join(', ') || 'none'}. Asset bullets may use only matching news IDs or market IDs for that asset. Macro, threats, and watch may use news or macro IDs. Keep [N] inline in text when using news:N so readers can match the visible source list. Produce 3-5 asset bullets, 3-5 macro bullets, 3-5 threats, and 3-6 watch items; do not add filler when evidence is thin.`
+          : 'EVIDENCE PIPELINE V1 ROLLBACK: Use the legacy label/text bullet shape with no required evidenceIds or confidence. Produce 4-6 asset bullets, exactly 5 macro bullets, exactly 5 threats, and exactly 6 watch items. Preserve valid inline [N] news citations and Live market data labels.';
+        const systemText = [baseSystemText, pipelineInstruction].filter(Boolean).join('\n\n');
 
         const contents = messages
           .filter(m => m.role !== 'system')
@@ -646,20 +655,33 @@ export default {
 
         const bulletSchema = {
           type: 'object',
-          properties: { label: { type: 'string' }, text: { type: 'string' } },
-          required: ['label', 'text'],
+          properties: {
+            label: { type: 'string' },
+            text: { type: 'string' },
+            ...(pipelineVersion === 'v2' ? {
+              evidenceIds: { type: 'array', minItems: 1, items: { type: 'string' } },
+              confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
+            } : {}),
+          },
+          required: pipelineVersion === 'v2'
+            ? ['label', 'text', 'evidenceIds', 'confidence']
+            : ['label', 'text'],
         };
+        const assetBulletRange = pipelineVersion === 'v2' ? { minItems: 3, maxItems: 5 } : { minItems: 4, maxItems: 6 };
+        const macroBulletRange = pipelineVersion === 'v2' ? { minItems: 3, maxItems: 5 } : { minItems: 5, maxItems: 5 };
+        const threatRange = pipelineVersion === 'v2' ? { minItems: 3, maxItems: 5 } : { minItems: 5, maxItems: 5 };
+        const watchRange = pipelineVersion === 'v2' ? { minItems: 3, maxItems: 6 } : { minItems: 6, maxItems: 6 };
 
         const responseSchema = {
           type: 'object',
           required: ['btc','eth','link','macro','threats','watch','verdict','ranking','bullTrigger','bearTrigger'],
           properties: {
-            btc:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 4, maxItems: 6, items: bulletSchema } } },
-            eth:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', minItems: 4, maxItems: 6, items: bulletSchema } } },
-            link:  { type: 'object', required: ['support','resist','badge','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, badge: { type: 'string' }, bullets: { type: 'array', minItems: 4, maxItems: 6, items: bulletSchema } } },
-            macro: { type: 'object', required: ['bullets'], properties: { bullets: { type: 'array', minItems: 5, maxItems: 5, items: bulletSchema } } },
-            threats:     { type: 'array', minItems: 5, maxItems: 5, items: bulletSchema },
-            watch:       { type: 'array', minItems: 6, maxItems: 6, items: bulletSchema },
+            btc:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', ...assetBulletRange, items: bulletSchema } } },
+            eth:   { type: 'object', required: ['support','resist','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, bullets: { type: 'array', ...assetBulletRange, items: bulletSchema } } },
+            link:  { type: 'object', required: ['support','resist','badge','bullets'], properties: { support: { type: 'string' }, resist: { type: 'string' }, badge: { type: 'string' }, bullets: { type: 'array', ...assetBulletRange, items: bulletSchema } } },
+            macro: { type: 'object', required: ['bullets'], properties: { bullets: { type: 'array', ...macroBulletRange, items: bulletSchema } } },
+            threats:     { type: 'array', ...threatRange, items: bulletSchema },
+            watch:       { type: 'array', ...watchRange, items: bulletSchema },
             verdict:     { type: 'string' },
             ranking:     { type: 'string' },
             bullTrigger: { type: 'string' },
@@ -684,7 +706,8 @@ export default {
 
         let contentText = '{}';
         let parsedBrief = null;
-        let citationCheck = { ok: false, violations: [] };
+        let validationCheck = { ok: false, violations: [] };
+        const validationType = pipelineVersion === 'v2' ? 'evidence' : 'citation';
         const models = resolveModelFallbacks(env);
         const configuredThinkingLevel = String(env.GEMINI_THINKING_LEVEL || 'low').toLowerCase();
         const thinkingLevel = ['minimal', 'low', 'medium', 'high'].includes(configuredThinkingLevel)
@@ -778,47 +801,65 @@ export default {
             .trim() || '{}';
 
           try {
-          parsedBrief = normalizeBriefCitationMarkers(parseGeminiBriefJson(contentText));
-          contentText = JSON.stringify(parsedBrief);
+            parsedBrief = normalizeBriefCitationMarkers(parseGeminiBriefJson(contentText));
+            contentText = JSON.stringify(parsedBrief);
           } catch (parseErr) {
-            citationCheck = {
+            validationCheck = {
               ok: false,
               violations: [{ asset: 'json', bulletIndex: -1, reason: 'invalid_json', text: parseErr.message }],
             };
-            payload.contents.push({
-              role: 'user',
-              parts: [{
-                text: `The previous response was invalid JSON (${parseErr.message}). Return the full corrected JSON object only, with no markdown and no commentary.`,
-              }],
-            });
+            payload.contents.push(
+              { role: 'model', parts: [{ text: contentText }] },
+              {
+                role: 'user',
+                parts: [{
+                  text: `The previous response was invalid JSON (${parseErr.message}). Return the full corrected JSON object only, with no markdown and no commentary.`,
+                }],
+              }
+            );
             continue;
           }
-          citationCheck = validateBriefCitations(parsedBrief, body.cachePayload?.newsItems || []);
-          if (citationCheck.ok) break;
+          validationCheck = pipelineVersion === 'v2'
+            ? validateBriefEvidence(parsedBrief, evidenceIndex)
+            : validateBriefCitations(parsedBrief, body.cachePayload?.newsItems || []);
+          if (validationCheck.ok) break;
 
-          const feedback = citationCheck.violations
+          const feedback = validationCheck.violations
             .slice(0, 10)
-            .map(v => `${v.asset.toUpperCase()} bullet ${v.bulletIndex + 1}: ${v.reason}${v.docId ? ` on doc [${v.docId}]` : ''}`)
+            .map(v => `${String(v.section || v.asset || 'json').toUpperCase()} bullet ${v.bulletIndex + 1}: ${v.reason}${v.evidenceId ? ` (${v.evidenceId})` : ''}${v.docId ? ` on doc [${v.docId}]` : ''}`)
             .join('; ');
-          payload.contents.push({
-            role: 'user',
-            parts: [{
-              text: `The previous JSON failed citation validation: ${feedback}. Return the full corrected JSON only. Asset bullets may cite only docs whose ASSET_TAGS include that asset. If no matching source supports an asset point, use exact live market data from the prompt and label it "Live market data:"; cover price action, relative strength, liquidity/volume, and support/resistance. Do not write broad uncited model inference.`,
-            }],
-          });
+          const correctionText = pipelineVersion === 'v2'
+            ? `The previous JSON failed evidence validation: ${feedback}. Return the full corrected JSON only. Every bullet must use known evidenceIds from the provided list, matching the asset where applicable, and confidence must be high, medium, or low.`
+            : `The previous JSON failed citation validation: ${feedback}. Return the full corrected JSON only. Asset bullets may cite only docs whose ASSET_TAGS include that asset. If no matching source supports an asset point, use exact live market data from the prompt and label it "Live market data:"; cover price action, relative strength, liquidity/volume, and support/resistance. Do not write broad uncited model inference.`;
+          payload.contents.push(
+            { role: 'model', parts: [{ text: contentText }] },
+            { role: 'user', parts: [{ text: correctionText }] }
+          );
         }
 
-        if (!citationCheck.ok) {
+        if (!validationCheck.ok) {
+          const error = pipelineVersion === 'v2'
+            ? {
+                message: 'Generated brief failed evidence validation. Refresh to retry.',
+                evidenceViolations: validationCheck.violations,
+              }
+            : {
+                message: 'Generated brief failed citation validation. Refresh to retry with stricter source matching.',
+                citationViolations: validationCheck.violations,
+              };
           return json({
-            error: {
-              message: 'Generated brief failed citation validation. Refresh to retry with stricter source matching.',
-              citationViolations: citationCheck.violations,
+            error,
+            meta: {
+              ...responseMeta(),
+              validation: { type: validationType, ok: false, violationCount: validationCheck.violations.length },
             },
-            meta: responseMeta(),
           }, 422);
         }
 
-        const meta = responseMeta();
+        const meta = {
+          ...responseMeta(),
+          validation: { type: validationType, ok: true, violationCount: 0 },
+        };
         if (env.BRIEF_CACHE && body.cachePayload && typeof body.cachePayload === 'object') {
           try {
             await env.BRIEF_CACHE.put('latest', JSON.stringify({

@@ -13,6 +13,9 @@ assert.ok(scriptMatch[1].includes('refreshInFlight'), 'refreshes should be singl
 assert.ok(scriptMatch[1].includes('/brief?allowStale=1'), 'startup should permit a stale cached fallback');
 assert.ok(scriptMatch[1].includes('DATA_TIMEOUT_MS = 15000'), 'data requests should have a 15 second deadline');
 assert.ok(scriptMatch[1].includes('GEMINI_TIMEOUT_MS = 105000'), 'Gemini requests should have a 105 second client deadline');
+assert.ok(scriptMatch[1].includes('evidenceIds'), 'v2 prompts should request explicit evidence identifiers');
+assert.ok(scriptMatch[1].includes('confidence'), 'v2 prompts should request evidence confidence');
+assert.ok(scriptMatch[1].includes('marketSignals'), 'market evidence should be passed through the generation payload');
 assert.equal(
   /const shouldForceRefresh = forceRefresh === true;\s*document\.getElementById\('brief'\)\.classList\.remove\('active'\)/.test(scriptMatch[1]),
   false,

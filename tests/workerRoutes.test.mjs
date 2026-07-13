@@ -49,15 +49,47 @@ async function jsonResponse(response) {
   return response.json();
 }
 
-function validBrief() {
-  const liveBullet = asset => ({ label: 'Live', text: `Live market data: ${asset} price is above support.` });
+function v2CachePayload() {
   return {
-    btc: { support: '$1', resist: '$2', bullets: [liveBullet('BTC')] },
-    eth: { support: '$1', resist: '$2', bullets: [liveBullet('ETH')] },
-    link: { support: '$1', resist: '$2', badge: 'Neutral', bullets: [liveBullet('LINK')] },
-    macro: { bullets: Array.from({ length: 5 }, (_, i) => ({ label: `M${i}`, text: 'Macro synthesis.' })) },
-    threats: Array.from({ length: 5 }, (_, i) => ({ label: `T${i}`, text: 'Threat.' })),
-    watch: Array.from({ length: 6 }, (_, i) => ({ label: `W${i}`, text: 'Watch.' })),
+    prices: {
+      bitcoin: { current_price: 100 },
+      ethereum: { current_price: 50 },
+      chainlink: { current_price: 10 },
+    },
+    marketSignals: {
+      btc: { rangePosition30d: 0.5 },
+      eth: { rangePosition30d: 0.4 },
+      link: { rangePosition30d: 0.3 },
+    },
+    macro: { sp500: { pct: 1.2 } },
+    newsItems: [],
+  };
+}
+
+function validV2Brief() {
+  const assetSection = (asset, price) => ({
+    support: `$${price - 1}`,
+    resist: `$${price + 1}`,
+    bullets: Array.from({ length: 3 }, (_, index) => ({
+      label: `Market ${index + 1}`,
+      text: `Deterministic ${asset.toUpperCase()} market observation.`,
+      evidenceIds: [`market:${asset}:${index === 0 ? 'current' : 'rangePosition'}`],
+      confidence: index === 2 ? 'medium' : 'high',
+    })),
+  });
+  const supportedItems = (count, prefix) => Array.from({ length: count }, (_, index) => ({
+    label: `${prefix} ${index + 1}`,
+    text: 'Evidence-backed macro observation.',
+    evidenceIds: ['macro:sp500:change1d'],
+    confidence: 'medium',
+  }));
+  return {
+    btc: assetSection('btc', 100),
+    eth: assetSection('eth', 50),
+    link: { ...assetSection('link', 10), badge: 'Neutral' },
+    macro: { bullets: supportedItems(3, 'Macro') },
+    threats: supportedItems(3, 'Threat'),
+    watch: supportedItems(3, 'Watch'),
     verdict: 'A full verdict sentence. A second full verdict sentence.',
     ranking: 'BTC > ETH > LINK because liquidity leads.',
     bullTrigger: 'A break above resistance improves conditions.',
@@ -265,14 +297,14 @@ function marketHistory(base = 100) {
       if (String(url).includes('gemini-3.5-flash')) {
         return Response.json({ error: { message: 'model not found' } }, { status: 404 });
       }
-      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validBrief()) }] } }] });
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validV2Brief()) }] } }] });
     },
   }, async () => {
     const response = await worker.fetch(
       new Request('https://worker.test/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: { newsItems: [] } }),
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v2CachePayload() }),
       }),
       { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
       { waitUntil() {} }
@@ -285,6 +317,8 @@ function marketHistory(base = 100) {
     assert.equal(calls[1].body.generationConfig.maxOutputTokens, 8192);
     assert.equal(calls[1].body.generationConfig.thinkingConfig.thinkingLevel, 'low');
     assert.equal('temperature' in calls[1].body.generationConfig, false);
+    assert.equal(calls[1].body.generationConfig.responseJsonSchema.properties.btc.properties.bullets.minItems, 3);
+    assert.equal(calls[1].body.generationConfig.responseJsonSchema.properties.watch.minItems, 3);
   });
   const cacheWrite = kv.calls.find(call => call.op === 'put');
   assert.ok(cacheWrite);
@@ -323,14 +357,14 @@ function marketHistory(base = 100) {
     fetch: async () => {
       callCount += 1;
       if (callCount === 1) throw new DOMException('timed out', 'AbortError');
-      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validBrief()) }] } }] });
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validV2Brief()) }] } }] });
     },
   }, async () => {
     const response = await worker.fetch(
       new Request('https://worker.test/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: { newsItems: [] } }),
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v2CachePayload() }),
       }),
       { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
       { waitUntil() {} }
@@ -340,6 +374,66 @@ function marketHistory(base = 100) {
     assert.equal(body.meta.model, 'gemini-3.1-flash-lite');
     assert.equal(body.meta.attemptCount, 2);
   });
+}
+
+{
+  const kv = makeKv();
+  const invalid = validV2Brief();
+  invalid.btc.bullets[0].evidenceIds = ['market:btc:unknown'];
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      const brief = callCount === 1 ? invalid : validV2Brief();
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(brief) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v2CachePayload() }),
+      }),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.attemptCount, 2);
+    assert.equal(body.meta.validation.type, 'evidence');
+    assert.equal(body.meta.validation.ok, true);
+  });
+  assert.equal(callCount, 2);
+  assert.equal(kv.calls.some(call => call.op === 'put'), true);
+}
+
+{
+  const kv = makeKv();
+  const invalid = validV2Brief();
+  invalid.eth.bullets[0].evidenceIds = ['market:btc:current'];
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(invalid) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v2CachePayload() }),
+      }),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 422);
+    assert.equal(body.error.message, 'Generated brief failed evidence validation. Refresh to retry.');
+    assert.equal(body.error.evidenceViolations.some(violation => violation.reason === 'cross_asset_evidence'), true);
+  });
+  assert.equal(callCount, 2);
+  assert.equal(kv.calls.some(call => call.op === 'put'), false);
 }
 
 {
@@ -390,6 +484,7 @@ function marketHistory(base = 100) {
         GEMINI_API_KEY: 'test-key',
         GEMINI_MODEL: 'gemini-3-flash-preview',
         GEMINI_FALLBACK_MODEL: 'gemini-3-flash-preview',
+        BRIEF_PIPELINE_VERSION: 'v1',
         BRIEF_CACHE: kv,
       },
       { waitUntil() {} }
