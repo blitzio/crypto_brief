@@ -356,6 +356,10 @@ export default {
           return true;
         });
         result.health.freshCount = freshForSource.length;
+        if (result.health.parsedCount > 0 && freshForSource.length === 0) {
+          result.health.ok = false;
+          result.health.error = 'stale';
+        }
         freshItems.push(...freshForSource);
       }
 

@@ -56,6 +56,6 @@ assert.equal(atomItem.pubDate, '2026-07-13T02:00:00Z');
 assert.equal(parseSyndicationFeed('<html>not a feed</html>', source).length, 0);
 assert.equal(NEWS_SOURCES.some(entry => entry.id === 'dlnews'), false);
 assert.equal(NEWS_SOURCES.some(entry => entry.url.includes('/category/markets/')), false);
-assert.equal(NEWS_SOURCES.find(entry => entry.id === 'blockworks')?.format, 'atom');
+assert.equal(NEWS_SOURCES.some(entry => entry.id === 'blockworks'), false);
 
 console.log('feed parser tests passed');

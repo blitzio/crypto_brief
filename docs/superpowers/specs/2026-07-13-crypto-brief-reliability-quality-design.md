@@ -8,7 +8,7 @@ Crypto Daily Brief still deploys and its existing tests pass, but live investiga
 
 - A forced refresh completed successfully only after approximately 72 seconds. The browser and Worker have no end-to-end generation deadline, so a slow upstream request looks like a stuck page.
 - The configured CoinDesk Markets feed returns HTTP 404.
-- Blockworks now serves Atom, while the application parses RSS `<item>` entries only, so every Blockworks article is discarded.
+- Blockworks initially appeared to be a viable Atom replacement, but final live verification found both its old and migrated-domain feeds frozen in January 2026. Atom parsing remains supported, while Blockworks is excluded from the active manifest.
 - Publisher failures are silently converted into empty arrays. `/health` reports aggregate counts and can report healthy even when individual sources are broken and LINK coverage is zero.
 - The live 20-item set observed during the audit contained 14 items with no BTC, ETH, or LINK tag, and no LINK item.
 - RSS descriptions averaged about 120 characters, yet the prompt demanded roughly 30 analysis bullets. This forces repetitive filler and unsupported synthesis.
@@ -79,7 +79,6 @@ The initial source set is deliberately conservative:
 - CoinDesk general RSS: editorial crypto coverage.
 - The Block RSS: editorial crypto coverage.
 - Decrypt RSS: editorial crypto coverage.
-- Blockworks Atom: editorial crypto coverage.
 - Google News ETH and LINK searches: fallback discovery only.
 - Dow Jones Markets and FT Markets RSS: macro context.
 
@@ -318,8 +317,8 @@ No production deploy is part of these implementation phases.
 ## Success Criteria
 
 - Existing tests continue to pass.
-- Blockworks Atom produces normalized articles.
-- DL News and the dead CoinDesk Markets URL no longer appear in configuration, UI copy, or documentation.
+- Atom fixtures produce normalized articles, and Blockworks' frozen feed is not reported as an active source.
+- DL News, the dead CoinDesk Markets URL, and Blockworks' frozen feed no longer appear in active configuration, UI copy, or source lists; operational documentation records why they were removed.
 - `/health` identifies individual source failures and zero-coverage assets.
 - One publisher cannot occupy more than four selected news slots.
 - Refresh has a bounded terminal state and never hides an existing valid brief for the duration of generation.

@@ -81,7 +81,7 @@ assert.equal(parseSyndicationFeed(atom, { ...source, format: 'atom', topic: 'eth
 assert.equal(parseSyndicationFeed('<html>not a feed</html>', source).length, 0);
 assert.equal(NEWS_SOURCES.some(entry => entry.id === 'dlnews'), false);
 assert.equal(NEWS_SOURCES.some(entry => entry.url.includes('/category/markets/')), false);
-assert.equal(NEWS_SOURCES.find(entry => entry.id === 'blockworks')?.format, 'atom');
+assert.equal(NEWS_SOURCES.some(entry => entry.id === 'blockworks'), false);
 
 console.log('feed parser tests passed');
 ```
@@ -144,7 +144,7 @@ export function parseSyndicationFeed(xml = '', source = {}) {
 }
 ```
 
-Implement `src/news-sources.js` with exactly the approved CoinDesk, Blockworks, The Block, Decrypt, Google News ETH/LINK, Dow Jones, and FT definitions. Each entry includes `id`, `url`, `source`, `format`, `topic`, `sourceTier`, `maxItems`, `maxAgeHours`, and `timeoutMs: 6500`.
+Implement `src/news-sources.js` with the approved CoinDesk, The Block, Decrypt, Google News ETH/LINK, Dow Jones, and FT definitions. Blockworks was removed after final live verification showed its old and migrated-domain feeds frozen in January 2026. Each active entry includes `id`, `url`, `source`, `format`, `topic`, `sourceTier`, `maxItems`, `maxAgeHours`, and `timeoutMs: 6500`.
 
 - [ ] **Step 4: Add the test to the package script and verify GREEN**
 
@@ -636,4 +636,3 @@ Run the complete suite, Wrangler dry-run, live-source diagnostics, and local bro
 - [ ] **Step 4: Review commit boundaries and working tree**
 
 Run `git log --oneline main..HEAD`, `git diff --check main...HEAD`, and `git status --short`. Every phase must be independently understandable and the worktree must be clean.
-

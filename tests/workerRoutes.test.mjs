@@ -482,8 +482,8 @@ function marketHistory(base = 100) {
       {
         ALLOWED_ORIGINS: 'https://blitzio.github.io',
         GEMINI_API_KEY: 'test-key',
-        GEMINI_MODEL: 'gemini-3-flash-preview',
-        GEMINI_FALLBACK_MODEL: 'gemini-3-flash-preview',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash',
         BRIEF_PIPELINE_VERSION: 'v1',
         BRIEF_CACHE: kv,
       },
@@ -575,13 +575,24 @@ function marketHistory(base = 100) {
       if (String(url).includes('theblock.co')) {
         return new Response('not found', { status: 404 });
       }
-      const feedKey = encodeURIComponent(String(url).slice(0, 80));
-      if (String(url).includes('blockworks.co')) {
-        return new Response(`<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">
-          <entry><title>Bitcoin ETF demand rises ${feedKey}</title><link rel="alternate" href="https://example.com/${feedKey}/btc"/><summary>BTC ETF flows accelerated.</summary><published>${new Date().toISOString()}</published></entry>
-          <entry><title>Chainlink CCIP adoption expands ${feedKey}</title><link rel="alternate" href="https://example.com/${feedKey}/link"/><summary>Chainlink oracle usage grew.</summary><published>${new Date().toISOString()}</published></entry>
-        </feed>`, { headers: { 'Content-Type': 'application/atom+xml' } });
+      if (String(url).includes('decrypt.co')) {
+        return new Response(`<?xml version="1.0"?><rss><channel>
+          <item><title>Old Bitcoin story</title><link>https://example.com/old-btc</link><description>BTC old news.</description><pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate></item>
+        </channel></rss>`, { headers: { 'Content-Type': 'application/xml' } });
       }
+      if (String(url).includes('news.google.com') && String(url).includes('Ethereum')) {
+        return new Response(`<?xml version="1.0"?><rss><channel>
+          <item><title>Ethereum staking demand rises</title><link>https://example.com/eth/staking</link><description>ETH staking flows accelerated.</description><pubDate>${recentPubDate}</pubDate></item>
+          <item><title>Ethereum scaling activity expands</title><link>https://example.com/eth/scaling</link><description>Ethereum rollup activity grew.</description><pubDate>${recentPubDate}</pubDate></item>
+        </channel></rss>`, { headers: { 'Content-Type': 'application/xml' } });
+      }
+      if (String(url).includes('news.google.com') && String(url).includes('Chainlink')) {
+        return new Response(`<?xml version="1.0"?><rss><channel>
+          <item><title>Chainlink CCIP adoption expands</title><link>https://example.com/link/ccip</link><description>LINK oracle usage grew.</description><pubDate>${recentPubDate}</pubDate></item>
+          <item><title>Chainlink data services expand</title><link>https://example.com/link/data</link><description>Chainlink integrations increased.</description><pubDate>${recentPubDate}</pubDate></item>
+        </channel></rss>`, { headers: { 'Content-Type': 'application/xml' } });
+      }
+      const feedKey = encodeURIComponent(String(url).slice(0, 80));
       return new Response(`<?xml version="1.0"?><rss><channel>
         <item><title>Bitcoin ETF demand rises ${feedKey}</title><link>https://example.com/${feedKey}/btc</link><description>BTC ETF flows accelerated.</description><pubDate>${recentPubDate}</pubDate></item>
         <item><title>Chainlink CCIP adoption expands ${feedKey}</title><link>https://example.com/${feedKey}/link</link><description>Chainlink oracle usage grew.</description><pubDate>${recentPubDate}</pubDate></item>
@@ -597,7 +608,7 @@ function marketHistory(base = 100) {
     const body = await jsonResponse(response);
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('Cache-Control'), 'public, max-age=60');
-    assert.equal(body.ok, true);
+    assert.equal(body.ok, true, JSON.stringify(body));
     assert.equal(typeof body.timestamp, 'string');
     assert.equal(body.checks.macro.ok, true);
     assert.deepEqual(body.checks.macro.unavailableFields, []);
@@ -609,11 +620,11 @@ function marketHistory(base = 100) {
     assert.equal(body.checks.news.degraded, true);
     assert.equal(Array.isArray(body.checks.news.sources), true);
     assert.equal(
-      body.checks.news.sources.some(source => source.sourceId === 'blockworks' && source.format === 'atom' && source.acceptedCount > 0),
+      body.checks.news.sources.some(source => source.sourceId === 'the-block' && source.status === 404 && source.error === 'http'),
       true
     );
     assert.equal(
-      body.checks.news.sources.some(source => source.sourceId === 'the-block' && source.status === 404 && source.error === 'http'),
+      body.checks.news.sources.some(source => source.sourceId === 'decrypt' && source.parsedCount > 0 && source.freshCount === 0 && source.error === 'stale'),
       true
     );
     assert.equal(body.checks.briefCache.cached, true);

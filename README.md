@@ -11,7 +11,7 @@ A self-hosted, single-page daily intelligence brief for BTC, ETH, and LINK built
 Generates a formatted two-page crypto intelligence brief every morning or on demand covering:
 
 - Live prices and 24h/7d performance for BTC, ETH, and LINK
-- Support and resistance levels derived from current price data
+- Deterministic support, resistance, range, momentum, volume, and volatility signals from 30-day market history
 - Macro dashboard: Fed Rate, USD/SGD, S&P 500, Gold, Stablecoin supply, Fear & Greed Index, CPI
 - Cross-asset macro analysis synthesising multiple signals into crypto implications
 - News-grounded analysis for each asset, cited by source number
@@ -26,21 +26,22 @@ Generates a formatted two-page crypto intelligence brief every morning or on dem
 
 ```text
 GitHub Pages (index.html)
-  |- CoinGecko API -> live BTC / ETH / LINK prices (direct, no key)
   `- Cloudflare Worker (worker.js)
+       |- GET /market -> CoinGecko current prices + deterministic 30-day signals
+       |                 (browser retains direct CoinGecko price fallback)
        |- GET /macro -> Yahoo Finance quote/chart fallback, NY Fed EFFR,
        |               BLS CPI, Alternative.me Fear & Greed,
-       |               DefiLlama stablecoins
-       |- GET /news -> RSS feeds, 72h freshness filter,
-       |              sorted by recency, top 20 sanitized snippets
-       |- GET /health -> read-only macro/news/cache diagnostics
-       |- POST / -> Gemini 3 Flash Preview brief generation
+       |               DefiLlama stablecoin levels and trends
+       |- GET /news -> RSS/Atom feeds, freshness/diversity filters,
+       |              balanced top 20 sanitized snippets
+       |- GET /health -> read-only macro/news/source/cache diagnostics
+       |- POST / -> Gemini 3.5 Flash evidence-validated generation
        |            + server-side KV save
-       |- GET /brief -> serve KV-cached brief (< 1 hour old)
+       |- GET /brief -> serve fresh KV brief; opt-in stale fallback
        `- POST /brief/save -> admin-token-only manual KV write
 ```
 
-The brief is cached in Cloudflare KV for 1 hour. On page load it serves the cache instantly; hitting `Refresh Brief` forces a fresh generation.
+Briefs are fresh for one hour and retained in Cloudflare KV for seven days as an outage fallback. Refreshes are single-flight, time-bounded, and do not hide an already-rendered brief.
 
 ---
 
@@ -62,10 +63,10 @@ This repo also includes `wrangler.jsonc` for command-line deploys to the existin
 npm run cf:deploy
 ```
 
-To redeploy while explicitly forcing the current model variable:
+To redeploy while explicitly forcing the stable primary model variable:
 
 ```bash
-npm run cf:model:gemini3
+npm run cf:model:gemini35
 ```
 
 ### 3. Configure Worker secrets
@@ -75,8 +76,10 @@ In your Worker settings -> Variables and Secrets, add:
 | Variable | Value |
 |---|---|
 | `GEMINI_API_KEY` | Your [Google AI Studio](https://aistudio.google.com/) API key |
-| `GEMINI_MODEL` | `gemini-3-flash-preview` |
-| `GEMINI_FALLBACK_MODEL` | `gemini-2.5-flash` |
+| `GEMINI_MODEL` | `gemini-3.5-flash` |
+| `GEMINI_FALLBACK_MODEL` | `gemini-3.1-flash-lite` |
+| `GEMINI_THINKING_LEVEL` | `low` (validated values: `minimal`, `low`, `medium`, `high`) |
+| `BRIEF_PIPELINE_VERSION` | `v2`; temporarily set `v1` to roll back only the analysis contract |
 | `ALLOWED_ORIGINS` | `https://blitzio.github.io` |
 | `BRIEF_ADMIN_TOKEN` | Optional shared token for manual `/brief/save` admin writes |
 
@@ -101,40 +104,38 @@ Push to GitHub and you are done.
 
 | Source | Data | Cost |
 |---|---|---|
-| CoinGecko | BTC, ETH, LINK prices | Free, no key |
+| CoinGecko | BTC, ETH, LINK prices and 30-day history | Free, no key |
 | NY Fed EFFR API | Federal Funds Rate | Free |
 | BLS Public API | CPI inflation | Free |
 | Alternative.me | Crypto Fear & Greed Index | Free |
-| DefiLlama | USDT + USDC circulating supply | Free |
+| DefiLlama | USDT + USDC supply and stablecoin-market trends | Free |
 | Yahoo Finance | S&P 500, Gold, USD/SGD | Free via Worker proxy |
-| CoinDesk, CoinDesk Markets, The Block, Blockworks, Decrypt, DL News, Dow Jones Markets, FT Markets | News via RSS | Free |
-| Gemini 3 Flash Preview | AI analysis | Free tier available; paid standard usage is low-cost per token |
+| CoinDesk, The Block, Decrypt, Dow Jones Markets, FT Markets, Google News ETH/LINK discovery | News via RSS | Free |
+| Gemini 3.5 Flash with Gemini 3.1 Flash-Lite fallback | AI analysis | Check current Google AI pricing and quotas |
 
 ---
 
 ## Gemini model and quota
 
-The Worker uses `GEMINI_MODEL`, currently documented as `gemini-3-flash-preview`. Google AI Studio currently lists Gemini 3 Flash Preview with free-tier standard input/output usage and paid standard pricing at $0.50 per 1M input tokens and $3.00 per 1M output tokens. For normal daily use, one morning generation plus occasional refreshes should stay very low cost if billing is enabled.
+The Worker defaults to stable `gemini-3.5-flash`, with stable `gemini-3.1-flash-lite` as a bounded fallback for model unavailability, rate limits, timeouts, and transient server failures. Authentication and malformed-request failures do not fan out to another model. Generation has a 90-second total Worker deadline and at most one evidence-correction response.
 
-Preview model availability and free-tier rate limits can change. If generation fails with a model, quota, or API key error, confirm the model is still enabled in [Google AI Studio](https://aistudio.google.com/) and update the `GEMINI_API_KEY` or `GEMINI_MODEL` Worker variable as needed.
-
-For command-line deploys, `wrangler.jsonc` sets `GEMINI_MODEL` to `gemini-3-flash-preview` and limits browser CORS to the GitHub Pages origin. Keep `GEMINI_API_KEY` and any `BRIEF_ADMIN_TOKEN` as Cloudflare secrets; do not commit them to the repo.
+Pricing, free-tier quotas, and model availability can change. Check [Google AI Studio](https://aistudio.google.com/) rather than relying on hard-coded pricing in this repository. Keep `GEMINI_API_KEY` and `BRIEF_ADMIN_TOKEN` as Cloudflare secrets; do not commit them.
 
 ---
 
 ## Caching behaviour
 
-- On page load: checks Cloudflare KV for a brief generated within the last hour. If found, renders it instantly with no Gemini call.
-- `Refresh Brief`: bypasses the brief cache and generates a fully fresh brief.
+- On page load: requests `/brief?allowStale=1`. A fresh brief returns immediately. A stale brief renders immediately while one automatic refresh continues.
+- `Refresh Brief`: bypasses the brief cache, keeps the current brief visible, and disables duplicate refreshes until the request finishes.
 - After generation: the Worker saves the generated brief to KV server-side.
-- KV entries auto-expire after 1 hour via `expirationTtl`.
+- KV entries remain fresh for one hour and auto-expire after seven days, enabling a bounded stale fallback.
 - The "Brief Generated" timestamp reflects when the brief was actually created, not when the page was loaded.
-- `/macro` is edge-cached for 5 minutes and `/news` for 15 minutes.
-- `/macro?nocache=1` and `/news?nocache=1` bypass the Worker edge cache for debugging.
-- `/health` returns read-only macro/news/cache diagnostics without making a Gemini call or exposing secrets, and is lightly cached for 60 seconds.
+- `/market` and `/macro` are edge-cached for 5 minutes; `/news` is cached for 15 minutes.
+- Add `?nocache=1` to `/market`, `/macro`, `/news`, or `/health` to bypass the read cache for diagnostics.
+- `/health` reports each feed's safe status, format, timing, parsed/fresh/accepted counts, overall `degraded`, and macro/cache health without calling Gemini or exposing secrets.
 - `/version` returns deployment identity metadata only, such as the deployed GitHub commit SHA when the Worker is deployed from GitHub Actions.
 - `/brief/save` is admin-token-only and is not used by the browser app.
-- Generated briefs are validated before caching; bad asset citations are rejected instead of saved.
+- Generated briefs are validated before caching; unknown, missing, or cross-asset evidence IDs are rejected instead of saved.
 
 ---
 
@@ -142,21 +143,20 @@ For command-line deploys, `wrangler.jsonc` sets `GEMINI_MODEL` to `gemini-3-flas
 
 Gemini receives:
 
-- Exact live prices
-- Exact macro figures
-- Up to 20 RSS snippets sorted by recency, formatted as numbered `<doc>` blocks with deterministic asset tags
+- Exact current prices plus deterministic range, momentum, volume, volatility, support, and resistance facts
+- Exact macro values plus supported 5-day, 7-day, and 30-day trends
+- Up to 20 balanced RSS/Atom snippets with deterministic asset tags and stable request-local evidence IDs
 
 The model is instructed to:
 
-- Cite every BTC/ETH claim with a `[N]` doc reference
-- Cite LINK claims when source support exists
-- Cite asset sections only with docs whose tags match that asset
-- Use only exact live market data for uncited asset bullets, labelled as `Live market data`
-- Keep asset sections substantial with 4-6 grounded bullets, using live price, volume, relative strength, support, and resistance when source coverage is thin
-- Never restate macro card values in the macro bullet section
+- Attach known `evidenceIds` and `high`, `medium`, or `low` confidence to every bullet
+- Use only matching news or deterministic market evidence in each asset section
+- Preserve `[N]` inline when using `news:N` so the visible source list remains useful
+- Prefer 3-5 high-value bullets instead of forcing filler when evidence is thin
+- Synthesize macro signals instead of merely restating the cards
 - Never hallucinate events, prices, or dates not present in the source docs
 
-After Gemini returns JSON, the Worker checks every BTC, ETH, and LINK citation. If an asset bullet cites a doc that does not mention that asset, or makes a broad uncited model-inference claim, the Worker returns an error and does not cache the brief.
+After Gemini returns JSON, the Worker validates every bullet against the request-local evidence index. Unknown IDs, cross-asset references, missing evidence, and invalid confidence values get one bounded correction opportunity; a second failure returns 422 and is never cached. Set `BRIEF_PIPELINE_VERSION=v1` for the legacy citation-only contract without reverting code.
 
 ---
 
@@ -180,12 +180,19 @@ This prevents the old failure mode where the S&P 500 could show `0.00%` even tho
 index.html    - frontend: UI, data fetching, AI prompt, rendering
 worker.js     - Cloudflare Worker entrypoint and route glue
 src/gemini.js - Gemini JSON parsing, fallback model selection, citation validation
-src/news.js   - RSS snippet cleanup, asset tagging, source selection, source health
+src/feed-parser.js - RSS/Atom parsing and sanitization
+src/news-sources.js - declarative feed manifest
+src/news.js   - snippet cleanup, asset tagging, balanced selection, source health
+src/market.js - deterministic market-signal calculations
+src/macro.js  - deterministic macro-trend calculations
 src/yahoo.js  - pure Yahoo previous-close / percentage helpers
+scripts/check-live-sources.mjs - opt-in read-only feed diagnostics
 docs/         - operational notes for health checks and deploys
 .github/      - PR template and GitHub Actions test workflow
-tests/selectYahooPreviousClose.test.mjs - regression tests for Yahoo previous-close / percent logic
-tests/citationGuards.test.mjs - regression tests for source cleanup and citation validation
+tests/marketSignals.test.mjs - deterministic market-signal tests
+tests/macroSignals.test.mjs - deterministic macro-trend tests
+tests/selectYahooPreviousClose.test.mjs - Yahoo previous-close / percent tests
+tests/citationGuards.test.mjs - source cleanup and v1/v2 evidence validation
 tests/workerRoutes.test.mjs - route-level Worker safety and health diagnostics tests
 tests/frontendSmoke.test.mjs - front-end script parse and helper smoke tests
 README.md    - this file

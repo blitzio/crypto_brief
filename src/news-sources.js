@@ -14,17 +14,6 @@ export const NEWS_SOURCES = Object.freeze([
     timeoutMs: 6500,
   },
   {
-    id: 'blockworks',
-    url: 'https://blockworks.co/feed/',
-    source: 'Blockworks',
-    format: 'atom',
-    topic: 'general',
-    sourceTier: 'editorial',
-    maxItems: 12,
-    maxAgeHours: 72,
-    timeoutMs: 6500,
-  },
-  {
     id: 'the-block',
     url: 'https://theblock.co/rss.xml',
     source: 'The Block',

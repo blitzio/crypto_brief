@@ -21,6 +21,9 @@ npm test
 If `npm` is not available, run the tests directly with Node:
 
 ```bash
+node tests/feedParser.test.mjs
+node tests/marketSignals.test.mjs
+node tests/macroSignals.test.mjs
 node tests/selectYahooPreviousClose.test.mjs
 node tests/citationGuards.test.mjs
 node tests/workerRoutes.test.mjs
