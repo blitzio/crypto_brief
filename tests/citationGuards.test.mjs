@@ -208,9 +208,10 @@ import {
   assert.equal(isRetryableGeminiStatus(503), true);
   assert.equal(isRetryableGeminiStatus(400), false);
   assert.equal(isRetryableGeminiStatus(401), false);
-  assert.equal(resolvePipelineVersion({}), 'v2');
-  assert.equal(resolvePipelineVersion({ BRIEF_PIPELINE_VERSION: 'v1' }), 'v1');
-  assert.equal(resolvePipelineVersion({ BRIEF_PIPELINE_VERSION: 'unexpected' }), 'v2');
+assert.equal(resolvePipelineVersion({}), 'v2');
+assert.equal(resolvePipelineVersion({ BRIEF_PIPELINE_VERSION: 'v1' }), 'v1');
+assert.equal(resolvePipelineVersion({ BRIEF_PIPELINE_VERSION: 'v3' }), 'v3');
+assert.equal(resolvePipelineVersion({ BRIEF_PIPELINE_VERSION: 'unexpected' }), 'v2');
 }
 
 {

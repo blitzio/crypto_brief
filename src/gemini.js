@@ -246,5 +246,6 @@ export function isRetryableGeminiStatus(status) {
 }
 
 export function resolvePipelineVersion(env = {}) {
-  return env.BRIEF_PIPELINE_VERSION === 'v1' ? 'v1' : 'v2';
+  const requested = String(env.BRIEF_PIPELINE_VERSION || '').toLowerCase();
+  return ['v1', 'v2', 'v3'].includes(requested) ? requested : 'v2';
 }

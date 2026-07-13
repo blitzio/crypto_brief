@@ -3,6 +3,8 @@ import {
   PDB_V3_RESPONSE_SCHEMA,
   countBriefWords,
   measurePdbV3Depth,
+  validatePdbV3Brief,
+  validatePdbV3Evidence,
   validatePdbV3StructureAndDepth,
 } from '../src/pdb-v3.js';
 
@@ -139,5 +141,65 @@ shortOverall.assets.btc.assessment = prose(2);
 shortOverall.assets.eth.assessment = prose(2);
 shortOverall.assets.link.assessment = prose(2);
 assert.equal(validatePdbV3StructureAndDepth(shortOverall).ok, false);
+
+const evidenceIndex = new Map([
+  ['market:btc:current', { id: 'market:btc:current', type: 'market', asset: 'btc', value: 100 }],
+  ['market:btc:rangePosition', { id: 'market:btc:rangePosition', type: 'market', asset: 'btc', value: 0.5 }],
+  ['market:btc:support', { id: 'market:btc:support', type: 'market', asset: 'btc', value: 95 }],
+  ['market:btc:resistance', { id: 'market:btc:resistance', type: 'market', asset: 'btc', value: 105 }],
+  ['market:eth:current', { id: 'market:eth:current', type: 'market', asset: 'eth', value: 50 }],
+  ['market:eth:rangePosition', { id: 'market:eth:rangePosition', type: 'market', asset: 'eth', value: 0.4 }],
+  ['market:eth:support', { id: 'market:eth:support', type: 'market', asset: 'eth', value: 45 }],
+  ['market:eth:resistance', { id: 'market:eth:resistance', type: 'market', asset: 'eth', value: 55 }],
+  ['market:link:current', { id: 'market:link:current', type: 'market', asset: 'link', value: 10 }],
+  ['market:link:rangePosition', { id: 'market:link:rangePosition', type: 'market', asset: 'link', value: 0.3 }],
+  ['market:link:support', { id: 'market:link:support', type: 'market', asset: 'link', value: 9 }],
+  ['market:link:resistance', { id: 'market:link:resistance', type: 'market', asset: 'link', value: 11 }],
+  ['macro:sp500:change1d', { id: 'macro:sp500:change1d', type: 'macro', value: 1.2 }],
+  ['macro:sentiment:current', { id: 'macro:sentiment:current', type: 'macro', value: 50 }],
+  ['news:1', { id: 'news:1', type: 'news', assetMentions: ['btc'], value: { title: 'BTC event' } }],
+]);
+
+assert.equal(validatePdbV3Evidence(valid, evidenceIndex).ok, true);
+assert.equal(validatePdbV3Brief(valid, evidenceIndex).ok, true);
+
+const unknown = structuredClone(valid);
+unknown.executive.keyJudgments[0].evidenceIds = ['news:999'];
+assert.equal(
+  validatePdbV3Evidence(unknown, evidenceIndex).violations.some(violation => violation.reason === 'unknown_evidence'),
+  true
+);
+
+const crossed = structuredClone(valid);
+crossed.assets.eth.drivers[0].evidenceIds = ['market:btc:current'];
+assert.equal(
+  validatePdbV3Evidence(crossed, evidenceIndex).violations.some(violation => violation.reason === 'cross_asset_evidence'),
+  true
+);
+
+const weakSynthesis = structuredClone(valid);
+weakSynthesis.executive.keyJudgments[0].evidenceIds = ['market:btc:current'];
+assert.equal(
+  validatePdbV3Evidence(weakSynthesis, evidenceIndex).violations.some(violation => violation.reason === 'insufficient_synthesis'),
+  true
+);
+
+const inventedNumber = structuredClone(valid);
+inventedNumber.assets.btc.assessment += ' Bitcoin is trading at $999,999.';
+assert.equal(
+  validatePdbV3Evidence(inventedNumber, evidenceIndex).violations.some(
+    violation => violation.reason === 'unsupported_numeric_claim'
+  ),
+  true
+);
+
+const badConfidence = structuredClone(valid);
+badConfidence.scenarios.base.confidence = 'certain';
+assert.equal(
+  validatePdbV3Evidence(badConfidence, evidenceIndex).violations.some(
+    violation => violation.reason === 'invalid_confidence'
+  ),
+  true
+);
 
 console.log('pdb v3 contract tests passed');

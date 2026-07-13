@@ -447,3 +447,227 @@ export function validatePdbV3StructureAndDepth(brief = {}) {
 
   return { ok: violations.length === 0, violations, metrics };
 }
+
+const VALID_CONFIDENCE = new Set(['high', 'medium', 'low']);
+
+function analyticalEntries(brief = {}) {
+  const entries = [];
+  const add = (path, value, options = {}) => {
+    entries.push({
+      path,
+      text: options.text ?? '',
+      evidenceIds: value?.evidenceIds,
+      confidence: value?.confidence,
+      asset: options.asset ?? null,
+      policy: options.policy ?? 'broad',
+      requiresSynthesis: options.requiresSynthesis ?? false,
+    });
+  };
+
+  add('executive', brief.executive, {
+    text: [brief.executive?.bottomLine, brief.executive?.confidenceBasis].filter(Boolean).join(' '),
+  });
+  for (const [index, judgment] of (brief.executive?.keyJudgments || []).entries()) {
+    add(`executive.keyJudgments.${index}`, judgment, {
+      text: [
+        judgment?.assessment,
+        judgment?.whyItMatters,
+        judgment?.confidenceBasis,
+        ...(judgment?.invalidators || []),
+      ].filter(Boolean).join(' '),
+      requiresSynthesis: true,
+    });
+  }
+
+  for (const asset of ['btc', 'eth', 'link']) {
+    const section = brief.assets?.[asset];
+    add(`assets.${asset}`, section, {
+      asset,
+      text: [section?.assessment, section?.confidenceBasis, section?.confirmation, section?.invalidation]
+        .filter(Boolean)
+        .join(' '),
+    });
+    for (const [index, driver] of (section?.drivers || []).entries()) {
+      add(`assets.${asset}.drivers.${index}`, driver, { asset, text: driver?.analysis });
+    }
+  }
+
+  add('macro', brief.macro, {
+    policy: 'macro',
+    text: [brief.macro?.assessment, brief.macro?.confidenceBasis].filter(Boolean).join(' '),
+  });
+  for (const [index, channel] of (brief.macro?.transmissionChannels || []).entries()) {
+    add(`macro.transmissionChannels.${index}`, channel, {
+      policy: 'macro',
+      text: channel?.analysis,
+      requiresSynthesis: true,
+    });
+  }
+
+  for (const scenarioName of ['base', 'bullish', 'bearish']) {
+    const scenario = brief.scenarios?.[scenarioName];
+    add(`scenarios.${scenarioName}`, scenario, {
+      text: [scenario?.outlook, scenario?.causalPath, ...(scenario?.triggers || [])].filter(Boolean).join(' '),
+    });
+  }
+  for (const sectionName of ['threats', 'opportunities']) {
+    for (const [index, item] of (brief[sectionName] || []).entries()) {
+      add(`${sectionName}.${index}`, item, {
+        text: [item?.assessment, item?.indicator].filter(Boolean).join(' '),
+      });
+    }
+  }
+  for (const period of ['next24Hours', 'next7Days']) {
+    for (const [index, item] of (brief.watch?.[period] || []).entries()) {
+      add(`watch.${period}.${index}`, item, {
+        text: [item?.whyItMatters, item?.signal].filter(Boolean).join(' '),
+      });
+    }
+  }
+  for (const [index, gap] of (brief.intelligenceGaps || []).entries()) {
+    add(`intelligenceGaps.${index}`, gap, {
+      text: [gap?.gap, gap?.whyItMatters, gap?.closureEvidence].filter(Boolean).join(' '),
+    });
+  }
+
+  return entries;
+}
+
+function normalizedEvidenceIds(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter(id => typeof id === 'string').map(id => id.trim()).filter(Boolean))];
+}
+
+function evidenceAllowed(entry, evidence, evidenceIds, evidenceIndex) {
+  if (entry.asset) {
+    if (evidence.type === 'market') return evidence.asset === entry.asset;
+    if (evidence.type === 'news') return Boolean(evidence.assetMentions?.includes(entry.asset));
+    return false;
+  }
+  if (entry.policy !== 'macro') return true;
+  if (['macro', 'news'].includes(evidence.type)) return true;
+  if (evidence.type !== 'market' || !/\bcrypto|bitcoin|ethereum|chainlink|btc|eth|link\b/i.test(entry.text)) {
+    return false;
+  }
+  return evidenceIds.some(id => evidenceIndex.get(id)?.type === 'macro');
+}
+
+function compactNumber(value, suffix = '') {
+  const parsed = Number(String(value).replaceAll(',', ''));
+  if (!Number.isFinite(parsed)) return null;
+  const multiplier = { k: 1e3, m: 1e6, b: 1e9, t: 1e12 }[String(suffix).toLowerCase()] || 1;
+  return parsed * multiplier;
+}
+
+function numericClaims(text = '') {
+  const source = String(text)
+    .replace(/\[\d+\]/g, ' ')
+    .replace(/\b24\s*hours?\b/gi, ' ')
+    .replace(/\b7\s*days?\b/gi, ' ');
+  const pattern = /\$(-?[\d,]+(?:\.\d+)?)|(-?\d+(?:\.\d+)?)%|(-?\d+(?:\.\d+)?)\s*([KMBT])\b|\b(-?\d+(?:\.\d+)?)\s*\/\s*100\b|\b(-?\d+\.\d{2,})\b/gi;
+  const claims = [];
+  let match;
+  while ((match = pattern.exec(source)) !== null) {
+    const value = match[1] ?? match[2] ?? match[3] ?? match[5] ?? match[6];
+    const normalized = compactNumber(value, match[4]);
+    if (normalized !== null) claims.push({ raw: match[0], value: normalized });
+  }
+  return claims;
+}
+
+function evidenceNumbers(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? [value] : [];
+  if (typeof value === 'string') return numericClaims(value).map(claim => claim.value);
+  if (Array.isArray(value)) return value.flatMap(evidenceNumbers);
+  if (value && typeof value === 'object') return Object.values(value).flatMap(evidenceNumbers);
+  return [];
+}
+
+function numbersMatch(claim, evidenceValue) {
+  const tolerance = Math.max(0.01, Math.abs(evidenceValue) * 0.005);
+  return Math.abs(claim - evidenceValue) <= tolerance;
+}
+
+function checkNumericClaims(violations, entry, evidenceIds, evidenceIndex) {
+  const knownNumbers = evidenceIds.flatMap(id => evidenceNumbers(evidenceIndex.get(id)?.value));
+  for (const claim of numericClaims(entry.text)) {
+    if (!knownNumbers.some(value => numbersMatch(claim.value, value))) {
+      violations.push({ path: entry.path, reason: 'unsupported_numeric_claim', claim: claim.raw });
+    }
+  }
+}
+
+function checkDeterministicLevel(violations, brief, evidenceIndex, asset, field) {
+  const rendered = brief.assets?.[asset]?.[field];
+  const claims = numericClaims(rendered);
+  if (!claims.length) return;
+  const evidence = evidenceIndex.get(`market:${asset}:${field}`);
+  const knownNumbers = evidenceNumbers(evidence?.value);
+  for (const claim of claims) {
+    if (!knownNumbers.some(value => numbersMatch(claim.value, value))) {
+      violations.push({ path: `assets.${asset}.${field}`, reason: 'unsupported_numeric_claim', claim: claim.raw });
+    }
+  }
+}
+
+export function validatePdbV3Evidence(brief = {}, evidenceIndex = new Map()) {
+  const violations = [];
+  const availableEvidenceCount = evidenceIndex.size;
+  const availableMacroCount = [...evidenceIndex.values()].filter(evidence => evidence?.type === 'macro').length;
+
+  for (const entry of analyticalEntries(brief)) {
+    const evidenceIds = normalizedEvidenceIds(entry.evidenceIds);
+    if (!evidenceIds.length) {
+      violations.push({ path: entry.path, reason: 'missing_evidence' });
+    }
+    if (!VALID_CONFIDENCE.has(entry.confidence)) {
+      violations.push({ path: entry.path, reason: 'invalid_confidence', confidence: entry.confidence ?? null });
+    }
+
+    const requiredEvidenceCount = entry.requiresSynthesis
+      ? Math.min(2, entry.policy === 'macro' ? availableMacroCount : availableEvidenceCount)
+      : 1;
+    if (requiredEvidenceCount > 1 && evidenceIds.length < requiredEvidenceCount) {
+      violations.push({
+        path: entry.path,
+        reason: 'insufficient_synthesis',
+        actual: evidenceIds.length,
+        min: requiredEvidenceCount,
+      });
+    }
+
+    for (const evidenceId of evidenceIds) {
+      const evidence = evidenceIndex.get(evidenceId);
+      if (!evidence) {
+        violations.push({ path: entry.path, evidenceId, reason: 'unknown_evidence' });
+        continue;
+      }
+      if (!evidenceAllowed(entry, evidence, evidenceIds, evidenceIndex)) {
+        const crossAsset = entry.asset && ['market', 'news'].includes(evidence.type);
+        violations.push({
+          path: entry.path,
+          evidenceId,
+          reason: crossAsset ? 'cross_asset_evidence' : 'disallowed_evidence',
+        });
+      }
+    }
+    checkNumericClaims(violations, entry, evidenceIds, evidenceIndex);
+  }
+
+  for (const asset of ['btc', 'eth', 'link']) {
+    checkDeterministicLevel(violations, brief, evidenceIndex, asset, 'support');
+    checkDeterministicLevel(violations, brief, evidenceIndex, asset, 'resistance');
+  }
+
+  return { ok: violations.length === 0, violations };
+}
+
+export function validatePdbV3Brief(brief = {}, evidenceIndex = new Map()) {
+  const quality = validatePdbV3StructureAndDepth(brief);
+  const evidence = validatePdbV3Evidence(brief, evidenceIndex);
+  return {
+    ok: quality.ok && evidence.ok,
+    metrics: quality.metrics,
+    violations: [...quality.violations, ...evidence.violations],
+  };
+}
