@@ -97,6 +97,29 @@ function validV2Brief() {
   };
 }
 
+function validV1Brief() {
+  const liveItems = (count, asset) => Array.from({ length: count }, (_, index) => ({
+    label: `${asset} ${index + 1}`,
+    text: `Live market data: ${asset} price remains above support.`,
+  }));
+  const plainItems = (count, label) => Array.from({ length: count }, (_, index) => ({
+    label: `${label} ${index + 1}`,
+    text: 'Legacy compatible observation.',
+  }));
+  return {
+    btc: { support: '$99', resist: '$101', bullets: liveItems(4, 'BTC') },
+    eth: { support: '$49', resist: '$51', bullets: liveItems(4, 'ETH') },
+    link: { support: '$9', resist: '$11', badge: 'Neutral', bullets: liveItems(4, 'LINK') },
+    macro: { bullets: plainItems(5, 'Macro') },
+    threats: plainItems(5, 'Threat'),
+    watch: plainItems(6, 'Watch'),
+    verdict: 'A full verdict sentence. A second full verdict sentence.',
+    ranking: 'BTC > ETH > LINK because liquidity leads.',
+    bullTrigger: 'A break above resistance improves conditions.',
+    bearTrigger: 'A break below support weakens conditions.',
+  };
+}
+
 function marketHistory(base = 100) {
   const dayMs = 24 * 60 * 60 * 1000;
   const start = Date.UTC(2026, 5, 1);
@@ -189,6 +212,41 @@ function marketHistory(base = 100) {
   assert.equal(staleBody.fresh, false);
   assert.equal(staleBody.reason, 'stale');
   assert.deepEqual(staleBody.brief, stale.brief);
+}
+
+{
+  const calls = [];
+  await withGlobals({
+    fetch: async (_url, options) => {
+      calls.push(JSON.parse(options.body));
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validV1Brief()) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate legacy brief' }], cachePayload: { newsItems: [] } }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash',
+        BRIEF_PIPELINE_VERSION: 'v1',
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    const renderedEnvelope = JSON.parse(body.choices[0].message.content);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.pipelineVersion, 'v1');
+    assert.equal(body.meta.validation.type, 'citation');
+    assert.equal(renderedEnvelope.btc.bullets[0].label, 'BTC 1');
+    assert.equal(calls[0].generationConfig.responseJsonSchema.properties.btc.properties.bullets.minItems, 4);
+    assert.equal(calls[0].generationConfig.responseJsonSchema.properties.btc.properties.bullets.items.required.includes('evidenceIds'), false);
+    assert.match(calls[0].systemInstruction.parts[0].text, /PIPELINE V1 ROLLBACK/);
+  });
 }
 
 {
