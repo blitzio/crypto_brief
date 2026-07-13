@@ -32,6 +32,14 @@ assert.ok(scriptMatch[1].includes('function renderConfidence'), 'v3 should displ
 assert.ok(scriptMatch[1].includes('evidence-link'), 'news evidence should link to source entries');
 assert.ok(scriptMatch[1].includes('function openEvidence'), 'evidence links should reveal the collapsed source annex');
 assert.ok(scriptMatch[1].includes('annex.open = true'), 'source evidence should become visible before navigation');
+assert.ok(
+  scriptMatch[1].includes('item.assessment || item.gap || item.whyItMatters'),
+  'intelligence gaps should render the unresolved gap before its implication'
+);
+assert.ok(
+  scriptMatch[1].includes('item.whyItMatters && (item.assessment || item.gap)'),
+  'items with a primary assessment or gap should label the separate implication'
+);
 assert.equal(
   /const shouldForceRefresh = forceRefresh === true;\s*document\.getElementById\('brief'\)\.classList\.remove\('active'\)/.test(scriptMatch[1]),
   false,

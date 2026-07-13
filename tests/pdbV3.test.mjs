@@ -143,6 +143,57 @@ shortOverall.assets.eth.assessment = prose(2);
 shortOverall.assets.link.assessment = prose(2);
 assert.equal(validatePdbV3StructureAndDepth(shortOverall).ok, false);
 
+const perItemDepthCases = [
+  {
+    path: 'assets.btc.drivers.0.analysis',
+    mutate: brief => { brief.assets.btc.drivers[0].analysis = ''; },
+  },
+  {
+    path: 'macro.transmissionChannels.0.analysis',
+    mutate: brief => { brief.macro.transmissionChannels[0].analysis = 'Thin.'; },
+  },
+  {
+    path: 'scenarios.base',
+    mutate: brief => {
+      brief.scenarios.base.outlook = 'Thin.';
+      brief.scenarios.base.causalPath = 'Thin.';
+      brief.scenarios.base.triggers = ['Thin.'];
+    },
+  },
+  {
+    path: 'threats.0',
+    mutate: brief => {
+      brief.threats[0].assessment = 'Thin.';
+      brief.threats[0].indicator = 'Thin.';
+    },
+  },
+  {
+    path: 'watch.next24Hours.0',
+    mutate: brief => {
+      brief.watch.next24Hours[0].whyItMatters = 'Thin.';
+      brief.watch.next24Hours[0].signal = 'Thin.';
+    },
+  },
+  {
+    path: 'intelligenceGaps.0',
+    mutate: brief => {
+      brief.intelligenceGaps[0].gap = 'Thin.';
+      brief.intelligenceGaps[0].whyItMatters = 'Thin.';
+      brief.intelligenceGaps[0].closureEvidence = 'Thin.';
+    },
+  },
+];
+for (const itemCase of perItemDepthCases) {
+  const itemBrief = structuredClone(valid);
+  itemCase.mutate(itemBrief);
+  const result = validatePdbV3StructureAndDepth(itemBrief);
+  assert.equal(
+    result.violations.some(violation => violation.path === itemCase.path && violation.reason === 'item_too_thin'),
+    true,
+    `${itemCase.path} should enforce its own minimum depth`
+  );
+}
+
 const evidenceIndex = new Map([
   ['market:btc:current', { id: 'market:btc:current', type: 'market', asset: 'btc', value: 100 }],
   ['market:btc:rangePosition', { id: 'market:btc:rangePosition', type: 'market', asset: 'btc', value: 0.5 }],

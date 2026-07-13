@@ -958,21 +958,23 @@ function renderAnalysisMeta(item = {}) {
 }
 
 function renderAnalysisItems(items = [], signalLabel = 'Indicator') {
-  return (items || []).map(item => `<li>
-    <div class="analysis-item-head"><h3>${escapeHtml(item.title || 'Untitled assessment')}</h3>${renderConfidence(item.confidence)}</div>
-    <div class="analysis-item-copy">${escapeHtml(item.assessment || item.whyItMatters || '')}</div>
-    ${item.impact || item.likelihood || item.horizon
-      ? `<div class="analysis-meta"><span>${escapeHtml([item.impact && `Impact: ${item.impact}`, item.likelihood, item.horizon].filter(Boolean).join(' · '))}</span></div>`
-      : ''}
-    ${item.indicator || item.signal || item.closureEvidence
-      ? `<div class="analysis-item-signal"><strong>${escapeHtml(signalLabel)}:</strong> ${escapeHtml(item.indicator || item.signal || item.closureEvidence)}</div>`
-      : ''}
-    ${item.gap ? `<div class="analysis-item-copy">${escapeHtml(item.gap)}</div>` : ''}
-    ${item.whyItMatters && item.assessment
-      ? `<div class="analysis-item-signal"><strong>Why it matters:</strong> ${escapeHtml(item.whyItMatters)}</div>`
-      : ''}
-    <div class="analysis-meta">${renderEvidence(item.evidenceIds)}</div>
-  </li>`).join('');
+  return (items || []).map(item => {
+    const primaryAnalysis = item.assessment || item.gap || item.whyItMatters || '';
+    return `<li>
+      <div class="analysis-item-head"><h3>${escapeHtml(item.title || 'Untitled assessment')}</h3>${renderConfidence(item.confidence)}</div>
+      <div class="analysis-item-copy">${escapeHtml(primaryAnalysis)}</div>
+      ${item.impact || item.likelihood || item.horizon
+        ? `<div class="analysis-meta"><span>${escapeHtml([item.impact && `Impact: ${item.impact}`, item.likelihood, item.horizon].filter(Boolean).join(' · '))}</span></div>`
+        : ''}
+      ${item.indicator || item.signal || item.closureEvidence
+        ? `<div class="analysis-item-signal"><strong>${escapeHtml(signalLabel)}:</strong> ${escapeHtml(item.indicator || item.signal || item.closureEvidence)}</div>`
+        : ''}
+      ${item.whyItMatters && (item.assessment || item.gap)
+        ? `<div class="analysis-item-signal"><strong>Why it matters:</strong> ${escapeHtml(item.whyItMatters)}</div>`
+        : ''}
+      <div class="analysis-meta">${renderEvidence(item.evidenceIds)}</div>
+    </li>`;
+  }).join('');
 }
 
 function renderAssetAssessment(symbol, asset = {}) {

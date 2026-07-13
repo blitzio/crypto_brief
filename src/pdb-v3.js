@@ -388,6 +388,12 @@ function checkRange(violations, path, actual, range) {
   }
 }
 
+function checkItemMinimum(violations, path, actual, min) {
+  if (actual < min) {
+    violations.push({ path, reason: 'item_too_thin', actual, min });
+  }
+}
+
 function checkArrayCount(violations, path, value, min, max) {
   if (!Array.isArray(value)) {
     violations.push({ path, reason: 'missing_section', actual: 0, min, max });
@@ -481,10 +487,31 @@ export function validatePdbV3StructureAndDepth(brief = {}) {
       metrics.sections.keyJudgmentAssessments[index] || 0,
       PDB_V3_DEPTH.keyJudgmentAssessment
     );
+    checkItemMinimum(
+      violations,
+      `executive.keyJudgments.${index}.whyItMatters`,
+      wordCount(judgment?.whyItMatters),
+      12
+    );
+    checkItemMinimum(
+      violations,
+      `executive.keyJudgments.${index}.confidenceBasis`,
+      wordCount(judgment?.confidenceBasis),
+      8
+    );
+    for (const [invalidatorIndex, invalidator] of (judgment?.invalidators || []).entries()) {
+      checkItemMinimum(
+        violations,
+        `executive.keyJudgments.${index}.invalidators.${invalidatorIndex}`,
+        wordCount(invalidator),
+        6
+      );
+    }
   }
 
   checkRange(violations, 'executive.bottomLine', metrics.sections.bottomLine, PDB_V3_DEPTH.bottomLine);
   for (const asset of ['btc', 'eth', 'link']) {
+    const section = brief.assets?.[asset] || {};
     checkRange(
       violations,
       `assets.${asset}.assessment`,
@@ -492,17 +519,66 @@ export function validatePdbV3StructureAndDepth(brief = {}) {
       PDB_V3_DEPTH.assetAssessment
     );
     checkRange(violations, `assets.${asset}`, metrics.sections.assets[asset], PDB_V3_DEPTH.assetTotal);
+    checkItemMinimum(violations, `assets.${asset}.confidenceBasis`, wordCount(section.confidenceBasis), 8);
+    checkItemMinimum(violations, `assets.${asset}.confirmation`, wordCount(section.confirmation), 12);
+    checkItemMinimum(violations, `assets.${asset}.invalidation`, wordCount(section.invalidation), 12);
+    for (const [index, driver] of (section.drivers || []).entries()) {
+      requireText(violations, `assets.${asset}.drivers.${index}.title`, driver?.title);
+      checkItemMinimum(
+        violations,
+        `assets.${asset}.drivers.${index}.analysis`,
+        wordCount(driver?.analysis),
+        25
+      );
+    }
   }
   checkRange(violations, 'macro.assessment', metrics.sections.macroAssessment, PDB_V3_DEPTH.macroAssessment);
   checkRange(violations, 'macro', metrics.sections.macro, PDB_V3_DEPTH.macroTotal);
+  checkItemMinimum(violations, 'macro.confidenceBasis', wordCount(brief.macro?.confidenceBasis), 8);
+  for (const [index, channel] of (brief.macro?.transmissionChannels || []).entries()) {
+    requireText(violations, `macro.transmissionChannels.${index}.title`, channel?.title);
+    checkItemMinimum(
+      violations,
+      `macro.transmissionChannels.${index}.analysis`,
+      wordCount(channel?.analysis),
+      25
+    );
+  }
   checkRange(violations, 'scenarios', metrics.sections.scenarios, PDB_V3_DEPTH.scenarioTotal);
+  for (const scenarioName of ['base', 'bullish', 'bearish']) {
+    const scenario = brief.scenarios?.[scenarioName];
+    checkArrayCount(violations, `scenarios.${scenarioName}.triggers`, scenario?.triggers, 1, 3);
+    checkItemMinimum(
+      violations,
+      `scenarios.${scenarioName}`,
+      wordsIn(scenarioProse(scenario)),
+      35
+    );
+  }
   checkRange(
     violations,
     'threats+opportunities',
     metrics.sections.threatsAndOpportunities,
     PDB_V3_DEPTH.threatsAndOpportunities
   );
+  for (const sectionName of ['threats', 'opportunities']) {
+    for (const [index, item] of (brief[sectionName] || []).entries()) {
+      requireText(violations, `${sectionName}.${index}.title`, item?.title);
+      requireText(violations, `${sectionName}.${index}.horizon`, item?.horizon);
+      checkItemMinimum(violations, `${sectionName}.${index}`, wordsIn(riskProse(item)), 30);
+    }
+  }
   checkRange(violations, 'watch+intelligenceGaps', metrics.sections.watchAndGaps, PDB_V3_DEPTH.watchAndGaps);
+  for (const period of ['next24Hours', 'next7Days']) {
+    for (const [index, item] of (brief.watch?.[period] || []).entries()) {
+      requireText(violations, `watch.${period}.${index}.title`, item?.title);
+      checkItemMinimum(violations, `watch.${period}.${index}`, wordsIn(watchProse(item)), 20);
+    }
+  }
+  for (const [index, gap] of (brief.intelligenceGaps || []).entries()) {
+    requireText(violations, `intelligenceGaps.${index}.title`, gap?.title);
+    checkItemMinimum(violations, `intelligenceGaps.${index}`, wordsIn(gapProse(gap)), 25);
+  }
   checkRange(violations, 'brief', metrics.totalWords, PDB_V3_DEPTH.total);
 
   return { ok: violations.length === 0, violations, metrics };
