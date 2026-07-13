@@ -220,6 +220,42 @@ function validV3Brief() {
   };
 }
 
+function thinV3Brief() {
+  const brief = validV3Brief();
+  const proseKeys = new Set([
+    'assessment',
+    'whyItMatters',
+    'confidenceBasis',
+    'invalidators',
+    'analysis',
+    'confirmation',
+    'invalidation',
+    'outlook',
+    'causalPath',
+    'triggers',
+    'indicator',
+    'signal',
+    'gap',
+    'closureEvidence',
+    'bottomLine',
+  ]);
+  const shrink = value => {
+    if (Array.isArray(value)) return value.map(shrink);
+    if (!value || typeof value !== 'object') return value;
+    for (const [key, entry] of Object.entries(value)) {
+      if (!proseKeys.has(key)) {
+        shrink(entry);
+      } else if (Array.isArray(entry)) {
+        value[key] = ['Too thin to be useful.'];
+      } else {
+        value[key] = 'Too thin to be useful.';
+      }
+    }
+    return value;
+  };
+  return shrink(brief);
+}
+
 function validV1Brief() {
   const liveItems = (count, asset) => Array.from({ length: count }, (_, index) => ({
     label: `${asset} ${index + 1}`,
@@ -609,6 +645,116 @@ function yahooCryptoChart(base = 100) {
     assert.equal(body.meta.quality.totalWords >= 1300, true);
   });
   assert.equal(kv.calls.some(call => call.op === 'put'), true);
+}
+
+{
+  const kv = makeKv();
+  const calls = [];
+  await withGlobals({
+    fetch: async (url, options) => {
+      calls.push({ url: String(url), body: JSON.parse(options.body) });
+      return Response.json({
+        candidates: [{ content: { parts: [{ text: JSON.stringify(thinV3Brief()) }] } }],
+      });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v3CachePayload() }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash',
+        BRIEF_PIPELINE_VERSION: 'v3',
+        BRIEF_CACHE: kv,
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 422);
+    assert.equal(calls.length, 2);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /executive\.bottomLine: section_too_thin/);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /brief: section_too_thin/);
+    assert.equal(body.error.qualityViolations.length > 0, true);
+    assert.equal(body.meta.validation.type, 'pdb-v3');
+  });
+  assert.equal(kv.calls.some(call => call.op === 'put'), false);
+}
+
+{
+  const kv = makeKv();
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      const brief = callCount === 1 ? thinV3Brief() : validV3Brief();
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(brief) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v3CachePayload() }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash',
+        BRIEF_PIPELINE_VERSION: 'v3',
+        BRIEF_CACHE: kv,
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.attemptCount, 2);
+    assert.equal(body.meta.validation.ok, true);
+  });
+  assert.equal(kv.calls.filter(call => call.op === 'put').length, 1);
+}
+
+{
+  const kv = makeKv();
+  const calls = [];
+  await withGlobals({
+    fetch: async (url, options) => {
+      calls.push({ url: String(url), body: JSON.parse(options.body) });
+      if (String(url).includes('gemini-3.5-flash')) {
+        return Response.json({ error: { message: 'model unavailable' } }, { status: 404 });
+      }
+      return Response.json({
+        candidates: [{ content: { parts: [{ text: JSON.stringify(thinV3Brief()) }] } }],
+      });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v3CachePayload() }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.1-flash-lite',
+        BRIEF_PIPELINE_VERSION: 'v3',
+        BRIEF_CACHE: kv,
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 422);
+    assert.equal(calls.length, 3);
+    assert.equal(body.meta.model, 'gemini-3.1-flash-lite');
+  });
+  assert.equal(kv.calls.some(call => call.op === 'put'), false);
 }
 
 {

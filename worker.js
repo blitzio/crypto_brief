@@ -983,10 +983,28 @@ export default {
               : validateBriefCitations(parsedBrief, body.cachePayload?.newsItems || []);
           if (validationCheck.ok) break;
 
-          const feedback = validationCheck.violations
-            .slice(0, 10)
-            .map(v => `${String(v.section || v.asset || 'json').toUpperCase()} bullet ${v.bulletIndex + 1}: ${v.reason}${v.evidenceId ? ` (${v.evidenceId})` : ''}${v.docId ? ` on doc [${v.docId}]` : ''}`)
-            .join('; ');
+          const feedback = pipelineVersion === 'v3'
+            ? [...validationCheck.violations]
+                .sort((a, b) => {
+                  const priority = path => path === 'brief' ? 0 : path === 'executive.bottomLine' ? 1 : 2;
+                  return priority(a.path) - priority(b.path);
+                })
+                .slice(0, 15)
+                .map(violation => {
+                  const details = [
+                    violation.actual !== undefined ? `actual=${violation.actual}` : null,
+                    violation.min !== undefined ? `min=${violation.min}` : null,
+                    violation.max !== undefined ? `max=${violation.max}` : null,
+                    violation.evidenceId ? `evidence=${violation.evidenceId}` : null,
+                    violation.claim ? `claim=${violation.claim}` : null,
+                  ].filter(Boolean).join(', ');
+                  return `${violation.path || 'json'}: ${violation.reason}${details ? ` (${details})` : ''}`;
+                })
+                .join('; ')
+            : validationCheck.violations
+                .slice(0, 10)
+                .map(v => `${String(v.section || v.asset || 'json').toUpperCase()} bullet ${v.bulletIndex + 1}: ${v.reason}${v.evidenceId ? ` (${v.evidenceId})` : ''}${v.docId ? ` on doc [${v.docId}]` : ''}`)
+                .join('; ');
           const correctionText = pipelineVersion === 'v3'
             ? `The previous PDB v3 JSON failed validation: ${feedback}. Return the full corrected JSON only, using known evidence IDs and the required analytical depth.`
             : pipelineVersion === 'v2'
