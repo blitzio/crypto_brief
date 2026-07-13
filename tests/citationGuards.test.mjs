@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import {
   buildPromptNewsItems,
+  canonicalNewsUrl,
   inferAssetMentions,
+  normalizedHeadlineKey,
   selectTopNewsItems,
   sanitizeNewsDescription,
   summarizeNewsSourceHealth,
@@ -12,6 +14,96 @@ import {
   resolveModelFallbacks,
   validateBriefCitations,
 } from '../src/gemini.js';
+
+{
+  assert.equal(
+    canonicalNewsUrl('https://example.com/story?utm_source=rss&utm_medium=feed&id=7#section'),
+    'https://example.com/story?id=7'
+  );
+  assert.equal(
+    normalizedHeadlineKey('Bitcoin ETF Demand Rises - CoinDesk'),
+    'bitcoin etf demand rises'
+  );
+}
+
+{
+  const now = Date.now();
+  const selected = selectTopNewsItems([
+    ...Array.from({ length: 7 }, (_, i) => ({
+      title: `Bitcoin institutional item ${i}`,
+      url: `https://coindesk.com/${i}?utm_source=rss`,
+      description: 'Bitcoin BTC institutional demand increased.',
+      pubDate: new Date(now - i * 1000).toUTCString(),
+      source: 'CoinDesk',
+      sourceId: 'coindesk',
+      sourceTier: 'editorial',
+      topic: 'general',
+    })),
+    ...Array.from({ length: 6 }, (_, i) => ({
+      title: `Macro item ${i}`,
+      url: `https://macro.example/${i}`,
+      description: 'Stocks and rates moved.',
+      pubDate: new Date(now - i * 1000).toUTCString(),
+      source: `Macro ${i % 2}`,
+      sourceId: `macro-${i % 2}`,
+      sourceTier: 'macro',
+      topic: 'macro',
+    })),
+  ], 20);
+
+  assert.equal(selected.filter(item => item.sourceId === 'coindesk').length, 4);
+  assert.equal(selected.filter(item => item.assetMentions.length === 0).length, 5);
+}
+
+{
+  const now = Date.now();
+  const selected = selectTopNewsItems([
+    {
+      title: 'Ethereum staking demand rises - Aggregator',
+      url: 'https://aggregator.example/eth-story',
+      description: 'Ethereum ETH staking demand increased.',
+      pubDate: new Date(now).toUTCString(),
+      source: 'Google News ETH',
+      sourceId: 'google-news-eth',
+      sourceTier: 'discovery',
+      topic: 'eth',
+    },
+    {
+      title: 'Ethereum staking demand rises - Direct Publisher',
+      url: 'https://publisher.example/eth-story?utm_source=rss',
+      description: 'Ethereum ETH staking demand increased.',
+      pubDate: new Date(now - 60_000).toUTCString(),
+      source: 'Direct Publisher',
+      sourceId: 'direct-publisher',
+      sourceTier: 'editorial',
+      topic: 'general',
+    },
+    {
+      title: 'Bitcoin ETF demand rises',
+      url: 'https://publisher.example/btc?utm_source=rss',
+      description: 'Bitcoin BTC ETF demand increased.',
+      pubDate: new Date(now - 120_000).toUTCString(),
+      source: 'Direct Publisher',
+      sourceId: 'direct-publisher',
+      sourceTier: 'editorial',
+      topic: 'general',
+    },
+    {
+      title: 'Bitcoin ETF demand rises',
+      url: 'https://publisher.example/btc?utm_medium=feed',
+      description: 'Bitcoin BTC ETF demand increased.',
+      pubDate: new Date(now - 180_000).toUTCString(),
+      source: 'Direct Publisher',
+      sourceId: 'direct-publisher',
+      sourceTier: 'editorial',
+      topic: 'general',
+    },
+  ], 20);
+
+  assert.equal(selected.some(item => item.sourceTier === 'editorial' && item.assetMentions.includes('eth')), true);
+  assert.equal(selected.some(item => item.sourceTier === 'discovery' && item.assetMentions.includes('eth')), false);
+  assert.equal(selected.filter(item => item.title === 'Bitcoin ETF demand rises').length, 1);
+}
 
 {
   assert.equal(

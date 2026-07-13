@@ -21,11 +21,11 @@
 import { resolveYahooPct, resolveYahooQuotePct } from './src/yahoo.js';
 import {
   buildPromptNewsItems,
-  decodeHtmlBasic,
-  sanitizeNewsDescription,
   selectTopNewsItems,
   summarizeNewsSourceHealth,
 } from './src/news.js';
+import { detectFeedFormat, parseSyndicationFeed } from './src/feed-parser.js';
+import { NEWS_SOURCES } from './src/news-sources.js';
 import {
   listUnavailableMacroFields,
   normalizeBriefCitationMarkers,
@@ -204,60 +204,58 @@ export default {
     // RSS + SNIPPET CONTENT
     // ─────────────────────────────────────────────────────────────────
 
-    const RSS_FEEDS = [
-      { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/category/markets/', source: 'CoinDesk Markets', topic: 'btc' },
-      { url: 'https://blockworks.co/feed/',                                       source: 'Blockworks',       topic: 'btc' },
-      { url: 'https://theblock.co/rss.xml',                                       source: 'The Block',        topic: 'eth' },
-      { url: 'https://decrypt.co/feed',                                           source: 'Decrypt',          topic: 'eth' },
-      { url: 'https://news.google.com/rss/search?q=%28Ethereum%20OR%20ETH%20OR%20staking%20OR%20rsETH%29%20crypto%20when%3A7d&hl=en-US&gl=US&ceid=US:en', source: 'Google News ETH', topic: 'eth', maxItems: 12, maxAgeHours: 168 },
-      { url: 'https://news.google.com/rss/search?q=%28Chainlink%20OR%20%22LINK%22%20OR%20CCIP%20OR%20oracle%29%20crypto%20when%3A7d&hl=en-US&gl=US&ceid=US:en', source: 'Google News LINK', topic: 'link', maxItems: 12, maxAgeHours: 168 },
-      { url: 'https://www.dlnews.com/arc/outboundfeeds/rss/',                     source: 'DL News',          topic: 'general' },
-      { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',                   source: 'CoinDesk',         topic: 'general' },
-      { url: 'https://feeds.content.dowjones.io/public/rss/RSSMarketsMain',       source: 'Dow Jones Markets', topic: 'macro' },
-      { url: 'https://www.ft.com/markets?format=rss',                             source: 'FT Markets',       topic: 'macro' },
-    ];
-
-    function parseRSS(xml, sourceName, topic, maxAgeHours) {
-      const items = [];
-      const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
-      let match;
-      while ((match = itemRegex.exec(xml)) !== null) {
-        const block = match[1];
-        const get = (tag) => {
-          const m = block.match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i'));
-          return m ? (m[1] ?? m[2] ?? '').trim() : '';
-        };
-        const title = get('title').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
-        const link  = get('link') || get('guid');
-        const desc  = sanitizeNewsDescription(get('description'));
-        const date  = get('pubDate');
-        if (title && link && link.startsWith('http')) {
-          items.push({ title: decodeHtmlBasic(title), url: link, description: desc.slice(0, 300), pubDate: date, source: sourceName, topic, maxAgeHours });
-        }
-      }
-      return items;
-    }
-
-    async function fetchFeed(feedUrl, sourceName, topic, maxItems = 8, maxAgeHours = null) {
+    async function fetchFeed(source) {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4000);
+      const startedAt = Date.now();
+      const timeout = setTimeout(() => controller.abort(), source.timeoutMs ?? 6500);
+      const health = {
+        sourceId: source.id,
+        source: source.source,
+        sourceTier: source.sourceTier,
+        ok: false,
+        status: null,
+        format: source.format,
+        durationMs: 0,
+        parsedCount: 0,
+        freshCount: 0,
+        acceptedCount: 0,
+        newestPubDate: null,
+        error: null,
+      };
       try {
-        const res = await fetch(feedUrl, {
-          signal:  controller.signal,
+        const res = await fetch(source.url, {
+          signal: controller.signal,
           headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/rss+xml, application/xml, text/xml, */*' },
         });
-        clearTimeout(timeout);
-        if (!res.ok) return [];
+        health.status = res.status;
+        if (!res.ok) {
+          health.error = 'http';
+          return { items: [], health };
+        }
+
         const xml = await res.text();
-        return parseRSS(xml, sourceName, topic, maxAgeHours).slice(0, maxItems);
-      } catch {
+        const detectedFormat = detectFeedFormat(xml);
+        health.format = detectedFormat === 'unknown' ? source.format : detectedFormat;
+        const items = parseSyndicationFeed(xml, source);
+        health.parsedCount = items.length;
+        health.newestPubDate = items
+          .map(item => item.pubDate)
+          .filter(Boolean)
+          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
+        health.ok = items.length > 0;
+        health.error = items.length > 0 ? null : (detectedFormat === 'unknown' ? 'parse' : 'empty');
+        return { items, health };
+      } catch (error) {
+        health.error = error?.name === 'AbortError' ? 'timeout' : 'unknown';
+        return { items: [], health };
+      } finally {
         clearTimeout(timeout);
-        return [];
+        health.durationMs = Date.now() - startedAt;
       }
     }
 
     function getDescription(item) {
-      return item.description || '';
+      return item.content || item.description || '';
     }
 
     async function collectMacroData() {
@@ -292,43 +290,38 @@ export default {
     }
 
     async function collectNewsItems() {
-      const feedSettled = await Promise.allSettled(
-        RSS_FEEDS.map(f => fetchFeed(f.url, f.source, f.topic, f.maxItems, f.maxAgeHours))
-      );
-      const feedResults = feedSettled.map(r => r.status === 'fulfilled' ? r.value : []);
+      const feedResults = await Promise.all(NEWS_SOURCES.map(fetchFeed));
+      const now = Date.now();
+      const freshItems = [];
 
-      const seen  = new Set();
-      const items = [];
-      for (const feedItems of feedResults) {
-        for (const item of feedItems) {
-          if (!seen.has(item.url) && item.title) {
-            seen.add(item.url);
-            items.push(item);
-          }
-        }
+      for (const result of feedResults) {
+        const freshForSource = result.items.filter(item => {
+          const ts = item.pubDate ? new Date(item.pubDate).getTime() : 0;
+          if (!ts || Number.isNaN(ts)) return false;
+          const maxAgeHours = Number.isFinite(item.maxAgeHours) ? item.maxAgeHours : 72;
+          if ((now - ts) > (maxAgeHours * 60 * 60 * 1000)) return false;
+          if (item.source === 'Dow Jones Markets' && /market talk|roundup/i.test(item.title)) return false;
+          return true;
+        });
+        result.health.freshCount = freshForSource.length;
+        freshItems.push(...freshForSource);
       }
 
-      const now = Date.now();
-      const filteredItems = items.filter(item => {
-        const ts = item.pubDate ? new Date(item.pubDate).getTime() : 0;
-        if (!ts || Number.isNaN(ts)) return false;
-        const maxAgeHours = Number.isFinite(item.maxAgeHours) ? item.maxAgeHours : 72;
-        if ((now - ts) > (maxAgeHours * 60 * 60 * 1000)) return false;
-
-        if (
-          item.source === 'Dow Jones Markets' &&
-          /market talk|roundup/i.test(item.title)
-        ) {
-          return false;
-        }
-
-        return true;
-      });
-
-      return selectTopNewsItems(filteredItems, 20).map(item => ({
+      const selected = selectTopNewsItems(freshItems, 20).map(item => ({
         ...item,
         content: getDescription(item),
       }));
+      const acceptedCounts = new Map();
+      for (const item of selected) {
+        if (item.sourceId) {
+          acceptedCounts.set(item.sourceId, (acceptedCounts.get(item.sourceId) ?? 0) + 1);
+        }
+      }
+      for (const result of feedResults) {
+        result.health.acceptedCount = acceptedCounts.get(result.health.sourceId) ?? 0;
+      }
+
+      return { items: selected, sources: feedResults.map(result => result.health) };
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -357,11 +350,12 @@ export default {
 
     if (request.method === 'GET' && pathname === '/news') {
       const cache    = caches.default;
-      const cacheKey = new Request(new URL(request.url).origin + '/news-rss-v4');
+      const cacheKey = new Request(new URL(request.url).origin + '/news-rss-v5');
       const cached   = debugNoCache ? null : await cache.match(cacheKey);
       if (cached) return cached;
 
-      const response = json(await collectNewsItems(), 200, { 'Cache-Control': 'public, max-age=900' });
+      const { items } = await collectNewsItems();
+      const response = json(items, 200, { 'Cache-Control': 'public, max-age=900' });
       ctx.waitUntil(cache.put(cacheKey, response.clone()));
       return response;
     }
@@ -369,7 +363,7 @@ export default {
     // GET /health - read-only source/cache diagnostics, no Gemini call
     if (request.method === 'GET' && pathname === '/health') {
       const cache = caches.default;
-      const cacheKey = new Request(new URL(request.url).origin + '/health-v1');
+      const cacheKey = new Request(new URL(request.url).origin + '/health-v2');
       const cached = debugNoCache ? null : await cache.match(cacheKey);
       if (cached) return cached;
 
@@ -384,14 +378,26 @@ export default {
 
       let newsCheck = {
         ok: false,
+        degraded: true,
         count: 0,
         assetMentionCounts: { btc: 0, eth: 0, link: 0, none: 0 },
         avgContentChars: 0,
+        sources: [],
         error: null,
       };
       try {
-        const newsSummary = summarizeNewsSourceHealth(await collectNewsItems());
-        newsCheck = { ok: newsSummary.count > 0, ...newsSummary };
+        const { items, sources } = await collectNewsItems();
+        const newsSummary = summarizeNewsSourceHealth(items);
+        const healthyEditorialSources = sources.filter(source => source.sourceTier === 'editorial' && source.ok).length;
+        const failedEditorialSource = sources.some(source => source.sourceTier === 'editorial' && !source.ok);
+        const missingAssetCoverage = Object.entries(newsSummary.assetMentionCounts)
+          .some(([asset, count]) => asset !== 'none' && count === 0);
+        newsCheck = {
+          ok: newsSummary.count >= 8,
+          degraded: missingAssetCoverage || healthyEditorialSources < 2 || failedEditorialSource,
+          ...newsSummary,
+          sources,
+        };
       } catch (err) {
         newsCheck = { ...newsCheck, error: err?.message ?? 'unknown' };
       }
@@ -414,6 +420,7 @@ export default {
 
       const response = json({
         ok: macroCheck.ok && newsCheck.ok,
+        degraded: Boolean(newsCheck.degraded),
         timestamp: new Date().toISOString(),
         checks: { macro: macroCheck, news: newsCheck, briefCache },
       }, 200, { 'Cache-Control': 'public, max-age=60' });

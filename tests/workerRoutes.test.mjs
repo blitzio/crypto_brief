@@ -227,10 +227,19 @@ async function jsonResponse(response) {
           ],
         });
       }
+      if (String(url).includes('theblock.co')) {
+        return new Response('not found', { status: 404 });
+      }
       const feedKey = encodeURIComponent(String(url).slice(0, 80));
+      if (String(url).includes('blockworks.co')) {
+        return new Response(`<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">
+          <entry><title>Bitcoin ETF demand rises ${feedKey}</title><link rel="alternate" href="https://example.com/${feedKey}/btc"/><summary>BTC ETF flows accelerated.</summary><published>${new Date().toISOString()}</published></entry>
+          <entry><title>Chainlink CCIP adoption expands ${feedKey}</title><link rel="alternate" href="https://example.com/${feedKey}/link"/><summary>Chainlink oracle usage grew.</summary><published>${new Date().toISOString()}</published></entry>
+        </feed>`, { headers: { 'Content-Type': 'application/atom+xml' } });
+      }
       return new Response(`<?xml version="1.0"?><rss><channel>
-        <item><title>Bitcoin ETF demand rises</title><link>https://example.com/${feedKey}/btc</link><description>BTC ETF flows accelerated.</description><pubDate>${recentPubDate}</pubDate></item>
-        <item><title>Chainlink CCIP adoption expands</title><link>https://example.com/${feedKey}/link</link><description>Chainlink oracle usage grew.</description><pubDate>${recentPubDate}</pubDate></item>
+        <item><title>Bitcoin ETF demand rises ${feedKey}</title><link>https://example.com/${feedKey}/btc</link><description>BTC ETF flows accelerated.</description><pubDate>${recentPubDate}</pubDate></item>
+        <item><title>Chainlink CCIP adoption expands ${feedKey}</title><link>https://example.com/${feedKey}/link</link><description>Chainlink oracle usage grew.</description><pubDate>${recentPubDate}</pubDate></item>
       </channel></rss>`, { headers: { 'Content-Type': 'application/xml' } });
     },
   }, async () => {
@@ -252,10 +261,28 @@ async function jsonResponse(response) {
     assert.equal(body.checks.news.assetMentionCounts.btc > 0, true);
     assert.equal(body.checks.news.assetMentionCounts.link > 0, true);
     assert.equal(body.checks.news.avgContentChars > 0, true);
+    assert.equal(body.checks.news.degraded, true);
+    assert.equal(Array.isArray(body.checks.news.sources), true);
+    assert.equal(
+      body.checks.news.sources.some(source => source.sourceId === 'blockworks' && source.format === 'atom' && source.acceptedCount > 0),
+      true
+    );
+    assert.equal(
+      body.checks.news.sources.some(source => source.sourceId === 'the-block' && source.status === 404 && source.error === 'http'),
+      true
+    );
     assert.equal(body.checks.briefCache.cached, true);
     assert.equal(typeof body.checks.briefCache.ageSeconds, 'number');
 
     await Promise.all(pendingWork);
+    const newsResponse = await worker.fetch(
+      new Request('https://worker.test/news?nocache=1'),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', BRIEF_CACHE: kv },
+      { waitUntil(promise) { pendingWork.push(promise); } }
+    );
+    assert.equal(newsResponse.status, 200);
+    assert.equal(Array.isArray(await jsonResponse(newsResponse)), true, '/news must preserve its array response');
+
     const fetchCountAfterFirstHealth = fetchCalls.length;
     const cachedResponse = await worker.fetch(
       new Request('https://worker.test/health'),

@@ -66,40 +66,102 @@ function isMismatchedAssetFeedItem(item = {}) {
   return !item.assetMentions.includes(item.topic);
 }
 
+export function canonicalNewsUrl(value = '') {
+  try {
+    const url = new URL(value);
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(utm_.+|ref|source|output)$/i.test(key)) url.searchParams.delete(key);
+    }
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return String(value);
+  }
+}
+
+export function normalizedHeadlineKey(value = '') {
+  return decodeHtmlBasic(value)
+    .toLowerCase()
+    .replace(/\s+-\s+[^-]+$/, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function sourceTierRank(item = {}) {
+  if (item.sourceTier === 'primary') return 0;
+  if (item.sourceTier === 'editorial') return 1;
+  if (item.sourceTier === 'macro') return 2;
+  if (item.sourceTier === 'discovery') return 3;
+  return 2;
+}
+
+function compareNewsQuality(a, b) {
+  return sourceTierRank(a) - sourceTierRank(b) || itemTime(b) - itemTime(a);
+}
+
+function newsSelectionKey(item = {}) {
+  return item.url || `${item.source || 'unknown'}:${item.headlineKey || normalizedHeadlineKey(item.title)}`;
+}
+
 export function selectTopNewsItems(items = [], limit = 20) {
   const prepared = buildPromptNewsItems(items)
     .filter(item => !isLowSignalNews(item))
     .filter(item => !isMismatchedAssetFeedItem(item))
-    .sort((a, b) => itemTime(b) - itemTime(a));
+    .map(item => ({
+      ...item,
+      url: canonicalNewsUrl(item.url),
+      headlineKey: normalizedHeadlineKey(item.title),
+    }))
+    .sort(compareNewsQuality);
+
+  const deduplicated = [];
+  const seenUrls = new Set();
+  const seenHeadlines = new Set();
+  for (const item of prepared) {
+    if (!item.headlineKey) continue;
+    if ((item.url && seenUrls.has(item.url)) || seenHeadlines.has(item.headlineKey)) continue;
+    if (item.url) seenUrls.add(item.url);
+    seenHeadlines.add(item.headlineKey);
+    deduplicated.push(item);
+  }
 
   const selected = [];
-  const seen = new Set();
+  const selectedKeys = new Set();
+  const sourceCounts = new Map();
+  let untaggedCount = 0;
   const add = (item) => {
-    const key = item.url || `${item.source}:${item.title}`;
-    if (!key || seen.has(key) || selected.length >= limit) return;
-    seen.add(key);
+    const key = newsSelectionKey(item);
+    if (!key || selectedKeys.has(key) || selected.length >= limit) return false;
+    const sourceKey = item.sourceId || item.source || 'unknown';
+    if ((sourceCounts.get(sourceKey) ?? 0) >= 4) return false;
+    const isUntagged = item.assetMentions.length === 0;
+    if (isUntagged && untaggedCount >= 5) return false;
+
+    selectedKeys.add(key);
+    sourceCounts.set(sourceKey, (sourceCounts.get(sourceKey) ?? 0) + 1);
+    if (isUntagged) untaggedCount += 1;
     selected.push(item);
+    return true;
   };
 
-  const buckets = [
-    { tag: 'btc', quota: 5 },
-    { tag: 'eth', quota: 5 },
-    { tag: 'link', quota: 5 },
-  ];
-
-  for (const { tag, quota } of buckets) {
-    let count = 0;
-    for (const item of prepared) {
-      if (count >= quota) break;
+  for (const tag of ['btc', 'eth', 'link']) {
+    let count = selected.filter(item => item.assetMentions.includes(tag)).length;
+    for (const item of deduplicated) {
+      if (count >= 4) break;
       if (item.assetMentions.includes(tag)) {
-        add(item);
-        count++;
+        if (selectedKeys.has(newsSelectionKey(item))) continue;
+        if (add(item)) {
+          count += 1;
+        }
       }
     }
   }
 
-  for (const item of prepared) add(item);
-  return selected;
+  for (const item of deduplicated.filter(item => item.assetMentions.length > 0)) add(item);
+  for (const item of deduplicated.filter(item => item.assetMentions.length === 0)) add(item);
+
+  return selected.map(({ headlineKey, ...item }) => item);
 }
 
 export function summarizeNewsSourceHealth(items = []) {
