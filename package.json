@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/feedParser.test.mjs && node tests/marketSignals.test.mjs && node tests/macroSignals.test.mjs && node tests/selectYahooPreviousClose.test.mjs && node tests/citationGuards.test.mjs && node tests/workerRoutes.test.mjs && node tests/frontendSmoke.test.mjs",
+    "test": "node tests/pdbV3.test.mjs && node tests/feedParser.test.mjs && node tests/marketSignals.test.mjs && node tests/macroSignals.test.mjs && node tests/selectYahooPreviousClose.test.mjs && node tests/citationGuards.test.mjs && node tests/workerRoutes.test.mjs && node tests/frontendSmoke.test.mjs",
     "check:sources": "node scripts/check-live-sources.mjs",
     "cf:whoami": "wrangler whoami",
     "cf:deploy": "wrangler deploy --keep-vars",
