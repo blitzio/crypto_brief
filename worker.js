@@ -433,6 +433,7 @@ export default {
     // ─────────────────────────────────────────────────────────────────
 
     if (request.method === 'GET' && pathname === '/brief') {
+      const allowStale = url.searchParams.get('allowStale') === '1';
       if (!env.BRIEF_CACHE) {
         console.log('[cache] /brief miss: KV not configured');
         return json({ cached: false, reason: 'KV not configured' });
@@ -445,11 +446,15 @@ export default {
         }
         const age = Date.now() - new Date(cached.generatedAt).getTime();
         if (age > 60 * 60 * 1000) {
+          if (allowStale) {
+            console.log(`[cache] /brief stale fallback: serving KV entry (${Math.round(age / 1000)}s old)`);
+            return json({ ...cached, cached: true, fresh: false, reason: 'stale' });
+          }
           console.log(`[cache] /brief miss: stale entry (${Math.round(age / 1000)}s old)`);
           return json({ cached: false, reason: 'stale' });
         }
         console.log(`[cache] /brief hit: serving KV entry (${Math.round(age / 1000)}s old)`);
-        return json({ cached: true, ...cached });
+        return json({ ...cached, cached: true, fresh: true });
       } catch (e) {
         console.log(`[cache] /brief miss: KV read error (${e?.message ?? 'unknown'})`);
         return json({ cached: false });

@@ -52,6 +52,8 @@ body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%
 @keyframes spin{to{transform:rotate(360deg);}}
 .load-title{font-size:1.15rem;font-weight:600;color:var(--text);letter-spacing:-.01em;}
 .load-sub{font-size:.9rem;color:var(--muted);font-family:var(--font);letter-spacing:.01em;text-align:center;max-width:420px;line-height:1.6;}
+.refresh-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+.refresh-status{max-width:310px;color:var(--muted);font:600 .68rem/1.35 var(--font);text-align:right;}
 
 /* ── BRIEF ── */
 #brief{display:none;}
@@ -235,7 +237,10 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
       &nbsp;·&nbsp;
       <b>Analysis:</b> Gemini 3 Flash Preview
     </div>
-    <button class="accent-btn" onclick="run(true)">↻ Refresh Brief</button>
+    <div class="refresh-controls">
+      <span class="refresh-status" id="refresh-status" role="status" aria-live="polite"></span>
+      <button class="accent-btn" id="refresh-btn" onclick="run(true)">↻ Refresh Brief</button>
+    </div>
   </div>
 
   <div class="masthead">
@@ -366,6 +371,9 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 
 // ─── CONFIG ────────────────────────────────────────────────────────
 const WORKER_URL = 'https://crypto-brief-proxy.blitzio.workers.dev';
+const DATA_TIMEOUT_MS = 15000;
+const GEMINI_TIMEOUT_MS = 105000;
+let refreshInFlight = false;
 
 // ─── SGT UTILITIES ─────────────────────────────────────────────────
 const MONS  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
@@ -436,14 +444,36 @@ function setLoadStatus(message = '') {
   document.getElementById('load-sub').textContent = message;
 }
 
+function setRefreshStatus(message = '') {
+  const status = document.getElementById('refresh-status');
+  if (status) status.textContent = message;
+  if (!document.getElementById('brief').classList.contains('active')) setLoadStatus(message);
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = DATA_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // ─── DATA FETCHERS ──────────────────────────────────────────────────
 async function fetchPrices() {
-  const res = await fetch(
+  const res = await fetchWithTimeout(
     'https://api.coingecko.com/api/v3/coins/markets' +
     '?vs_currency=usd&ids=bitcoin,ethereum,chainlink' +
     '&order=market_cap_desc&per_page=3&page=1&sparkline=false' +
     '&price_change_percentage=24h,7d',
-    { cache: 'no-store' }
+    { cache: 'no-store' },
+    DATA_TIMEOUT_MS
   );
   if (!res.ok) throw new Error('CoinGecko unavailable — try again shortly.');
   const arr = await res.json();
@@ -452,7 +482,7 @@ async function fetchPrices() {
 
 async function fetchMacro() {
   try {
-    const res  = await fetch(WORKER_URL + '/macro', { cache: 'no-store' });
+    const res  = await fetchWithTimeout(WORKER_URL + '/macro', { cache: 'no-store' }, DATA_TIMEOUT_MS);
     const data = await res.json();
     return (data && typeof data === 'object') ? data : {};
   } catch {
@@ -462,7 +492,7 @@ async function fetchMacro() {
 
 async function fetchNews() {
   try {
-    const res  = await fetch(WORKER_URL + '/news', { cache: 'no-store' });
+    const res  = await fetchWithTimeout(WORKER_URL + '/news', { cache: 'no-store' }, DATA_TIMEOUT_MS);
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
@@ -550,7 +580,7 @@ MACRO BULLETS — CRITICAL:
 - GOOD: "Simultaneous equity selloff and extreme fear historically precede either capitulation bottoms or sharp relief rallies — $263B stablecoin supply suggests sideline capital is positioned to re-enter fast on any positive macro catalyst"
 - BAD (forbidden): "The Fed Funds Rate stands at 3.64%, indicating restrictive monetary policy" — pure restatement, zero inference`;
 
-  const res = await fetch(WORKER_URL, {
+  const res = await fetchWithTimeout(WORKER_URL, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -565,7 +595,7 @@ MACRO BULLETS — CRITICAL:
       temperature: 0.3,
       max_tokens:  4000,
     }),
-  });
+  }, GEMINI_TIMEOUT_MS);
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -738,19 +768,25 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
 
 // ─── MAIN ────────────────────────────────────────────────────────────
 async function run(forceRefresh = false) {
+  if (refreshInFlight) return;
+  refreshInFlight = true;
   const shouldForceRefresh = forceRefresh === true;
-  document.getElementById('brief').classList.remove('active');
-  document.getElementById('loading').classList.remove('hidden');
+  const briefElement = document.getElementById('brief');
+  const loadingElement = document.getElementById('loading');
+  const refreshButton = document.getElementById('refresh-btn');
+  const hadActiveBrief = briefElement.classList.contains('active');
+  if (!hadActiveBrief) loadingElement.classList.remove('hidden');
+  if (refreshButton) refreshButton.disabled = true;
 
   try {
     if (!shouldForceRefresh) {
-      setLoadStatus('Checking for cached brief…');
+      setRefreshStatus('Checking for cached brief…');
       try {
-        const cacheRes  = await fetch(WORKER_URL + '/brief', { cache: 'no-store' });
+        const cacheRes  = await fetchWithTimeout(WORKER_URL + '/brief?allowStale=1', { cache: 'no-store' }, DATA_TIMEOUT_MS);
         const cacheData = await cacheRes.json();
         if (cacheData.cached && cacheData.brief) {
-          console.log('[cache] hit: rendering cached brief');
-          setLoadStatus('Loading cached brief…');
+          console.log(`[cache] ${cacheData.fresh === false ? 'stale fallback' : 'hit'}: rendering cached brief`);
+          setRefreshStatus('Loading cached brief…');
           try {
             renderBrief(
               cacheData.brief,
@@ -763,17 +799,20 @@ async function run(forceRefresh = false) {
             console.error('[cache] render failed for cached brief:', renderErr);
             throw renderErr;
           }
-          setLoadStatus();
-          return;
+          if (cacheData.fresh !== false) {
+            setRefreshStatus();
+            return;
+          }
+          setRefreshStatus('Showing the last brief while refreshing live data…');
         }
-        console.log(`[cache] miss: ${cacheData.reason || 'no usable cached brief'}`);
+        if (!cacheData.cached) console.log(`[cache] miss: ${cacheData.reason || 'no usable cached brief'}`);
       } catch (e) { console.warn('[cache] miss: cache check failed', e); }
     }
 
-    setLoadStatus('Fetching live prices, macro and news…');
+    setRefreshStatus('Fetching live prices, macro and news…');
     const [prices, macro, newsItems] = await Promise.all([fetchPrices(), fetchMacro(), fetchNews()]);
 
-    setLoadStatus('Generating analysis via Gemini…');
+    setRefreshStatus('Generating analysis via Gemini…');
     const { brief } = await callAI(prices, macro, newsItems);
     const generatedTime = sgtNow();
 
@@ -783,10 +822,14 @@ async function run(forceRefresh = false) {
       console.error('[render] failed for freshly generated brief:', renderErr);
       throw renderErr;
     }
+    setRefreshStatus();
 
   } catch (err) {
     console.error(err);
-    setLoadStatus('❌ ' + err.message + ' — refresh to retry.');
+    setRefreshStatus('❌ ' + err.message + ' — refresh to retry.');
+  } finally {
+    refreshInFlight = false;
+    if (refreshButton) refreshButton.disabled = false;
   }
 }
 

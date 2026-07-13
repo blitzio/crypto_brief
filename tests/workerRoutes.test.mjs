@@ -105,9 +105,10 @@ async function jsonResponse(response) {
     generatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     brief: { btc: { bullets: [] } },
   };
+  const env = { ALLOWED_ORIGINS: 'https://blitzio.github.io', BRIEF_CACHE: makeKv(stale) };
   const response = await worker.fetch(
     new Request('https://worker.test/brief'),
-    { ALLOWED_ORIGINS: 'https://blitzio.github.io', BRIEF_CACHE: makeKv(stale) },
+    env,
     { waitUntil() {} }
   );
 
@@ -115,6 +116,18 @@ async function jsonResponse(response) {
   assert.equal(response.status, 200);
   assert.equal(body.cached, false);
   assert.equal(body.reason, 'stale');
+
+  const staleResponse = await worker.fetch(
+    new Request('https://worker.test/brief?allowStale=1'),
+    env,
+    { waitUntil() {} }
+  );
+  const staleBody = await jsonResponse(staleResponse);
+  assert.equal(staleResponse.status, 200);
+  assert.equal(staleBody.cached, true);
+  assert.equal(staleBody.fresh, false);
+  assert.equal(staleBody.reason, 'stale');
+  assert.deepEqual(staleBody.brief, stale.brief);
 }
 
 {
