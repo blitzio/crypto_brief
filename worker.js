@@ -28,6 +28,12 @@ import { detectFeedFormat, parseSyndicationFeed } from './src/feed-parser.js';
 import { NEWS_SOURCES } from './src/news-sources.js';
 import { deriveMarketSignals } from './src/market.js';
 import {
+  deriveCpiTrend,
+  deriveRateChange,
+  deriveStablecoinChanges,
+  deriveYahooChange5d,
+} from './src/macro.js';
+import {
   isRetryableGeminiStatus,
   listUnavailableMacroFields,
   normalizeBriefCitationMarkers,
@@ -54,6 +60,14 @@ export {
   validateBriefCitations,
 } from './src/gemini.js';
 export { deriveMarketSignals } from './src/market.js';
+export {
+  calculatePercentageChange,
+  deriveCpiTrend,
+  deriveRateChange,
+  deriveStablecoinChanges,
+  deriveYahooChange5d,
+  selectNearestPriorPoint,
+} from './src/macro.js';
 
 const BRIEF_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
 
@@ -103,45 +117,44 @@ export default {
 
     const fetchYahoo = async (symbol) => {
       const headers = { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Referer': 'https://finance.yahoo.com/' };
-      let quoteErr = null;
+      const [quoteResult, chartResult] = await Promise.allSettled([
+        fetch(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`, { headers })
+          .then(async response => ({ response, data: response.ok ? await response.json() : null })),
+        fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1mo`, { headers })
+          .then(async response => ({ response, data: response.ok ? await response.json() : null })),
+      ]);
 
-      // Primary path: quote endpoint is the most direct source for 1D market change.
-      try {
-        const quoteRes = await fetch(
-          `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`,
-          { headers }
-        );
-        if (quoteRes.ok) {
-          const quoteData = await quoteRes.json();
-          const quote = quoteData?.quoteResponse?.result?.[0];
-          const fromQuote = resolveYahooQuotePct({ quote });
-          if (fromQuote) return { ...fromQuote, source: 'Yahoo Finance' };
-          quoteErr = `quote-empty:${symbol}`;
-        } else {
-          quoteErr = `quote-http-${quoteRes.status}:${symbol}`;
-        }
-      } catch (err) {
-        quoteErr = `quote-throw:${symbol}:${err?.message ?? 'unknown'}`;
+      const quoteResponse = quoteResult.status === 'fulfilled' ? quoteResult.value : null;
+      const quote = quoteResponse?.data?.quoteResponse?.result?.[0];
+      const fromQuote = quoteResponse?.response?.ok ? resolveYahooQuotePct({ quote }) : null;
+      const chartResponse = chartResult.status === 'fulfilled' ? chartResult.value : null;
+      const chart = chartResponse?.response?.ok ? chartResponse.data?.chart?.result?.[0] : null;
+      const rawCloses = chart?.indicators?.quote?.[0]?.close ?? [];
+      const rawTimestamps = chart?.timestamp ?? [];
+
+      if (fromQuote) {
+        return {
+          ...fromQuote,
+          change5dPct: deriveYahooChange5d(rawCloses, fromQuote.price),
+          source: 'Yahoo Finance',
+        };
       }
 
-      // Fallback path: chart endpoint with baseline-selection logic.
-      const res = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`,
-        { headers }
-      );
-      if (!res.ok) throw new Error(`Yahoo ${symbol} chart HTTP ${res.status} (${quoteErr ?? 'quote-ok-no-data'})`);
-      const data = await res.json();
-      const result = data?.chart?.result?.[0];
-      const meta = result?.meta;
+      const meta = chart?.meta;
       if (!Number.isFinite(meta?.regularMarketPrice)) {
-        throw new Error(`Yahoo ${symbol} chart missing regularMarketPrice (${quoteErr ?? 'quote-ok-no-data'})`);
+        const quoteStatus = quoteResponse?.response?.status ?? quoteResult.reason?.message ?? 'unavailable';
+        const chartStatus = chartResponse?.response?.status ?? chartResult.reason?.message ?? 'unavailable';
+        throw new Error(`Yahoo ${symbol} unavailable (quote=${quoteStatus}, chart=${chartStatus})`);
       }
       const price = meta.regularMarketPrice;
-
-      const rawCloses = result?.indicators?.quote?.[0]?.close ?? [];
-      const rawTimestamps = result?.timestamp ?? [];
       const { pct, pctSource } = resolveYahooPct({ rawCloses, rawTimestamps, meta, price });
-      return { price, pct, pctSource, source: 'Yahoo Finance' };
+      return {
+        price,
+        pct,
+        pctSource,
+        change5dPct: deriveYahooChange5d(rawCloses, price),
+        source: 'Yahoo Finance',
+      };
     };
 
     const fetchFedRate = async () => {
@@ -151,10 +164,18 @@ export default {
       );
       if (!res.ok) throw new Error(`NY Fed HTTP ${res.status}`);
       const data = await res.json();
-      const latest = data?.refRates?.[0];
+      const rates = data?.refRates ?? [];
+      const latest = rates[0];
       if (!latest) throw new Error('NY Fed: no rate data');
       const rate = parseFloat(latest.percentRate);
-      return { rate, rateStr: Number.isFinite(rate) ? `${rate.toFixed(2)}%` : 'N/A', date: latest.effectiveDt, source: 'NY Fed EFFR' };
+      const trend = deriveRateChange(rates);
+      return {
+        rate,
+        rateStr: Number.isFinite(rate) ? `${rate.toFixed(2)}%` : 'N/A',
+        date: latest.effectiveDt,
+        ...trend,
+        source: 'NY Fed EFFR',
+      };
     };
 
     const fetchCPI = async () => {
@@ -165,12 +186,19 @@ export default {
       const data = await res.json();
       const series = data?.Results?.series?.[0]?.data;
       if (!series?.length) throw new Error('BLS: no CPI data');
-      const latest = series[0];
-      const yearAgo = series.find(s => s.year === String(parseInt(latest.year, 10) - 1) && s.period === latest.period);
+      const latest = series.find(item => /^M(?:0[1-9]|1[0-2])$/.test(item.period));
+      if (!latest) throw new Error('BLS: no monthly CPI observation');
       const current = parseFloat(latest.value);
-      const prior   = yearAgo ? parseFloat(yearAgo.value) : null;
-      const yoy     = prior ? ((current - prior) / prior) * 100 : null;
-      return { value: current, yoy: Number.isFinite(yoy) ? `${yoy.toFixed(1)}%` : 'N/A', period: `${latest.periodName} ${latest.year}`, source: 'BLS CPI' };
+      const trend = deriveCpiTrend(series);
+      return {
+        value: current,
+        yoy: Number.isFinite(trend.yoyPct) ? `${trend.yoyPct.toFixed(1)}%` : 'N/A',
+        period: `${latest.periodName} ${latest.year}`,
+        previousYoyPct: trend.previousYoyPct,
+        change: trend.change,
+        direction: trend.direction,
+        source: 'BLS CPI',
+      };
     };
 
     const fetchSentiment = async () => {
@@ -184,11 +212,16 @@ export default {
     };
 
     const fetchStablecoinFlows = async () => {
-      const res = await fetch('https://stablecoins.llama.fi/stablecoins?includePrices=true', {
-        headers: { Accept: 'application/json' }
-      });
-      if (!res.ok) throw new Error(`DefiLlama HTTP ${res.status}`);
-      const data = await res.json();
+      const headers = { Accept: 'application/json' };
+      const [currentResult, chartResult] = await Promise.allSettled([
+        fetch('https://stablecoins.llama.fi/stablecoins?includePrices=true', { headers }),
+        fetch('https://stablecoins.llama.fi/stablecoincharts/all', { headers }),
+      ]);
+      if (currentResult.status !== 'fulfilled' || !currentResult.value.ok) {
+        const status = currentResult.status === 'fulfilled' ? currentResult.value.status : currentResult.reason?.message;
+        throw new Error(`DefiLlama HTTP ${status ?? 'unavailable'}`);
+      }
+      const data = await currentResult.value.json();
       const pegs = data?.peggedAssets ?? [];
 
       const usdt = pegs.find(p => p.symbol === 'USDT');
@@ -198,12 +231,19 @@ export default {
 
       const usdtCirc  = circulating(usdt);
       const usdcCirc  = circulating(usdc);
-      const totalCirc = (usdtCirc && usdcCirc) ? usdtCirc + usdcCirc : null;
+      const totalCirc = Number.isFinite(usdtCirc) && Number.isFinite(usdcCirc) ? usdtCirc + usdcCirc : null;
+      let changes = { change7dPct: null, change30dPct: null };
+      if (chartResult.status === 'fulfilled' && chartResult.value.ok) {
+        const chart = await chartResult.value.json().catch(() => []);
+        changes = deriveStablecoinChanges(Array.isArray(chart) ? chart : []);
+      }
 
       return {
         usdt:   usdtCirc  ? `$${(usdtCirc  / 1e9).toFixed(1)}B` : 'N/A',
         usdc:   usdcCirc  ? `$${(usdcCirc  / 1e9).toFixed(1)}B` : 'N/A',
         total:  totalCirc ? `$${(totalCirc / 1e9).toFixed(1)}B` : 'N/A',
+        change7dPct: changes.change7dPct,
+        change30dPct: changes.change30dPct,
         source: 'DefiLlama Stablecoins',
       };
     };
@@ -278,14 +318,14 @@ export default {
       ]);
 
       const settle = (r, fallback) => r.status === 'fulfilled' ? r.value : { ...fallback, error: r.reason?.message };
-      const unavailFallback = { price: null, pct: null, source: 'unavailable' };
+      const unavailFallback = { price: null, pct: null, change5dPct: null, source: 'unavailable' };
 
       const gold        = settle(goldR,        unavailFallback);
       const sp500       = settle(sp500R,       unavailFallback);
       const usdsgd      = settle(usdsgdR,      unavailFallback);
-      const stablecoins = settle(stablecoinsR, { usdt: 'N/A', usdc: 'N/A', total: 'N/A', source: 'unavailable' });
-      const fedRate     = settle(fedRateR,     { rate: null, rateStr: 'UNAVAILABLE', date: null, source: 'unavailable' });
-      const cpi         = settle(cpiR,         { value: null, yoy: 'N/A', period: 'Unavailable', source: 'unavailable' });
+      const stablecoins = settle(stablecoinsR, { usdt: 'N/A', usdc: 'N/A', total: 'N/A', change7dPct: null, change30dPct: null, source: 'unavailable' });
+      const fedRate     = settle(fedRateR,     { rate: null, rateStr: 'UNAVAILABLE', date: null, previousRate: null, change: null, direction: null, source: 'unavailable' });
+      const cpi         = settle(cpiR,         { value: null, yoy: 'N/A', period: 'Unavailable', previousYoyPct: null, change: null, direction: null, source: 'unavailable' });
       const sentiment   = settle(sentimentR,   { value: null, classification: 'Unavailable', dir: 'neu', source: 'unavailable' });
 
       if (sp500?.source === 'unavailable') {

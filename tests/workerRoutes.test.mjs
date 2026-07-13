@@ -416,7 +416,18 @@ function marketHistory(base = 100) {
     caches: { default: makeCache() },
     fetch: async (url) => {
       fetchCalls.push(String(url));
-      if (String(url).includes('query1.finance.yahoo.com')) {
+      if (String(url).includes('/v8/finance/chart/')) {
+        return Response.json({
+          chart: {
+            result: [{
+              timestamp: [1, 2, 3, 4, 5, 6],
+              meta: { regularMarketPrice: 100, regularMarketPreviousClose: 99 },
+              indicators: { quote: [{ close: [90, 92, 94, 96, 98, 100] }] },
+            }],
+          },
+        });
+      }
+      if (String(url).includes('/v7/finance/quote')) {
         return Response.json({
           quoteResponse: {
             result: [{
@@ -427,7 +438,10 @@ function marketHistory(base = 100) {
         });
       }
       if (String(url).includes('newyorkfed.org')) {
-        return Response.json({ refRates: [{ percentRate: '3.50', effectiveDt: '2026-05-01' }] });
+        return Response.json({ refRates: [
+          { percentRate: '3.50', effectiveDt: '2026-05-01' },
+          { percentRate: '3.75', effectiveDt: '2026-04-30' },
+        ] });
       }
       if (String(url).includes('api.bls.gov')) {
         return Response.json({
@@ -435,7 +449,9 @@ function marketHistory(base = 100) {
             series: [{
               data: [
                 { year: '2026', period: 'M04', periodName: 'April', value: '320' },
+                { year: '2026', period: 'M03', periodName: 'March', value: '315' },
                 { year: '2025', period: 'M04', periodName: 'April', value: '310' },
+                { year: '2025', period: 'M03', periodName: 'March', value: '308' },
               ],
             }],
           },
@@ -444,7 +460,16 @@ function marketHistory(base = 100) {
       if (String(url).includes('alternative.me')) {
         return Response.json({ data: [{ value: '55', value_classification: 'Neutral' }] });
       }
-      if (String(url).includes('stablecoins.llama.fi')) {
+      if (String(url).includes('stablecoincharts/all')) {
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        return Response.json([
+          { date: nowSeconds - 31 * 86400, totalCirculating: { peggedUSD: 100 } },
+          { date: nowSeconds - 30 * 86400, totalCirculating: { peggedUSD: 100 } },
+          { date: nowSeconds - 7 * 86400, totalCirculating: { peggedUSD: 110 } },
+          { date: nowSeconds, totalCirculating: { peggedUSD: 121 } },
+        ]);
+      }
+      if (String(url).includes('stablecoins?')) {
         return Response.json({
           peggedAssets: [
             { symbol: 'USDT', circulating: { peggedUSD: 100_000_000_000 } },
@@ -498,6 +523,19 @@ function marketHistory(base = 100) {
     );
     assert.equal(body.checks.briefCache.cached, true);
     assert.equal(typeof body.checks.briefCache.ageSeconds, 'number');
+
+    const macroResponse = await worker.fetch(
+      new Request('https://worker.test/macro?nocache=1'),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io' },
+      { waitUntil(promise) { pendingWork.push(promise); } }
+    );
+    const macroBody = await jsonResponse(macroResponse);
+    assert.equal(macroBody.sp500.change5dPct, 11.111111111111);
+    assert.equal(macroBody.fedRate.change, -0.25);
+    assert.equal(macroBody.fedRate.direction, 'falling');
+    assert.equal(macroBody.cpi.direction, 'rising');
+    assert.equal(macroBody.stablecoins.change7dPct, 10);
+    assert.equal(macroBody.stablecoins.change30dPct, 21);
 
     await Promise.all(pendingWork);
     const newsResponse = await worker.fetch(
