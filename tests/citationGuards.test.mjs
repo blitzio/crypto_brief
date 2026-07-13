@@ -9,9 +9,11 @@ import {
   summarizeNewsSourceHealth,
 } from '../src/news.js';
 import {
+  isRetryableGeminiStatus,
   parseGeminiBriefJson,
   normalizeCitationMarkers,
   resolveModelFallbacks,
+  resolvePipelineVersion,
   validateBriefCitations,
 } from '../src/gemini.js';
 
@@ -137,8 +139,19 @@ import {
 }
 
 {
-  assert.deepEqual(resolveModelFallbacks({ GEMINI_MODEL: 'gemini-3-flash-preview' }), ['gemini-3-flash-preview', 'gemini-2.5-flash']);
-  assert.deepEqual(resolveModelFallbacks({ GEMINI_MODEL: 'gemini-2.5-flash' }), ['gemini-2.5-flash']);
+  assert.deepEqual(resolveModelFallbacks({}), ['gemini-3.5-flash', 'gemini-3.1-flash-lite']);
+  assert.deepEqual(
+    resolveModelFallbacks({ GEMINI_MODEL: 'custom-model', GEMINI_FALLBACK_MODEL: 'fallback-model' }),
+    ['custom-model', 'fallback-model']
+  );
+  assert.equal(isRetryableGeminiStatus(404), true);
+  assert.equal(isRetryableGeminiStatus(429), true);
+  assert.equal(isRetryableGeminiStatus(503), true);
+  assert.equal(isRetryableGeminiStatus(400), false);
+  assert.equal(isRetryableGeminiStatus(401), false);
+  assert.equal(resolvePipelineVersion({}), 'v2');
+  assert.equal(resolvePipelineVersion({ BRIEF_PIPELINE_VERSION: 'v1' }), 'v1');
+  assert.equal(resolvePipelineVersion({ BRIEF_PIPELINE_VERSION: 'unexpected' }), 'v2');
 }
 
 {

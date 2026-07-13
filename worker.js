@@ -8,7 +8,7 @@
  *
  * Secrets required (Settings → Variables and Secrets):
  *   GEMINI_API_KEY  — Google AI Studio key
- *   GEMINI_MODEL    — model name e.g. "gemini-3-flash-preview" (update here to upgrade, no code change)
+ *   GEMINI_MODEL    — model name e.g. "gemini-3.5-flash" (update the variable to upgrade)
  *
  * KV Namespace required (for brief caching):
  *   BRIEF_CACHE — bind a KV namespace called BRIEF_CACHE in Worker settings
@@ -27,10 +27,12 @@ import {
 import { detectFeedFormat, parseSyndicationFeed } from './src/feed-parser.js';
 import { NEWS_SOURCES } from './src/news-sources.js';
 import {
+  isRetryableGeminiStatus,
   listUnavailableMacroFields,
   normalizeBriefCitationMarkers,
   parseGeminiBriefJson,
   resolveModelFallbacks,
+  resolvePipelineVersion,
   validateBriefCitations,
 } from './src/gemini.js';
 export { selectYahooPreviousClose, resolveYahooPct, resolveYahooQuotePct } from './src/yahoo.js';
@@ -42,12 +44,16 @@ export {
   summarizeNewsSourceHealth,
 } from './src/news.js';
 export {
+  isRetryableGeminiStatus,
   listUnavailableMacroFields,
   normalizeCitationMarkers,
   parseGeminiBriefJson,
   resolveModelFallbacks,
+  resolvePipelineVersion,
   validateBriefCitations,
 } from './src/gemini.js';
+
+const BRIEF_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 export default {
   async fetch(request, env, ctx) {
@@ -480,7 +486,7 @@ export default {
         await env.BRIEF_CACHE.put('latest', JSON.stringify({
           ...body,
           generatedAt: new Date().toISOString(),
-        }), { expirationTtl: 3600 });
+        }), { expirationTtl: BRIEF_CACHE_TTL_SECONDS });
         console.log('[cache] /brief/save success: KV updated');
         return json({ ok: true });
       } catch (e) {
@@ -494,6 +500,11 @@ export default {
     // ─────────────────────────────────────────────────────────────────
 
     if (request.method === 'POST' && pathname === '/') {
+      const generationStartedAt = Date.now();
+      const generationDeadline = generationStartedAt + 90_000;
+      const pipelineVersion = resolvePipelineVersion(env);
+      let lastAttemptedModel = null;
+      let totalAttemptCount = 0;
       try {
         const body     = await request.json();
         const messages = Array.isArray(body.messages) ? body.messages : [];
@@ -538,8 +549,7 @@ export default {
             ? contents
             : [{ role: 'user', parts: [{ text: 'Generate the brief.' }] }],
           generationConfig: {
-            temperature:      typeof body.temperature === 'number' ? body.temperature : 0.3,
-            maxOutputTokens:  16384,
+            maxOutputTokens:  8192,
             responseMimeType: 'application/json',
             responseJsonSchema: responseSchema,
           },
@@ -552,31 +562,92 @@ export default {
         let contentText = '{}';
         let parsedBrief = null;
         let citationCheck = { ok: false, violations: [] };
-        let lastGeminiError = null;
         const models = resolveModelFallbacks(env);
+        const configuredThinkingLevel = String(env.GEMINI_THINKING_LEVEL || 'low').toLowerCase();
+        const thinkingLevel = ['minimal', 'low', 'medium', 'high'].includes(configuredThinkingLevel)
+          ? configuredThinkingLevel
+          : 'low';
+        let selectedModel = models[0] ?? null;
+        let attemptCount = 0;
 
-        for (let attempt = 0; attempt < 2; attempt++) {
-          let data = null;
-          for (const model of models) {
-            const geminiRes = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
-              { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
-            );
+        const responseMeta = (model = selectedModel) => ({
+          model,
+          attemptCount,
+          durationMs: Date.now() - generationStartedAt,
+          pipelineVersion,
+        });
 
-            data = await geminiRes.json();
-            if (geminiRes.ok) {
-              lastGeminiError = null;
-              break;
+        const requestGemini = async (candidateModels) => {
+          let lastFailure = null;
+          for (const model of candidateModels) {
+            const remainingMs = generationDeadline - Date.now();
+            if (remainingMs <= 0) {
+              return {
+                ok: false,
+                model,
+                status: 504,
+                data: { error: { message: 'Gemini generation exceeded the 90 second deadline.' } },
+              };
             }
 
-            lastGeminiError = { data, status: geminiRes.status };
-            const retryable = geminiRes.status === 429 || geminiRes.status === 503;
-            if (!retryable || model === models[models.length - 1]) {
-              return json(data, geminiRes.status);
+            const controller = new AbortController();
+            const timeoutMs = Math.min(55_000, remainingMs);
+            const timeout = setTimeout(() => controller.abort(), timeoutMs);
+            const generationConfig = { ...payload.generationConfig };
+            if (/^gemini-3(?:[.-]|$)/i.test(model)) {
+              generationConfig.thinkingConfig = { thinkingLevel };
+            } else {
+              generationConfig.temperature = typeof body.temperature === 'number' ? body.temperature : 0.3;
+            }
+            attemptCount += 1;
+            totalAttemptCount = attemptCount;
+            lastAttemptedModel = model;
+
+            try {
+              const geminiRes = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ ...payload, generationConfig }),
+                  signal: controller.signal,
+                }
+              );
+              const data = await geminiRes.json().catch(() => ({
+                error: { message: `Gemini returned HTTP ${geminiRes.status} without a JSON response.` },
+              }));
+              if (geminiRes.ok) return { ok: true, model, data };
+
+              lastFailure = { ok: false, model, status: geminiRes.status, data };
+              if (!isRetryableGeminiStatus(geminiRes.status)) return lastFailure;
+            } catch (error) {
+              if (error?.name !== 'AbortError') throw error;
+              lastFailure = {
+                ok: false,
+                model,
+                status: 504,
+                data: { error: { message: `Gemini model ${model} timed out.` } },
+              };
+            } finally {
+              clearTimeout(timeout);
             }
           }
+          return lastFailure ?? {
+            ok: false,
+            model: candidateModels[0] ?? null,
+            status: 503,
+            data: { error: { message: 'No Gemini model is configured.' } },
+          };
+        };
 
-          if (lastGeminiError) return json(lastGeminiError.data, lastGeminiError.status);
+        for (let correctionAttempt = 0; correctionAttempt < 2; correctionAttempt++) {
+          const candidateModels = correctionAttempt === 0 ? models : [selectedModel];
+          const modelResult = await requestGemini(candidateModels.filter(Boolean));
+          if (!modelResult.ok) {
+            return json({ ...modelResult.data, meta: responseMeta(modelResult.model) }, modelResult.status);
+          }
+          selectedModel = modelResult.model;
+          const data = modelResult.data;
 
           contentText = (data?.candidates?.[0]?.content?.parts ?? [])
             .map(p => p.text ?? '')
@@ -620,9 +691,11 @@ export default {
               message: 'Generated brief failed citation validation. Refresh to retry with stricter source matching.',
               citationViolations: citationCheck.violations,
             },
+            meta: responseMeta(),
           }, 422);
         }
 
+        const meta = responseMeta();
         if (env.BRIEF_CACHE && body.cachePayload && typeof body.cachePayload === 'object') {
           try {
             await env.BRIEF_CACHE.put('latest', JSON.stringify({
@@ -630,17 +703,26 @@ export default {
               newsItems: buildPromptNewsItems(body.cachePayload.newsItems || []),
               brief: parsedBrief,
               generatedAt: new Date().toISOString(),
-            }), { expirationTtl: 3600 });
+              meta,
+            }), { expirationTtl: BRIEF_CACHE_TTL_SECONDS });
             console.log('[cache] generation saved server-side');
           } catch (cacheErr) {
             console.log(`[cache] generation save skipped: ${cacheErr.message}`);
           }
         }
 
-        return json({ choices: [{ message: { content: contentText } }] });
+        return json({ choices: [{ message: { content: contentText } }], meta });
 
       } catch (err) {
-        return json({ error: { message: err.message } }, 500);
+        return json({
+          error: { message: err.message },
+          meta: {
+            model: lastAttemptedModel,
+            attemptCount: totalAttemptCount,
+            durationMs: Date.now() - generationStartedAt,
+            pipelineVersion,
+          },
+        }, 500);
       }
     }
 

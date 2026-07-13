@@ -8,7 +8,7 @@
     "test": "node tests/feedParser.test.mjs && node tests/selectYahooPreviousClose.test.mjs && node tests/citationGuards.test.mjs && node tests/workerRoutes.test.mjs && node tests/frontendSmoke.test.mjs",
     "cf:whoami": "wrangler whoami",
     "cf:deploy": "wrangler deploy --keep-vars",
-    "cf:model:gemini3": "wrangler deploy --keep-vars --var GEMINI_MODEL:gemini-3-flash-preview"
+    "cf:model:gemini35": "wrangler deploy --keep-vars --var GEMINI_MODEL:gemini-3.5-flash"
   },
   "devDependencies": {
     "wrangler": "4.85.0"

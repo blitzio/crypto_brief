@@ -49,6 +49,22 @@ async function jsonResponse(response) {
   return response.json();
 }
 
+function validBrief() {
+  const liveBullet = asset => ({ label: 'Live', text: `Live market data: ${asset} price is above support.` });
+  return {
+    btc: { support: '$1', resist: '$2', bullets: [liveBullet('BTC')] },
+    eth: { support: '$1', resist: '$2', bullets: [liveBullet('ETH')] },
+    link: { support: '$1', resist: '$2', badge: 'Neutral', bullets: [liveBullet('LINK')] },
+    macro: { bullets: Array.from({ length: 5 }, (_, i) => ({ label: `M${i}`, text: 'Macro synthesis.' })) },
+    threats: Array.from({ length: 5 }, (_, i) => ({ label: `T${i}`, text: 'Threat.' })),
+    watch: Array.from({ length: 6 }, (_, i) => ({ label: `W${i}`, text: 'Watch.' })),
+    verdict: 'A full verdict sentence. A second full verdict sentence.',
+    ranking: 'BTC > ETH > LINK because liquidity leads.',
+    bullTrigger: 'A break above resistance improves conditions.',
+    bearTrigger: 'A break below support weakens conditions.',
+  };
+}
+
 {
   const env = { ALLOWED_ORIGINS: 'https://blitzio.github.io' };
   const response = await worker.fetch(
@@ -128,6 +144,92 @@ async function jsonResponse(response) {
   assert.equal(staleBody.fresh, false);
   assert.equal(staleBody.reason, 'stale');
   assert.deepEqual(staleBody.brief, stale.brief);
+}
+
+{
+  const kv = makeKv();
+  const calls = [];
+  await withGlobals({
+    fetch: async (url, options) => {
+      calls.push({ url: String(url), body: JSON.parse(options.body) });
+      if (String(url).includes('gemini-3.5-flash')) {
+        return Response.json({ error: { message: 'model not found' } }, { status: 404 });
+      }
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validBrief()) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: { newsItems: [] } }),
+      }),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.model, 'gemini-3.1-flash-lite');
+    assert.equal(body.meta.attemptCount, 2);
+    assert.equal(body.meta.pipelineVersion, 'v2');
+    assert.equal(calls[1].body.generationConfig.maxOutputTokens, 8192);
+    assert.equal(calls[1].body.generationConfig.thinkingConfig.thinkingLevel, 'low');
+    assert.equal('temperature' in calls[1].body.generationConfig, false);
+  });
+  const cacheWrite = kv.calls.find(call => call.op === 'put');
+  assert.ok(cacheWrite);
+  assert.equal(cacheWrite.options.expirationTtl, 7 * 24 * 60 * 60);
+  assert.equal(JSON.parse(cacheWrite.body).meta.model, 'gemini-3.1-flash-lite');
+}
+
+{
+  const kv = makeKv();
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      return Response.json({ error: { message: 'bad key' } }, { status: 401 });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: { newsItems: [] } }),
+      }),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
+      { waitUntil() {} }
+    );
+    assert.equal(response.status, 401);
+  });
+  assert.equal(callCount, 1, 'authentication failures must not try another model');
+  assert.equal(kv.calls.some(call => call.op === 'put'), false);
+}
+
+{
+  const kv = makeKv();
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      if (callCount === 1) throw new DOMException('timed out', 'AbortError');
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validBrief()) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: { newsItems: [] } }),
+      }),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.model, 'gemini-3.1-flash-lite');
+    assert.equal(body.meta.attemptCount, 2);
+  });
 }
 
 {

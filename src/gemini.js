@@ -108,11 +108,15 @@ export function listUnavailableMacroFields(macro = {}) {
 }
 
 export function resolveModelFallbacks(env = {}) {
-  const primary = env.GEMINI_MODEL || 'gemini-3-flash-preview';
-  const configuredFallback = env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash';
-  const models = [primary];
-  if (/gemini-3/i.test(primary) && configuredFallback && configuredFallback !== primary) {
-    models.push(configuredFallback);
-  }
-  return models;
+  const primary = String(env.GEMINI_MODEL || 'gemini-3.5-flash').trim();
+  const fallback = String(env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-lite').trim();
+  return [...new Set([primary, fallback].filter(Boolean))];
+}
+
+export function isRetryableGeminiStatus(status) {
+  return [404, 408, 429, 500, 502, 503, 504].includes(Number(status));
+}
+
+export function resolvePipelineVersion(env = {}) {
+  return env.BRIEF_PIPELINE_VERSION === 'v1' ? 'v1' : 'v2';
 }
