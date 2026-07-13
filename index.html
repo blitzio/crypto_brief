@@ -466,7 +466,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = DATA_TIMEOUT_MS) 
 }
 
 // ─── DATA FETCHERS ──────────────────────────────────────────────────
-async function fetchPrices() {
+async function fetchDirectPrices() {
   const res = await fetchWithTimeout(
     'https://api.coingecko.com/api/v3/coins/markets' +
     '?vs_currency=usd&ids=bitcoin,ethereum,chainlink' +
@@ -477,7 +477,35 @@ async function fetchPrices() {
   );
   if (!res.ok) throw new Error('CoinGecko unavailable — try again shortly.');
   const arr = await res.json();
-  return Object.fromEntries(arr.map(c => [c.id, c]));
+  const prices = Object.fromEntries((Array.isArray(arr) ? arr : []).filter(c => c?.id).map(c => [c.id, c]));
+  const hasAllPrices = ['bitcoin', 'ethereum', 'chainlink'].every(id => {
+    const value = prices[id]?.current_price;
+    return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+  });
+  if (!hasAllPrices) throw new Error('CoinGecko response omitted a current asset price.');
+  return prices;
+}
+
+async function fetchMarketData() {
+  try {
+    const response = await fetchWithTimeout(WORKER_URL + '/market', { cache: 'no-store' }, DATA_TIMEOUT_MS);
+    if (!response.ok) throw new Error(`Worker market route returned ${response.status}`);
+    const data = await response.json();
+    const prices = data?.prices;
+    const requiredAssets = ['bitcoin', 'ethereum', 'chainlink'];
+    const hasCurrentPrices = prices && requiredAssets.every(id => {
+      const value = prices[id]?.current_price;
+      return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+    });
+    if (!hasCurrentPrices) throw new Error('Worker market route omitted a current asset price');
+    const marketSignals = data?.signals && typeof data.signals === 'object' ? data.signals : {};
+    return { prices, marketSignals };
+  } catch (error) {
+    console.warn('[market] Worker route unavailable; using direct current-price fallback', error);
+    const prices = await fetchDirectPrices();
+    const marketSignals = {};
+    return { prices, marketSignals };
+  }
 }
 
 async function fetchMacro() {
@@ -840,10 +868,11 @@ async function run(forceRefresh = false) {
     }
 
     setRefreshStatus('Fetching live prices, macro and news…');
-    const [prices, macro, newsItems] = await Promise.all([fetchPrices(), fetchMacro(), fetchNews()]);
+    const [marketData, macro, newsItems] = await Promise.all([fetchMarketData(), fetchMacro(), fetchNews()]);
+    const { prices, marketSignals } = marketData;
 
     setRefreshStatus('Generating analysis via Gemini…');
-    const { brief } = await callAI(prices, macro, newsItems, {});
+    const { brief } = await callAI(prices, macro, newsItems, marketSignals);
     const generatedTime = sgtNow();
 
     try {

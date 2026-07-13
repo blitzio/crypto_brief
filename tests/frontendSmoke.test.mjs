@@ -16,6 +16,9 @@ assert.ok(scriptMatch[1].includes('GEMINI_TIMEOUT_MS = 105000'), 'Gemini request
 assert.ok(scriptMatch[1].includes('evidenceIds'), 'v2 prompts should request explicit evidence identifiers');
 assert.ok(scriptMatch[1].includes('confidence'), 'v2 prompts should request evidence confidence');
 assert.ok(scriptMatch[1].includes('marketSignals'), 'market evidence should be passed through the generation payload');
+assert.ok(scriptMatch[1].includes("WORKER_URL + '/market'"), 'market data should come from the Worker first');
+assert.ok(scriptMatch[1].includes('return { prices, marketSignals }'), 'market fetch should preserve prices and expose signals');
+assert.ok(scriptMatch[1].includes('https://api.coingecko.com/api/v3/coins/markets'), 'direct CoinGecko should remain as a fallback');
 assert.equal(
   /const shouldForceRefresh = forceRefresh === true;\s*document\.getElementById\('brief'\)\.classList\.remove\('active'\)/.test(scriptMatch[1]),
   false,
