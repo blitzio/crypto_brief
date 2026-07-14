@@ -637,6 +637,14 @@ function yahooCryptoChart(base = 100) {
     assert.equal(response.status, 200);
     assert.equal(calls.length, 1);
     assert.equal(calls[0].body.generationConfig.responseJsonSchema.properties.briefVersion.enum[0], 'v3');
+    assert.equal(
+      'minItems' in calls[0].body.generationConfig.responseJsonSchema.properties.executive.properties.keyJudgments,
+      false,
+    );
+    assert.equal(
+      'maxItems' in calls[0].body.generationConfig.responseJsonSchema.properties.executive.properties.keyJudgments,
+      false,
+    );
     assert.equal(calls[0].body.generationConfig.thinkingConfig.thinkingLevel, 'medium');
     assert.match(calls[0].body.systemInstruction.parts[0].text, /PDB v3/);
     assert.doesNotMatch(calls[0].body.systemInstruction.parts[0].text, /browser override sentinel/);
@@ -650,11 +658,14 @@ function yahooCryptoChart(base = 100) {
 {
   const kv = makeKv();
   const calls = [];
+  const invalidV3 = thinV3Brief();
+  invalidV3.assets.btc.assessment += ' Bitcoin is trading at $999,999.';
+  invalidV3.scenarios.base.outlook += ' Bitcoin then advances to $888,888.';
   await withGlobals({
     fetch: async (url, options) => {
       calls.push({ url: String(url), body: JSON.parse(options.body) });
       return Response.json({
-        candidates: [{ content: { parts: [{ text: JSON.stringify(thinV3Brief()) }] } }],
+        candidates: [{ content: { parts: [{ text: JSON.stringify(invalidV3) }] } }],
       });
     },
   }, async () => {
@@ -676,9 +687,12 @@ function yahooCryptoChart(base = 100) {
     );
     const body = await jsonResponse(response);
     assert.equal(response.status, 422);
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 4);
     assert.match(calls[1].body.contents.at(-1).parts[0].text, /executive\.bottomLine: section_too_thin/);
     assert.match(calls[1].body.contents.at(-1).parts[0].text, /brief: section_too_thin/);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /unsupported_numeric_claim/);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /\$999,999/);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /\$888,888/);
     assert.equal(body.error.qualityViolations.length > 0, true);
     assert.equal(body.meta.validation.type, 'pdb-v3');
   });
@@ -721,6 +735,40 @@ function yahooCryptoChart(base = 100) {
 
 {
   const kv = makeKv();
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      const brief = callCount < 3 ? thinV3Brief() : validV3Brief();
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(brief) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v3CachePayload() }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash',
+        BRIEF_PIPELINE_VERSION: 'v3',
+        BRIEF_CACHE: kv,
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.attemptCount, 3);
+    assert.equal(body.meta.validation.ok, true);
+  });
+  assert.equal(kv.calls.filter(call => call.op === 'put').length, 1);
+}
+
+{
+  const kv = makeKv();
   const calls = [];
   await withGlobals({
     fetch: async (url, options) => {
@@ -751,7 +799,7 @@ function yahooCryptoChart(base = 100) {
     );
     const body = await jsonResponse(response);
     assert.equal(response.status, 422);
-    assert.equal(calls.length, 3);
+    assert.equal(calls.length, 5);
     assert.equal(body.meta.model, 'gemini-3.1-flash-lite');
   });
   assert.equal(kv.calls.some(call => call.op === 'put'), false);

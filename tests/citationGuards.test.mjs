@@ -18,6 +18,11 @@ import {
   validateBriefCitations,
   validateBriefEvidence,
 } from '../src/gemini.js';
+import * as geminiModule from '../src/gemini.js';
+
+assert.equal(typeof geminiModule.resolveGenerationDeadlineMs, 'function');
+assert.equal(geminiModule.resolveGenerationDeadlineMs('v3'), 150_000);
+assert.equal(geminiModule.resolveGenerationDeadlineMs('v2'), 90_000);
 
 {
   const evidenceIndex = buildEvidenceIndex({

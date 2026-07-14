@@ -1,5 +1,9 @@
 import { buildPromptNewsItems } from './news.js';
 
+export function resolveGenerationDeadlineMs(pipelineVersion = 'v2') {
+  return pipelineVersion === 'v3' ? 150_000 : 90_000;
+}
+
 export function parseGeminiBriefJson(raw = '') {
   let clean = String(raw)
     .replace(/<think>[\s\S]*?<\/think>/gi, '')

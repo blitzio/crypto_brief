@@ -198,13 +198,13 @@ export const PDB_V3_RESPONSE_SCHEMA = {
 export const PDB_V3_DEPTH = Object.freeze({
   total: { min: 1300, max: 2600, targetMin: 1500, targetMax: 2200 },
   bottomLine: { min: 90, max: 170 },
-  keyJudgmentAssessment: { min: 50, max: 110 },
-  assetAssessment: { min: 60, max: 120 },
+  keyJudgmentAssessment: { min: 35, max: 110 },
+  assetAssessment: { min: 35, max: 120 },
   assetTotal: { min: 160, max: 260 },
-  macroAssessment: { min: 70, max: 140 },
+  macroAssessment: { min: 50, max: 140 },
   macroTotal: { min: 180, max: 300 },
   scenarioTotal: { min: 130, max: 240 },
-  threatsAndOpportunities: { min: 180, max: 320 },
+  threatsAndOpportunities: { min: 130, max: 320 },
   watchAndGaps: { min: 180, max: 340 },
 });
 
@@ -691,7 +691,16 @@ function evidenceAllowed(entry, evidence, evidenceIds, evidenceIndex) {
 function compactNumber(value, suffix = '') {
   const parsed = Number(String(value).replaceAll(',', ''));
   if (!Number.isFinite(parsed)) return null;
-  const multiplier = { k: 1e3, m: 1e6, b: 1e9, t: 1e12 }[String(suffix).toLowerCase()] || 1;
+  const multiplier = {
+    k: 1e3,
+    thousand: 1e3,
+    m: 1e6,
+    million: 1e6,
+    b: 1e9,
+    billion: 1e9,
+    t: 1e12,
+    trillion: 1e12,
+  }[String(suffix).toLowerCase()] || 1;
   return parsed * multiplier;
 }
 
@@ -700,12 +709,20 @@ function numericClaims(text = '') {
     .replace(/\[\d+\]/g, ' ')
     .replace(/\b24\s*hours?\b/gi, ' ')
     .replace(/\b7\s*days?\b/gi, ' ');
-  const pattern = /\$(-?[\d,]+(?:\.\d+)?)|(-?\d+(?:\.\d+)?)%|(-?\d+(?:\.\d+)?)\s*([KMBT])\b|\b(-?\d+(?:\.\d+)?)\s*\/\s*100\b|\b(-?\d+\.\d{2,})\b/gi;
+  const suffix = '(K|M|B|T|thousand|million|billion|trillion)';
+  const pattern = new RegExp(
+    `\\$(-?[\\d,]+(?:\\.\\d+)?)\\s*${suffix}?\\b|` +
+    '(-?\\d+(?:\\.\\d+)?)%|' +
+    `(-?\\d+(?:\\.\\d+)?)\\s*${suffix}\\b|` +
+    '\\b(-?\\d+(?:\\.\\d+)?)\\s*\\/\\s*100\\b|' +
+    '\\b(-?\\d+\\.\\d{2,})\\b',
+    'gi'
+  );
   const claims = [];
   let match;
   while ((match = pattern.exec(source)) !== null) {
-    const value = match[1] ?? match[2] ?? match[3] ?? match[5] ?? match[6];
-    const normalized = compactNumber(value, match[4]);
+    const value = match[1] ?? match[3] ?? match[4] ?? match[6] ?? match[7];
+    const normalized = compactNumber(value, match[2] ?? match[5]);
     if (normalized !== null) claims.push({ raw: match[0], value: normalized });
   }
   return claims;
@@ -725,7 +742,13 @@ function numbersMatch(claim, evidenceValue) {
 }
 
 function checkNumericClaims(violations, entry, evidenceIds, evidenceIndex) {
-  const knownNumbers = evidenceIds.flatMap(id => evidenceNumbers(evidenceIndex.get(id)?.value));
+  const knownNumbers = entry.asset
+    ? [...evidenceIndex.values()]
+        .filter(evidence => evidence?.type === 'market' && evidence.asset === entry.asset)
+        .flatMap(evidence => evidenceNumbers(evidence.value))
+    : entry.path.startsWith('scenarios.')
+      ? [...evidenceIndex.values()].flatMap(evidence => evidenceNumbers(evidence?.value))
+      : evidenceIds.flatMap(id => evidenceNumbers(evidenceIndex.get(id)?.value));
   for (const claim of numericClaims(entry.text)) {
     if (!knownNumbers.some(value => numbersMatch(claim.value, value))) {
       violations.push({ path: entry.path, reason: 'unsupported_numeric_claim', claim: claim.raw });

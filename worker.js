@@ -39,6 +39,7 @@ import {
   listUnavailableMacroFields,
   normalizeBriefCitationMarkers,
   parseGeminiBriefJson,
+  resolveGenerationDeadlineMs,
   resolveModelFallbacks,
   resolvePipelineVersion,
   validateBriefCitations,
@@ -63,6 +64,7 @@ export {
   listUnavailableMacroFields,
   normalizeCitationMarkers,
   parseGeminiBriefJson,
+  resolveGenerationDeadlineMs,
   resolveModelFallbacks,
   resolvePipelineVersion,
   validateBriefCitations,
@@ -79,6 +81,16 @@ export {
 } from './src/macro.js';
 
 const BRIEF_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+function stripArrayCardinality(schema) {
+  if (Array.isArray(schema)) return schema.map(stripArrayCardinality);
+  if (!schema || typeof schema !== 'object') return schema;
+  return Object.fromEntries(
+    Object.entries(schema)
+      .filter(([key]) => key !== 'minItems' && key !== 'maxItems')
+      .map(([key, value]) => [key, stripArrayCardinality(value)])
+  );
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -772,8 +784,9 @@ export default {
 
     if (request.method === 'POST' && pathname === '/') {
       const generationStartedAt = Date.now();
-      const generationDeadline = generationStartedAt + 90_000;
       const pipelineVersion = resolvePipelineVersion(env);
+      const generationBudgetMs = resolveGenerationDeadlineMs(pipelineVersion);
+      const generationDeadline = generationStartedAt + generationBudgetMs;
       let lastAttemptedModel = null;
       let totalAttemptCount = 0;
       try {
@@ -837,7 +850,12 @@ export default {
             bearTrigger: { type: 'string' },
           },
         };
-        const responseSchema = pipelineVersion === 'v3' ? PDB_V3_RESPONSE_SCHEMA : legacyResponseSchema;
+        // Gemini 3.5 rejects the full PDB schema when deeply nested arrays carry
+        // minItems/maxItems. The application validator below still enforces the
+        // canonical cardinality rules before any brief can be cached or served.
+        const responseSchema = pipelineVersion === 'v3'
+          ? stripArrayCardinality(PDB_V3_RESPONSE_SCHEMA)
+          : legacyResponseSchema;
 
         const payload = {
           contents: contents.length
@@ -889,7 +907,7 @@ export default {
                 ok: false,
                 model,
                 status: 504,
-                data: { error: { message: 'Gemini generation exceeded the 90 second deadline.' } },
+                data: { error: { message: `Gemini generation exceeded the ${generationBudgetMs / 1000} second deadline.` } },
               };
             }
 
@@ -943,7 +961,8 @@ export default {
           };
         };
 
-        for (let correctionAttempt = 0; correctionAttempt < 2; correctionAttempt++) {
+        const maxGenerationAttempts = pipelineVersion === 'v3' ? 4 : 2;
+        for (let correctionAttempt = 0; correctionAttempt < maxGenerationAttempts; correctionAttempt++) {
           const candidateModels = correctionAttempt === 0 ? models : [selectedModel];
           const modelResult = await requestGemini(candidateModels.filter(Boolean));
           if (!modelResult.ok) {
@@ -984,13 +1003,26 @@ export default {
           if (validationCheck.ok) break;
 
           const feedback = pipelineVersion === 'v3'
-            ? [...validationCheck.violations]
-                .sort((a, b) => {
+            ? (() => {
+                const orderedViolations = [...validationCheck.violations].sort((a, b) => {
                   const priority = path => path === 'brief' ? 0 : path === 'executive.bottomLine' ? 1 : 2;
                   return priority(a.path) - priority(b.path);
-                })
-                .slice(0, 15)
-                .map(violation => {
+                });
+                const selectedViolations = orderedViolations.slice(0, 15);
+                const selectedSet = new Set(selectedViolations);
+                const reasonCounts = new Map();
+                for (const violation of selectedViolations) {
+                  reasonCounts.set(violation.reason, (reasonCounts.get(violation.reason) || 0) + 1);
+                }
+                for (const violation of orderedViolations) {
+                  if (selectedSet.has(violation) || selectedViolations.length >= 40) continue;
+                  const reasonCount = reasonCounts.get(violation.reason) || 0;
+                  if (reasonCount >= 8) continue;
+                  selectedViolations.push(violation);
+                  selectedSet.add(violation);
+                  reasonCounts.set(violation.reason, reasonCount + 1);
+                }
+                return selectedViolations.map(violation => {
                   const details = [
                     violation.actual !== undefined ? `actual=${violation.actual}` : null,
                     violation.min !== undefined ? `min=${violation.min}` : null,
@@ -1000,7 +1032,8 @@ export default {
                   ].filter(Boolean).join(', ');
                   return `${violation.path || 'json'}: ${violation.reason}${details ? ` (${details})` : ''}`;
                 })
-                .join('; ')
+                .join('; ');
+              })()
             : validationCheck.violations
                 .slice(0, 10)
                 .map(v => `${String(v.section || v.asset || 'json').toUpperCase()} bullet ${v.bulletIndex + 1}: ${v.reason}${v.evidenceId ? ` (${v.evidenceId})` : ''}${v.docId ? ` on doc [${v.docId}]` : ''}`)

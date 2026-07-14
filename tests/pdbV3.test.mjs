@@ -279,6 +279,64 @@ assert.equal(
   true
 );
 
+const scenarioLevelEvidence = new Map(evidenceIndex);
+scenarioLevelEvidence.set('market:btc:current', {
+  id: 'market:btc:current',
+  type: 'market',
+  asset: 'btc',
+  value: 58_067,
+});
+const roundedScenarioLevel = structuredClone(valid);
+roundedScenarioLevel.scenarios.base.outlook += ' Bitcoin holding $58K would preserve the base case.';
+assert.equal(
+  validatePdbV3Evidence(roundedScenarioLevel, scenarioLevelEvidence).violations.some(
+    violation => violation.reason === 'unsupported_numeric_claim' && violation.path === 'scenarios.base'
+  ),
+  false
+);
+
+const sameAssetLevel = structuredClone(valid);
+sameAssetLevel.assets.btc.assessment += ' The supplied support level is $95.00.';
+assert.equal(
+  validatePdbV3Evidence(sameAssetLevel, evidenceIndex).violations.some(
+    violation => violation.reason === 'unsupported_numeric_claim' && violation.path === 'assets.btc'
+  ),
+  false
+);
+
+const balancedDepth = structuredClone(valid);
+balancedDepth.executive.keyJudgments[0].assessment = prose(35, 'assessment');
+balancedDepth.assets.link.assessment = prose(35, 'linkassessment');
+balancedDepth.macro.assessment = prose(50, 'macroassessment');
+for (const item of [...balancedDepth.threats, ...balancedDepth.opportunities]) {
+  item.assessment = prose(22, 'risk');
+}
+const balancedDepthViolations = validatePdbV3StructureAndDepth(balancedDepth).violations;
+assert.equal(
+  balancedDepthViolations.some(
+    violation => violation.path === 'executive.keyJudgments.0.assessment' && violation.reason === 'section_too_thin'
+  ),
+  false
+);
+assert.equal(
+  balancedDepthViolations.some(
+    violation => violation.path === 'assets.link.assessment' && violation.reason === 'section_too_thin'
+  ),
+  false
+);
+assert.equal(
+  balancedDepthViolations.some(
+    violation => violation.path === 'macro.assessment' && violation.reason === 'section_too_thin'
+  ),
+  false
+);
+assert.equal(
+  balancedDepthViolations.some(
+    violation => violation.path === 'threats+opportunities' && violation.reason === 'section_too_thin'
+  ),
+  false
+);
+
 const badConfidence = structuredClone(valid);
 badConfidence.scenarios.base.confidence = 'certain';
 assert.equal(
