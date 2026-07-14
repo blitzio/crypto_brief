@@ -42,6 +42,16 @@ assert.ok(scriptMatch[1].includes("brief?.briefVersion === 'v3'"), 'renderer sho
 assert.ok(scriptMatch[1].includes('function renderLegacyBrief'), 'legacy cached briefs should retain a renderer');
 assert.ok(scriptMatch[1].includes('function renderV3Brief'), 'v3 should have a dedicated renderer');
 assert.ok(scriptMatch[1].includes('function renderConfidence'), 'v3 should display confidence safely');
+assert.ok(html.includes('<details class="confidence-guide"'), 'v3 should explain confidence on demand');
+assert.ok(html.includes('Confidence measures evidence strength, not market direction'), 'confidence guide should prevent directional interpretation');
+assert.ok(html.includes('<strong>High:</strong> Multiple reliable and independent facts or signals align.'), 'confidence guide should define high');
+assert.ok(html.includes('<strong>Medium:</strong> Credible evidence supports the assessment, but material uncertainty or mixed signals remain.'), 'confidence guide should define medium');
+assert.ok(html.includes('<strong>Low:</strong> Evidence is limited, indirect, or conflicting.'), 'confidence guide should define low');
+assert.ok(html.includes('.confidence-high{color:var(--blue)'), 'high confidence should use neutral blue rather than bullish green');
+assert.ok(html.includes('.confidence-low{color:var(--muted)'), 'low confidence should use muted gray rather than bearish red');
+assert.ok(scriptMatch[1].includes('renderAnalysisMeta(asset, { showConfidence: false })'), 'asset summaries should suppress repeated badges');
+assert.ok(scriptMatch[1].includes('renderAnalysisMeta(driver, { showConfidence: false })'), 'asset drivers should suppress repeated badges');
+assert.ok(scriptMatch[1].includes('renderAnalysisMeta(macro, { showConfidence: false })'), 'macro summary should suppress repeated badges');
 assert.ok(scriptMatch[1].includes('evidence-link'), 'news evidence should link to source entries');
 assert.ok(scriptMatch[1].includes('function openEvidence'), 'evidence links should reveal the collapsed source annex');
 assert.ok(scriptMatch[1].includes('annex.open = true'), 'source evidence should become visible before navigation');

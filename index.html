@@ -86,11 +86,15 @@ body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%
 .analysis-meta{display:flex;align-items:center;gap:9px 12px;flex-wrap:wrap;margin-top:14px;color:var(--faint);font-size:.75rem;}
 .confidence{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 9px;font:600 .68rem/1.2 var(--font);letter-spacing:.035em;text-transform:uppercase;}
 .confidence::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
-.confidence-high{color:var(--pos);border-color:rgba(105,200,156,.28);background:rgba(105,200,156,.07);}
+.confidence-high{color:var(--blue);border-color:rgba(126,165,220,.3);background:var(--blue-bg);}
 .confidence-medium{color:#dcc187;border-color:rgba(195,171,118,.3);background:var(--gold-bg);}
-.confidence-low{color:var(--neg);border-color:rgba(235,141,141,.24);background:rgba(235,141,141,.07);}
+.confidence-low{color:var(--muted);border-color:var(--border);background:rgba(255,255,255,.025);}
 .confidence-unrated{color:var(--faint);}
 .confidence-basis{color:var(--muted);line-height:1.5;}
+.confidence-guide{margin-top:16px;max-width:760px;color:var(--muted);font-size:.82rem;}
+.confidence-guide summary{width:max-content;cursor:pointer;color:var(--blue);font-weight:600;list-style-position:outside;}
+.confidence-guide-copy{margin-top:10px;padding:12px 14px;border-left:2px solid rgba(126,165,220,.35);background:rgba(126,165,220,.045);line-height:1.65;}
+.confidence-guide-copy ul{margin-top:7px;padding-left:18px;}
 .evidence-list{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;}
 .evidence-link,.evidence-chip{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:999px;padding:3px 7px;font:500 .67rem/1.2 var(--mono);color:var(--blue);background:rgba(126,165,220,.06);text-decoration:none;}
 .evidence-link:hover{border-color:rgba(126,165,220,.48);background:var(--blue-bg);}
@@ -395,6 +399,17 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   <section class="executive-section" id="v3-executive" aria-labelledby="bottom-line-heading" hidden>
     <div class="executive-label" id="bottom-line-heading">Bottom Line</div>
     <div id="bottom-line"></div>
+    <details class="confidence-guide">
+      <summary>How to read confidence</summary>
+      <div class="confidence-guide-copy">
+        <p>Confidence measures evidence strength, not market direction, certainty, or a buy/sell signal.</p>
+        <ul>
+          <li><strong>High:</strong> Multiple reliable and independent facts or signals align.</li>
+          <li><strong>Medium:</strong> Credible evidence supports the assessment, but material uncertainty or mixed signals remain.</li>
+          <li><strong>Low:</strong> Evidence is limited, indirect, or conflicting.</li>
+        </ul>
+      </div>
+    </details>
     <div class="executive-label" style="margin-top:30px;">Key Judgments</div>
     <ol class="judgments" id="key-judgments"></ol>
   </section>
@@ -967,15 +982,19 @@ function renderEvidence(evidenceIds = []) {
   }).join('')}</span>`;
 }
 
-function renderAnalysisMeta(item = {}) {
-  return `<div class="analysis-meta">${renderConfidence(item.confidence, item.confidenceBasis)}${renderEvidence(item.evidenceIds)}</div>`;
+function renderAnalysisMeta(item = {}, { showConfidence = true } = {}) {
+  const confidenceMarkup = showConfidence ? renderConfidence(item.confidence) : '';
+  const basisMarkup = item.confidenceBasis
+    ? `<span class="confidence-basis">${escapeHtml(item.confidenceBasis)}</span>`
+    : '';
+  return `<div class="analysis-meta">${confidenceMarkup}${basisMarkup}${renderEvidence(item.evidenceIds)}</div>`;
 }
 
 function renderAnalysisItems(items = [], signalLabel = 'Indicator') {
   return (items || []).map(item => {
     const primaryAnalysis = item.assessment || item.gap || item.whyItMatters || '';
     return `<li>
-      <div class="analysis-item-head"><h3>${escapeHtml(item.title || 'Untitled assessment')}</h3>${renderConfidence(item.confidence)}</div>
+      <div class="analysis-item-head"><h3>${escapeHtml(item.title || 'Untitled assessment')}</h3></div>
       <div class="analysis-item-copy">${escapeHtml(primaryAnalysis)}</div>
       ${item.impact || item.likelihood || item.horizon
         ? `<div class="analysis-meta"><span>${escapeHtml([item.impact && `Impact: ${item.impact}`, item.likelihood, item.horizon].filter(Boolean).join(' · '))}</span></div>`
@@ -999,9 +1018,9 @@ function renderAssetAssessment(symbol, asset = {}) {
       <div class="level-strip">Support ${escapeHtml(fmtBriefLevel(asset.support))} · Resistance ${escapeHtml(fmtBriefLevel(asset.resistance))}</div>
     </div>
     <p class="assessment-lead">${escapeHtml(asset.assessment || '')}</p>
-    ${renderAnalysisMeta(asset)}
+    ${renderAnalysisMeta(asset, { showConfidence: false })}
     <ul class="driver-list">${(asset.drivers || []).map(driver => `<li class="driver">
-      <div><div class="driver-title">${escapeHtml(driver.title || 'Driver')}</div>${renderAnalysisMeta(driver)}</div>
+      <div><div class="driver-title">${escapeHtml(driver.title || 'Driver')}</div>${renderAnalysisMeta(driver, { showConfidence: false })}</div>
       <div class="driver-copy">${escapeHtml(driver.analysis || '')}</div>
     </li>`).join('')}</ul>
     <div class="confirmation-grid">
@@ -1110,11 +1129,11 @@ function renderV3Brief(brief, prices, macroData, newsItems, generatedTime) {
   document.getElementById('macro-assessment').innerHTML = `
     <div class="pdb-section-head"><h2>Macro &amp; Cross-Asset Regime</h2><span>Transmission into crypto</span></div>
     <p class="assessment-lead">${escapeHtml(macro.assessment || '')}</p>
-    ${renderAnalysisMeta(macro)}
+    ${renderAnalysisMeta(macro, { showConfidence: false })}
     <div class="analysis-grid">${(macro.transmissionChannels || []).map(channel => `<article class="analysis-column">
       <h3>${escapeHtml(channel.title || 'Transmission channel')}</h3>
       <p>${escapeHtml(channel.analysis || '')}</p>
-      <div class="analysis-meta">${renderConfidence(channel.confidence)}${renderEvidence(channel.evidenceIds)}</div>
+      <div class="analysis-meta">${renderEvidence(channel.evidenceIds)}</div>
     </article>`).join('')}</div>`;
 
   document.getElementById('scenario-outlook').innerHTML = `
