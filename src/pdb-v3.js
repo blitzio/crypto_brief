@@ -260,6 +260,15 @@ REQUIRED ANALYTICAL PRODUCT
 7. FORWARD WATCH: Identify observable signals for the next 24 hours and next 7 days.
 8. INTELLIGENCE GAPS: State unresolved contradictions or missing evidence and what would close each gap.
 
+FIELD DEPTH BUDGETS
+- Bottom line: 100-140 words.
+- Each key-judgment assessment: 40-70 words; why-it-matters: 15-25; confidence basis: 8-15; each invalidator: 6-12.
+- Each asset assessment: 45-75 words. Each asset driver: 30-50 words. Confidence basis: 8-15; confirmation and invalidation: 15-25 each; each complete asset section: 180-240 words.
+- Macro assessment: 60-100 words. Each macro transmission channel: 30-50 words. Confidence basis: 8-15; complete macro section: 190-280 words.
+- Each scenario: 45-70 words; all scenarios combined: 150-220 words.
+- Each threat or opportunity: 35-50 words; all threats and opportunities combined: 150-280 words.
+- Each watch item: 25-40 words; each intelligence gap: 30-50 words; watch items and gaps combined: 200-320 words.
+
 Every analytical object must include known evidenceIds and confidence. Keep claims within the evidence dossier.`;
 
   return { systemInstruction, userPrompt };
