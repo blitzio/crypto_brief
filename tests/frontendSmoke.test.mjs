@@ -23,8 +23,18 @@ assert.ok(scriptMatch[1].includes('GEMINI_TIMEOUT_MS = 165000'), 'Gemini request
 assert.ok(scriptMatch[1].includes('evidenceIds'), 'v2 prompts should request explicit evidence identifiers');
 assert.ok(scriptMatch[1].includes('confidence'), 'v2 prompts should request evidence confidence');
 assert.ok(scriptMatch[1].includes('marketSignals'), 'market evidence should be passed through the generation payload');
-assert.ok(scriptMatch[1].includes("WORKER_URL + '/market'"), 'market data should come from the Worker first');
-assert.ok(scriptMatch[1].includes('return { prices, marketSignals }'), 'market fetch should preserve prices and expose signals');
+const marketFetcherMatch = scriptMatch[1].match(/async function fetchMarketData\(\) \{[\s\S]*?\n\}/);
+assert.ok(marketFetcherMatch, 'market data fetcher should be defined');
+assert.ok(
+  marketFetcherMatch[0].includes('const prices = await fetchDirectPrices()'),
+  'displayed spot prices must come directly from CoinGecko before optional Worker signals'
+);
+assert.equal(
+  marketFetcherMatch[0].includes('const prices = data?.prices'),
+  false,
+  'Yahoo-degraded Worker prices must never overwrite direct CoinGecko spot prices'
+);
+assert.ok(scriptMatch[1].includes('return { prices, marketSignals }'), 'market fetch should preserve direct prices and expose signals');
 assert.ok(
   scriptMatch[1].includes('async function refreshMarketSummary'),
   'cached briefs should have an independent live market-summary refresh path'
@@ -36,6 +46,13 @@ assert.ok(
 assert.ok(
   scriptMatch[1].includes('renderMarketSummary(prices, marketSignals)'),
   'market cards should render deterministic levels from the current market response'
+);
+const runStart = scriptMatch[1].indexOf('async function run(forceRefresh = false)');
+const immediateMarketRender = scriptMatch[1].indexOf('renderMarketSummary(prices, marketSignals);', runStart);
+const generationStart = scriptMatch[1].indexOf("setRefreshStatus('Generating analysis via Gemini…')", runStart);
+assert.ok(
+  immediateMarketRender > runStart && immediateMarketRender < generationStart,
+  'force refresh should visibly update market data before waiting for Gemini analysis'
 );
 assert.ok(scriptMatch[1].includes('https://api.coingecko.com/api/v3/coins/markets'), 'direct CoinGecko should remain as a fallback');
 assert.ok(
