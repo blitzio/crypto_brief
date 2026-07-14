@@ -80,7 +80,7 @@ body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%
 .routing b{color:var(--muted);font-weight:600;}
 
 /* ── PDB V3 EXECUTIVE ── */
-.executive-section{margin:24px calc(var(--space-xl) * -1) 0;padding:28px var(--space-xl) 30px;border-top:1px solid var(--border2);background:linear-gradient(180deg,rgba(195,171,118,.07),rgba(255,255,255,.012));order:4;}
+.executive-section{margin:24px calc(var(--space-xl) * -1) 0;padding:28px var(--space-xl) 30px;border-top:1px solid var(--border2);background:linear-gradient(180deg,rgba(195,171,118,.07),rgba(255,255,255,.012));order:5;}
 .executive-label{font:600 .68rem/1 var(--font);letter-spacing:.11em;text-transform:uppercase;color:var(--gold);margin-bottom:13px;}
 .bottom-line-copy{max-width:900px;font-size:1.14rem;line-height:1.82;letter-spacing:-.006em;color:var(--text);}
 .analysis-meta{display:flex;align-items:center;gap:9px 12px;flex-wrap:wrap;margin-top:14px;color:var(--faint);font-size:.75rem;}
@@ -104,7 +104,7 @@ body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%
 .judgment-implication strong,.judgment-invalidators strong{color:var(--text);font-weight:600;}
 
 /* ── PRICE STRIP ── */
-.market-summary{margin:18px calc(var(--space-xl) * -1) 0;border-top:1px solid var(--border);background:rgba(255,255,255,.015);order:5;}
+.market-summary{margin:18px calc(var(--space-xl) * -1) 0;border-top:1px solid var(--border);background:rgba(255,255,255,.015);order:4;}
 .market-summary-kicker{padding:12px 24px 0;font-size:.66rem;font-family:var(--font);font-weight:600;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;}
 .price-strip{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr) minmax(0,1fr);margin:0;background:none;}
 .pcard{padding:16px 24px 18px;position:relative;min-width:0;display:grid;gap:14px;}
@@ -356,13 +356,6 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
     <div><b>SOURCES:</b> LIVE — SEE REFERENCES</div>
   </div>
 
-  <section class="executive-section" id="v3-executive" aria-labelledby="bottom-line-heading" hidden>
-    <div class="executive-label" id="bottom-line-heading">Bottom Line</div>
-    <div id="bottom-line"></div>
-    <div class="executive-label" style="margin-top:30px;">Key Judgments</div>
-    <ol class="judgments" id="key-judgments"></ol>
-  </section>
-
   <div class="market-summary">
     <div class="market-summary-kicker">Market Summary</div>
     <div class="price-strip">
@@ -398,6 +391,13 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
       </section>
     </div>
   </div>
+
+  <section class="executive-section" id="v3-executive" aria-labelledby="bottom-line-heading" hidden>
+    <div class="executive-label" id="bottom-line-heading">Bottom Line</div>
+    <div id="bottom-line"></div>
+    <div class="executive-label" style="margin-top:30px;">Key Judgments</div>
+    <ol class="judgments" id="key-judgments"></ol>
+  </section>
 
   </div>
 

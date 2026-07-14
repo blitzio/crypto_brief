@@ -19,8 +19,14 @@ assert.ok(scriptMatch[1].includes('marketSignals'), 'market evidence should be p
 assert.ok(scriptMatch[1].includes("WORKER_URL + '/market'"), 'market data should come from the Worker first');
 assert.ok(scriptMatch[1].includes('return { prices, marketSignals }'), 'market fetch should preserve prices and expose signals');
 assert.ok(scriptMatch[1].includes('https://api.coingecko.com/api/v3/coins/markets'), 'direct CoinGecko should remain as a fallback');
-assert.ok(html.indexOf('id="bottom-line"') < html.indexOf('class="market-summary"'), 'bottom line should lead market cards');
-assert.ok(html.indexOf('id="key-judgments"') < html.indexOf('id="btc-price"'), 'key judgments should lead asset cards');
+assert.ok(
+  html.indexOf('class="market-summary"') < html.indexOf('id="bottom-line"'),
+  'market summary should lead the v3 executive analysis'
+);
+assert.ok(
+  html.indexOf('id="btc-price"') < html.indexOf('id="key-judgments"'),
+  'live prices should appear before key judgments'
+);
 assert.ok(html.includes('id="scenario-outlook"'), 'v3 should render scenario outlook');
 assert.ok(html.includes('id="opportunities"'), 'v3 should separate opportunities from threats');
 assert.ok(html.includes('id="intelligence-gaps"'), 'v3 should render intelligence gaps');
