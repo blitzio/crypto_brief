@@ -511,30 +511,44 @@ export default {
         const current = Number(chart?.meta?.regularMarketPrice ?? closes.at(-1));
         if (!Number.isFinite(current)) throw new Error(`Yahoo Finance ${asset.yahooSymbol} omitted current price`);
 
+        const finiteValue = value => {
+          if (value === null || value === undefined || value === '') return null;
+          const number = Number(value);
+          return Number.isFinite(number) ? number : null;
+        };
+
         const ohlc = [];
         const prices = [];
         const totalVolumes = [];
         for (let index = 0; index < timestamps.length; index += 1) {
-          const timestamp = Number(timestamps[index]) * 1000;
-          const close = Number(closes[index]);
-          const open = Number(quote?.open?.[index]);
-          const high = Number(quote?.high?.[index]);
-          const low = Number(quote?.low?.[index]);
-          const volume = Number(quote?.volume?.[index]);
-          if (!Number.isFinite(timestamp) || !Number.isFinite(close)) continue;
+          const timestampSeconds = finiteValue(timestamps[index]);
+          const timestamp = timestampSeconds === null ? null : timestampSeconds * 1000;
+          const close = finiteValue(closes[index]);
+          const open = finiteValue(quote?.open?.[index]);
+          const high = finiteValue(quote?.high?.[index]);
+          const low = finiteValue(quote?.low?.[index]);
+          const volume = finiteValue(quote?.volume?.[index]);
+          if (timestamp === null || close === null || close <= 0) continue;
           prices.push([timestamp, close]);
-          if ([open, high, low].every(Number.isFinite)) ohlc.push([timestamp, open, high, low, close]);
-          if (Number.isFinite(volume)) totalVolumes.push([timestamp, volume]);
+          if ([open, high, low].every(value => value !== null && value > 0)) {
+            ohlc.push([timestamp, open, high, low, close]);
+          }
+          if (volume !== null && volume >= 0) totalVolumes.push([timestamp, volume]);
         }
 
-        const previousClose = Number(chart?.meta?.chartPreviousClose);
+        const dailyChange = resolveYahooPct({
+          rawCloses: closes,
+          rawTimestamps: timestamps,
+          meta: chart?.meta || {},
+          price: current,
+        }).pct;
         const prior7dClose = prices.length >= 8 ? prices.at(-8)[1] : null;
         const price = {
           id: asset.id,
           symbol: asset.symbol,
           name: asset.name,
           current_price: current,
-          price_change_percentage_24h: percentChange(current, previousClose),
+          price_change_percentage_24h: dailyChange,
           price_change_percentage_7d_in_currency: percentChange(current, prior7dClose),
         };
         return {

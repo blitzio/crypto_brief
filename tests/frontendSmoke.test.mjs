@@ -25,6 +25,18 @@ assert.ok(scriptMatch[1].includes('confidence'), 'v2 prompts should request evid
 assert.ok(scriptMatch[1].includes('marketSignals'), 'market evidence should be passed through the generation payload');
 assert.ok(scriptMatch[1].includes("WORKER_URL + '/market'"), 'market data should come from the Worker first');
 assert.ok(scriptMatch[1].includes('return { prices, marketSignals }'), 'market fetch should preserve prices and expose signals');
+assert.ok(
+  scriptMatch[1].includes('async function refreshMarketSummary'),
+  'cached briefs should have an independent live market-summary refresh path'
+);
+assert.ok(
+  /if \(cacheData\.fresh !== false\)[\s\S]*?await refreshMarketSummary\(cacheData\.brief\)/.test(scriptMatch[1]),
+  'a fresh cached brief must refresh the market summary before startup returns'
+);
+assert.ok(
+  scriptMatch[1].includes('renderMarketSummary(prices, marketSignals)'),
+  'market cards should render deterministic levels from the current market response'
+);
 assert.ok(scriptMatch[1].includes('https://api.coingecko.com/api/v3/coins/markets'), 'direct CoinGecko should remain as a fallback');
 assert.ok(
   html.indexOf('class="market-summary"') < html.indexOf('id="bottom-line"'),

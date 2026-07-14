@@ -537,6 +537,41 @@ function yahooCryptoChart(base = 100) {
 }
 
 {
+  await withGlobals({
+    caches: { default: makeCache() },
+    fetch: async (url) => {
+      const value = String(url);
+      if (value.includes('api.coingecko.com')) return new Response('forbidden', { status: 403 });
+      if (value.includes('query1.finance.yahoo.com')) {
+        const base = value.includes('BTC-USD') ? 100 : value.includes('ETH-USD') ? 50 : 10;
+        const chart = yahooCryptoChart(base);
+        const result = chart.chart.result[0];
+        result.meta.previousClose = base * 0.99;
+        result.meta.chartPreviousClose = base * 0.8;
+        result.indicators.quote[0].low[5] = null;
+        result.indicators.quote[0].high[6] = null;
+        return Response.json(chart);
+      }
+      throw new Error(`unexpected URL ${value}`);
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/market?nocache=1'),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io' },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.ok(
+      Math.abs(body.prices.bitcoin.price_change_percentage_24h - ((100 - 99) / 99 * 100)) < 1e-9,
+      'Yahoo fallback should derive 24h change from previousClose, not the range chart baseline'
+    );
+    assert.ok(body.signals.btc.range30d.low > 0, 'missing Yahoo lows must not become zero-price bars');
+    assert.ok(body.signals.btc.range30d.high > 0, 'missing Yahoo highs must not become zero-price bars');
+  });
+}
+
+{
   const histories = { bitcoin: marketHistory(100), ethereum: marketHistory(50), chainlink: marketHistory(10) };
   await withGlobals({
     caches: { default: makeCache() },
