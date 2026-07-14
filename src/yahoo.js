@@ -73,9 +73,11 @@ export function resolveYahooPct({ rawCloses = [], rawTimestamps = [], meta = {},
     return { pct: meta.regularMarketChangePercent, pctSource: 'regularMarketChangePercent' };
   }
 
-  if (Number.isFinite(meta?.regularMarketPreviousClose) && meta.regularMarketPreviousClose > 0) {
+  const metadataPreviousClose = [meta?.regularMarketPreviousClose, meta?.previousClose]
+    .find(value => Number.isFinite(value) && value > 0) ?? null;
+  if (metadataPreviousClose !== null) {
     return {
-      pct: ((price - meta.regularMarketPreviousClose) / meta.regularMarketPreviousClose) * 100,
+      pct: ((price - metadataPreviousClose) / metadataPreviousClose) * 100,
       pctSource: 'derivedPreviousClose'
     };
   }

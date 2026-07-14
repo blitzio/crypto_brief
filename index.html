@@ -863,6 +863,21 @@ function renderCard(id, coin, support, resist) {
      </div>`;
 }
 
+function renderMarketSummary(prices, marketSignals = {}) {
+  const level = (asset, field) => {
+    const value = Number(marketSignals?.[asset]?.[field]);
+    return Number.isFinite(value) && value > 0 ? value : '—';
+  };
+  renderCard('btc', prices.bitcoin, level('btc', 'support'), level('btc', 'resistance'));
+  renderCard('eth', prices.ethereum, level('eth', 'support'), level('eth', 'resistance'));
+  renderCard('link', prices.chainlink, level('link', 'support'), level('link', 'resistance'));
+}
+
+async function refreshMarketSummary(_brief) {
+  const { prices, marketSignals } = await fetchMarketData();
+  renderMarketSummary(prices, marketSignals);
+}
+
 function renderBullets(id, arr) {
   document.getElementById(id).innerHTML =
     (arr ?? []).map(b => `<li><strong>${escapeHtml(b.label)}:</strong> ${escapeHtml(b.text)}</li>`).join('');
@@ -1065,7 +1080,7 @@ function finishBriefRender(newsItems, generatedTime) {
   document.getElementById('loading').classList.add('hidden');
 }
 
-function renderLegacyBrief(brief, prices, macro, newsItems, generatedTime) {
+function renderLegacyBrief(brief, prices, marketSignals, macro, newsItems, generatedTime) {
   setBriefVersionVisibility(false);
   brief.btc      = brief.btc      || { support: '—', resist: '—', bullets: [] };
   brief.eth      = brief.eth      || { support: '—', resist: '—', bullets: [] };
@@ -1078,9 +1093,7 @@ function renderLegacyBrief(brief, prices, macro, newsItems, generatedTime) {
   brief.bullTrigger = brief.bullTrigger || '';
   brief.bearTrigger = brief.bearTrigger || '';
 
-  renderCard('btc',  prices['bitcoin'],   brief.btc.support,  brief.btc.resist);
-  renderCard('eth',  prices['ethereum'],  brief.eth.support,  brief.eth.resist);
-  renderCard('link', prices['chainlink'], brief.link.support, brief.link.resist);
+  renderMarketSummary(prices, marketSignals);
 
   renderMacroCards(macro);
   renderBullets('btc-bullets',   brief.btc.bullets);
@@ -1099,15 +1112,13 @@ function renderLegacyBrief(brief, prices, macro, newsItems, generatedTime) {
   finishBriefRender(newsItems, generatedTime);
 }
 
-function renderV3Brief(brief, prices, macroData, newsItems, generatedTime) {
+function renderV3Brief(brief, prices, marketSignals, macroData, newsItems, generatedTime) {
   setBriefVersionVisibility(true);
   const assets = brief.assets || {};
   const executive = brief.executive || {};
   const macro = brief.macro || {};
 
-  renderCard('btc', prices.bitcoin, assets.btc?.support || '—', assets.btc?.resistance || '—');
-  renderCard('eth', prices.ethereum, assets.eth?.support || '—', assets.eth?.resistance || '—');
-  renderCard('link', prices.chainlink, assets.link?.support || '—', assets.link?.resistance || '—');
+  renderMarketSummary(prices, marketSignals);
   renderMacroCards(macroData);
 
   document.getElementById('bottom-line').innerHTML =
@@ -1148,11 +1159,11 @@ function renderV3Brief(brief, prices, macroData, newsItems, generatedTime) {
   finishBriefRender(newsItems, generatedTime);
 }
 
-function renderBrief(brief, prices, macro, newsItems, generatedTime) {
+function renderBrief(brief, prices, marketSignals, macro, newsItems, generatedTime) {
   if (brief?.briefVersion === 'v3') {
-    renderV3Brief(brief, prices, macro, newsItems, generatedTime);
+    renderV3Brief(brief, prices, marketSignals, macro, newsItems, generatedTime);
   } else {
-    renderLegacyBrief(brief, prices, macro, newsItems, generatedTime);
+    renderLegacyBrief(brief, prices, marketSignals, macro, newsItems, generatedTime);
   }
 }
 
@@ -1181,6 +1192,7 @@ async function run(forceRefresh = false) {
             renderBrief(
               cacheData.brief,
               cacheData.prices,
+              cacheData.marketSignals || {},
               cacheData.macro,
               cacheData.newsItems || [],
               new Date(cacheData.generatedAt)
@@ -1190,6 +1202,12 @@ async function run(forceRefresh = false) {
             throw renderErr;
           }
           if (cacheData.fresh !== false) {
+            setRefreshStatus('Refreshing live market data…');
+            try {
+              await refreshMarketSummary(cacheData.brief);
+            } catch (marketError) {
+              console.warn('[market] live summary refresh failed; retaining cached values', marketError);
+            }
             setRefreshStatus();
             return;
           }
@@ -1208,7 +1226,7 @@ async function run(forceRefresh = false) {
     const generatedTime = sgtNow();
 
     try {
-      renderBrief(brief, prices, macro, newsItems, generatedTime);
+      renderBrief(brief, prices, marketSignals, macro, newsItems, generatedTime);
     } catch (renderErr) {
       console.error('[render] failed for freshly generated brief:', renderErr);
       throw renderErr;
