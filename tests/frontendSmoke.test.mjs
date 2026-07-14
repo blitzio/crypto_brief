@@ -61,6 +61,43 @@ assert.equal(
   false,
   'internal market and macro evidence chips must never be rendered'
 );
+const sourceSummaryMatch = scriptMatch[1].match(/function summarizeSourceCollection\(items = \[\]\) \{[\s\S]*?\n\}/);
+assert.ok(sourceSummaryMatch, 'source collection summary should be defined');
+const summarizeSourceCollection = new Function(`${sourceSummaryMatch[0]}; return summarizeSourceCollection;`)();
+assert.deepEqual(
+  summarizeSourceCollection([
+    { source: 'The Block' },
+    { source: 'CoinDesk' },
+    { source: 'CoinDesk' },
+  ]),
+  {
+    articleLabel: '3 articles · 2 publishers',
+    previewLabel: '· The Block · CoinDesk',
+  },
+  'source summary should distinguish articles from unique publishers'
+);
+const citationTextMatch = scriptMatch[1].match(/function renderCitationText\(text = ''\) \{[\s\S]*?\n\}/);
+assert.ok(citationTextMatch, 'reader-facing citation renderer should be defined');
+const renderCitationText = new Function(
+  'escapeHtml',
+  'sanitizeVisibleEvidence',
+  `${citationTextMatch[0]}; return renderCitationText;`
+)(
+  value => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+  value => String(value)
+);
+const linkedCitation = renderCitationText('Evidence <claim> [4].');
+assert.match(linkedCitation, /Evidence &lt;claim&gt;/, 'citation rendering must preserve HTML escaping');
+assert.match(linkedCitation, /href="#source-4"/, 'numbered citations should link to their source cards');
+assert.match(linkedCitation, /openEvidence\(event, 4\)/, 'citation links should open the collapsed source annex');
+const missingEvidenceMatch = scriptMatch[1].match(/function missingNewsEvidenceIds\(text = '', evidenceIds = \[\]\) \{[\s\S]*?\n\}/);
+assert.ok(missingEvidenceMatch, 'missing news evidence detector should be defined');
+const missingNewsEvidenceIds = new Function(`${missingEvidenceMatch[0]}; return missingNewsEvidenceIds;`)();
+assert.deepEqual(
+  missingNewsEvidenceIds('Claim supported by source [1].', ['news:1', 'news:3', 'market:btc:current']),
+  ['news:3'],
+  'structured news evidence omitted by model prose should still receive a traceability link'
+);
 assert.ok(scriptMatch[1].includes('function parseBriefJson'), 'front-end JSON parser should stay centralized');
 assert.ok(scriptMatch[1].includes('function setLoadStatus'), 'loading status updates should stay centralized');
 assert.ok(scriptMatch[1].includes('function fetchWithTimeout'), 'network requests should use a shared timeout helper');
