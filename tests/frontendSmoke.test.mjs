@@ -6,6 +6,13 @@ const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
 
 assert.ok(scriptMatch, 'index.html should include one inline app script');
 assert.doesNotThrow(() => new Function(scriptMatch[1]), 'inline app script should parse');
+const levelFormatterMatch = scriptMatch[1].match(/function fmtBriefLevel\(value\) \{[\s\S]*?\n\}/);
+assert.ok(levelFormatterMatch, 'brief level formatter should be defined');
+const fmtBriefLevel = new Function(`${levelFormatterMatch[0]}; return fmtBriefLevel;`)();
+assert.equal(fmtBriefLevel('58067'), '$58,067');
+assert.equal(fmtBriefLevel('1810.7350000000001'), '$1,810.74');
+assert.equal(fmtBriefLevel(8.145), '$8.145');
+assert.equal(fmtBriefLevel('—'), '—');
 assert.ok(scriptMatch[1].includes('function parseBriefJson'), 'front-end JSON parser should stay centralized');
 assert.ok(scriptMatch[1].includes('function setLoadStatus'), 'loading status updates should stay centralized');
 assert.ok(scriptMatch[1].includes('function fetchWithTimeout'), 'network requests should use a shared timeout helper');

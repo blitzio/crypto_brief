@@ -519,6 +519,20 @@ const fmtDate = d   => `${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYea
 const fmtPrice = n  => n >= 1000  ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 })
                      : n >= 10    ? '$' + n.toFixed(2)
                      : '$' + n.toFixed(3);
+function fmtBriefLevel(value) {
+  const numeric = typeof value === 'number'
+    ? value
+    : Number(String(value ?? '').replace(/[$,\s]/g, ''));
+  if (!Number.isFinite(numeric)) return '—';
+  if (Math.abs(numeric) >= 10000) {
+    return '$' + numeric.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  }
+  if (Math.abs(numeric) >= 1000) {
+    return '$' + numeric.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  if (Math.abs(numeric) >= 10) return '$' + numeric.toFixed(2);
+  return '$' + numeric.toFixed(3);
+}
 const fmtCap   = n  => !n        ? 'N/A'
                      : n >= 1e12 ? '$' + (n / 1e12).toFixed(2) + 'T'
                      : n >= 1e9  ? '$' + (n / 1e9).toFixed(1)  + 'B'
@@ -826,11 +840,11 @@ function renderCard(id, coin, support, resist) {
      </div>
      <div class="p-stat">
        <dt class="p-stat-label">Support</dt>
-       <dd class="p-stat-value">${support}</dd>
+       <dd class="p-stat-value">${fmtBriefLevel(support)}</dd>
      </div>
      <div class="p-stat">
        <dt class="p-stat-label">Resist</dt>
-       <dd class="p-stat-value">${resist}</dd>
+       <dd class="p-stat-value">${fmtBriefLevel(resist)}</dd>
      </div>`;
 }
 
@@ -982,7 +996,7 @@ function renderAssetAssessment(symbol, asset = {}) {
   return `<article class="asset-analysis">
     <div class="asset-heading">
       <h3>${escapeHtml(label)} <span style="color:var(--faint);font-weight:500;">${escapeHtml(symbol.toUpperCase())}</span></h3>
-      <div class="level-strip">Support ${escapeHtml(asset.support || '—')} · Resistance ${escapeHtml(asset.resistance || '—')}</div>
+      <div class="level-strip">Support ${escapeHtml(fmtBriefLevel(asset.support))} · Resistance ${escapeHtml(fmtBriefLevel(asset.resistance))}</div>
     </div>
     <p class="assessment-lead">${escapeHtml(asset.assessment || '')}</p>
     ${renderAnalysisMeta(asset)}
