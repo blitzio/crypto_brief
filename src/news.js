@@ -66,6 +66,11 @@ function isMismatchedAssetFeedItem(item = {}) {
   return !item.assetMentions.includes(item.topic);
 }
 
+function isIrrelevantGeneralEditorial(item = {}) {
+  if (item.topic !== 'general' || item.sourceTier !== 'editorial' || item.assetMentions.length > 0) return false;
+  return !/\bcrypto(?:currency|currencies)?\b|\bdigital assets?\b|\bblockchain\b|\bstablecoins?\b|\btoken(?:s|ization|ized)?\b|\bdefi\b|\bweb3\b|\bmining\b|\bminers?\b/i.test(newsText(item));
+}
+
 export function canonicalNewsUrl(value = '') {
   try {
     const url = new URL(value);
@@ -108,6 +113,7 @@ export function selectTopNewsItems(items = [], limit = 20) {
   const prepared = buildPromptNewsItems(items)
     .filter(item => !isLowSignalNews(item))
     .filter(item => !isMismatchedAssetFeedItem(item))
+    .filter(item => !isIrrelevantGeneralEditorial(item))
     .map(item => ({
       ...item,
       url: canonicalNewsUrl(item.url),

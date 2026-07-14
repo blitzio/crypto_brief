@@ -219,6 +219,42 @@ assert.equal(
 }
 
 {
+  const selected = selectTopNewsItems([
+    {
+      title: 'OpenAI releases a new prompting guide',
+      description: 'The article covers ChatGPT prompting and developer productivity.',
+      source: 'Decrypt',
+      sourceId: 'decrypt',
+      sourceTier: 'editorial',
+      topic: 'general',
+      url: 'https://decrypt.example/openai-prompting',
+    },
+    {
+      title: 'Crypto market structure bill advances',
+      description: 'The digital asset legislation covers exchanges and stablecoins.',
+      source: 'Decrypt',
+      sourceId: 'decrypt',
+      sourceTier: 'editorial',
+      topic: 'general',
+      url: 'https://decrypt.example/crypto-policy',
+    },
+    {
+      title: 'Stocks and gold diverge before inflation data',
+      description: 'Rates and risk assets moved ahead of CPI.',
+      source: 'FT Markets',
+      sourceId: 'ft-markets',
+      sourceTier: 'macro',
+      topic: 'macro',
+      url: 'https://ft.example/macro',
+    },
+  ]);
+
+  assert.equal(selected.some(item => item.url.includes('openai-prompting')), false, 'unrelated general-feed technology articles should be rejected');
+  assert.equal(selected.some(item => item.url.includes('crypto-policy')), true, 'crypto policy articles should remain eligible');
+  assert.equal(selected.some(item => item.url.includes('/macro')), true, 'macro feeds should retain relevant cross-asset context');
+}
+
+{
   assert.deepEqual(resolveModelFallbacks({}), ['gemini-3.5-flash', 'gemini-3.1-flash-lite']);
   assert.deepEqual(
     resolveModelFallbacks({ GEMINI_MODEL: 'custom-model', GEMINI_FALLBACK_MODEL: 'fallback-model' }),

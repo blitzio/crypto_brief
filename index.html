@@ -913,9 +913,19 @@ function sanitizeBriefForDisplay(value) {
   return typeof value === 'string' ? sanitizeVisibleEvidence(value) : value;
 }
 
+function missingNewsEvidenceIds(text = '', evidenceIds = []) {
+  const inlineNumbers = new Set([...String(text).matchAll(/\[(\d+)\]/g)].map(match => match[1]));
+  return [...new Set((Array.isArray(evidenceIds) ? evidenceIds : [])
+    .filter(id => /^news:\d+$/.test(String(id)))
+    .filter(id => !inlineNumbers.has(String(id).split(':')[1])))];
+}
+
 function renderBullets(id, arr) {
   document.getElementById(id).innerHTML =
-    (arr ?? []).map(b => `<li><strong>${escapeHtml(b.label)}:</strong> ${escapeHtml(sanitizeVisibleEvidence(b.text))}</li>`).join('');
+    (arr ?? []).map(b => {
+      const missingEvidence = missingNewsEvidenceIds(b.text, b.evidenceIds);
+      return `<li><strong>${escapeHtml(b.label)}:</strong> ${renderCitationText(b.text)}${missingEvidence.length ? ` ${renderEvidence(missingEvidence)}` : ''}</li>`;
+    }).join('');
 }
 
 function renderMacroCards(macro) {
@@ -954,17 +964,24 @@ function renderMacroCards(macro) {
   ].join('');
 }
 
+function summarizeSourceCollection(items = []) {
+  const publishers = [...new Set(items.map(item => item.source || 'Unknown'))];
+  const articleCount = items.length;
+  const articleLabel = `${articleCount} article${articleCount === 1 ? '' : 's'} · ${publishers.length} publisher${publishers.length === 1 ? '' : 's'}`;
+  const previewPublishers = publishers.slice(0, 3).join(' · ');
+  const remaining = Math.max(0, publishers.length - 3);
+  const previewLabel = publishers.length ? `· ${previewPublishers}${remaining ? ` · +${remaining} more` : ''}` : '· no live news retrieved';
+  return { articleLabel, previewLabel };
+}
+
 function renderSources(items) {
   const grid = document.getElementById('sources-grid');
   const count = Array.isArray(items) ? items.length : 0;
   const countEl = document.getElementById('source-count');
   const previewEl = document.getElementById('sources-preview');
-  if (countEl) countEl.textContent = `${count} source${count === 1 ? '' : 's'}`;
-  if (previewEl) {
-    previewEl.textContent = count
-      ? `· ${items.slice(0, 3).map(item => item.source || 'Unknown').join(' · ')}`
-      : '· no live news retrieved';
-  }
+  const summary = summarizeSourceCollection(Array.isArray(items) ? items : []);
+  if (countEl) countEl.textContent = summary.articleLabel;
+  if (previewEl) previewEl.textContent = summary.previewLabel;
   if (!items?.length) {
     grid.innerHTML = '<p style="color:var(--muted);font-size:.9rem;grid-column:1/-1;">No news sources retrieved.</p>';
     return;
@@ -1030,6 +1047,14 @@ function renderEvidence(evidenceIds = []) {
   }).join('')}</span>`;
 }
 
+function renderCitationText(text = '') {
+  const safeText = escapeHtml(sanitizeVisibleEvidence(text));
+  return safeText.replace(/\[(\d+)\]/g, (match, sourceNumber) => {
+    const number = Number(sourceNumber);
+    return `<a class="evidence-link" href="#source-${number}" onclick="return openEvidence(event, ${number})" title="Open source ${number}">[${number}]</a>`;
+  });
+}
+
 function renderAnalysisMeta(item = {}, { showConfidence = true } = {}) {
   const confidenceMarkup = showConfidence ? renderConfidence(item.confidence) : '';
   const basisMarkup = item.confidenceBasis
@@ -1043,15 +1068,15 @@ function renderAnalysisItems(items = [], signalLabel = 'Indicator') {
     const primaryAnalysis = item.assessment || item.gap || item.whyItMatters || '';
     return `<li>
       <div class="analysis-item-head"><h3>${escapeHtml(item.title || 'Untitled assessment')}</h3></div>
-      <div class="analysis-item-copy">${escapeHtml(primaryAnalysis)}</div>
+      <div class="analysis-item-copy">${renderCitationText(primaryAnalysis)}</div>
       ${item.impact || item.likelihood || item.horizon
         ? `<div class="analysis-meta"><span>${escapeHtml([item.impact && `Impact: ${item.impact}`, item.likelihood, item.horizon].filter(Boolean).join(' · '))}</span></div>`
         : ''}
       ${item.indicator || item.signal || item.closureEvidence
-        ? `<div class="analysis-item-signal"><strong>${escapeHtml(signalLabel)}:</strong> ${escapeHtml(item.indicator || item.signal || item.closureEvidence)}</div>`
+        ? `<div class="analysis-item-signal"><strong>${escapeHtml(signalLabel)}:</strong> ${renderCitationText(item.indicator || item.signal || item.closureEvidence)}</div>`
         : ''}
       ${item.whyItMatters && (item.assessment || item.gap)
-        ? `<div class="analysis-item-signal"><strong>Why it matters:</strong> ${escapeHtml(item.whyItMatters)}</div>`
+        ? `<div class="analysis-item-signal"><strong>Why it matters:</strong> ${renderCitationText(item.whyItMatters)}</div>`
         : ''}
       <div class="analysis-meta">${renderEvidence(item.evidenceIds)}</div>
     </li>`;
@@ -1065,15 +1090,15 @@ function renderAssetAssessment(symbol, asset = {}) {
       <h3>${escapeHtml(label)} <span style="color:var(--faint);font-weight:500;">${escapeHtml(symbol.toUpperCase())}</span></h3>
       <div class="level-strip">Support ${escapeHtml(fmtBriefLevel(asset.support))} · Resistance ${escapeHtml(fmtBriefLevel(asset.resistance))}</div>
     </div>
-    <p class="assessment-lead">${escapeHtml(asset.assessment || '')}</p>
+    <p class="assessment-lead">${renderCitationText(asset.assessment || '')}</p>
     ${renderAnalysisMeta(asset, { showConfidence: false })}
     <ul class="driver-list">${(asset.drivers || []).map(driver => `<li class="driver">
       <div><div class="driver-title">${escapeHtml(driver.title || 'Driver')}</div>${renderAnalysisMeta(driver, { showConfidence: false })}</div>
-      <div class="driver-copy">${escapeHtml(driver.analysis || '')}</div>
+      <div class="driver-copy">${renderCitationText(driver.analysis || '')}</div>
     </li>`).join('')}</ul>
     <div class="confirmation-grid">
-      <div class="indicator-block confirm"><div class="indicator-label">Confirmation</div><p>${escapeHtml(asset.confirmation || '')}</p></div>
-      <div class="indicator-block invalidate"><div class="indicator-label">Invalidation</div><p>${escapeHtml(asset.invalidation || '')}</p></div>
+      <div class="indicator-block confirm"><div class="indicator-label">Confirmation</div><p>${renderCitationText(asset.confirmation || '')}</p></div>
+      <div class="indicator-block invalidate"><div class="indicator-label">Invalidation</div><p>${renderCitationText(asset.invalidation || '')}</p></div>
     </div>
   </article>`;
 }
@@ -1082,9 +1107,9 @@ function renderScenario(name, scenario = {}) {
   const label = { base: 'Base case', bullish: 'Bullish case', bearish: 'Bearish case' }[name] || name;
   return `<article class="analysis-column">
     <h3>${escapeHtml(label)}</h3>
-    <p>${escapeHtml(scenario.outlook || '')}</p>
-    <div class="analysis-item-signal"><strong>Causal path:</strong> ${escapeHtml(scenario.causalPath || '')}</div>
-    <div class="analysis-item-signal"><strong>Triggers:</strong> ${escapeHtml((scenario.triggers || []).join(' · '))}</div>
+    <p>${renderCitationText(scenario.outlook || '')}</p>
+    <div class="analysis-item-signal"><strong>Causal path:</strong> ${renderCitationText(scenario.causalPath || '')}</div>
+    <div class="analysis-item-signal"><strong>Triggers:</strong> ${renderCitationText((scenario.triggers || []).join(' · '))}</div>
     <div class="analysis-meta"><span>${escapeHtml([scenario.likelihood, scenario.horizon].filter(Boolean).join(' · '))}</span>${renderConfidence(scenario.confidence)}${renderEvidence(scenario.evidenceIds)}</div>
   </article>`;
 }
@@ -1137,10 +1162,10 @@ function renderLegacyBrief(brief, prices, marketSignals, macro, newsItems, gener
   renderBullets('legacy-watch',   brief.watch);
 
   document.getElementById('verdict-content').innerHTML =
-    `<p>${escapeHtml(brief.verdict)}</p>
-     <p><strong>Conviction Ranking:</strong> ${escapeHtml(brief.ranking)}</p>
-     <p><strong>Bull Trigger:</strong> ${escapeHtml(brief.bullTrigger)}<br/>
-        <strong>Bear Trigger:</strong> ${escapeHtml(brief.bearTrigger)}</p>`;
+    `<p>${renderCitationText(brief.verdict)}</p>
+     <p><strong>Conviction Ranking:</strong> ${renderCitationText(brief.ranking)}</p>
+     <p><strong>Bull Trigger:</strong> ${renderCitationText(brief.bullTrigger)}<br/>
+        <strong>Bear Trigger:</strong> ${renderCitationText(brief.bearTrigger)}</p>`;
 
   finishBriefRender(newsItems, generatedTime);
 }
@@ -1155,13 +1180,13 @@ function renderV3Brief(brief, prices, marketSignals, macroData, newsItems, gener
   renderMacroCards(macroData);
 
   document.getElementById('bottom-line').innerHTML =
-    `<p class="bottom-line-copy">${escapeHtml(executive.bottomLine || '')}</p>${renderAnalysisMeta(executive)}`;
+    `<p class="bottom-line-copy">${renderCitationText(executive.bottomLine || '')}</p>${renderAnalysisMeta(executive)}`;
   document.getElementById('key-judgments').innerHTML = (executive.keyJudgments || []).map(judgment => `<li class="judgment">
     <div>
       <div class="judgment-title-row"><h3>${escapeHtml(judgment.title || 'Key judgment')}</h3>${renderConfidence(judgment.confidence)}</div>
-      <p class="judgment-assessment">${escapeHtml(judgment.assessment || '')}</p>
-      <p class="judgment-implication"><strong>Why it matters:</strong> ${escapeHtml(judgment.whyItMatters || '')}</p>
-      <p class="judgment-invalidators"><strong>Would change this view:</strong> ${escapeHtml((judgment.invalidators || []).join(' · '))}</p>
+      <p class="judgment-assessment">${renderCitationText(judgment.assessment || '')}</p>
+      <p class="judgment-implication"><strong>Why it matters:</strong> ${renderCitationText(judgment.whyItMatters || '')}</p>
+      <p class="judgment-invalidators"><strong>Would change this view:</strong> ${renderCitationText((judgment.invalidators || []).join(' · '))}</p>
       <div class="analysis-meta">${judgment.confidenceBasis ? `<span class="confidence-basis">${escapeHtml(judgment.confidenceBasis)}</span>` : ''}${renderEvidence(judgment.evidenceIds)}</div>
     </div>
   </li>`).join('');
@@ -1172,11 +1197,11 @@ function renderV3Brief(brief, prices, marketSignals, macroData, newsItems, gener
 
   document.getElementById('macro-assessment').innerHTML = `
     <div class="pdb-section-head"><h2>Macro &amp; Cross-Asset Regime</h2><span>Transmission into crypto</span></div>
-    <p class="assessment-lead">${escapeHtml(macro.assessment || '')}</p>
+    <p class="assessment-lead">${renderCitationText(macro.assessment || '')}</p>
     ${renderAnalysisMeta(macro, { showConfidence: false })}
     <div class="analysis-grid">${(macro.transmissionChannels || []).map(channel => `<article class="analysis-column">
       <h3>${escapeHtml(channel.title || 'Transmission channel')}</h3>
-      <p>${escapeHtml(channel.analysis || '')}</p>
+      <p>${renderCitationText(channel.analysis || '')}</p>
       <div class="analysis-meta">${renderEvidence(channel.evidenceIds)}</div>
     </article>`).join('')}</div>`;
 
