@@ -647,6 +647,19 @@ async function fetchDirectPrices() {
   return prices;
 }
 
+function sanitizeMarketLevels(prices, rawSignals = {}) {
+  const assetMap = [['btc', 'bitcoin'], ['eth', 'ethereum'], ['link', 'chainlink']];
+  return Object.fromEntries(assetMap.flatMap(([symbol, id]) => {
+    const spot = Number(prices?.[id]?.current_price);
+    const support = Number(rawSignals?.[symbol]?.support);
+    const resistance = Number(rawSignals?.[symbol]?.resistance);
+    const valid = Number.isFinite(spot) && spot > 0 &&
+      Number.isFinite(support) && support > spot * 0.5 && support < spot &&
+      Number.isFinite(resistance) && resistance > spot && resistance < spot * 1.5;
+    return valid ? [[symbol, { support, resistance }]] : [];
+  }));
+}
+
 async function fetchMarketData() {
   const prices = await fetchDirectPrices();
   let marketSignals = {};
@@ -656,8 +669,9 @@ async function fetchMarketData() {
     const data = await response.json();
     if (data?.provider === 'coingecko' && data?.signals && typeof data.signals === 'object') {
       marketSignals = data.signals;
-    } else if (data?.provider) {
-      console.warn(`[market] ignoring ${data.provider} spot data and derived levels`);
+    } else if (data?.signals && typeof data.signals === 'object') {
+      marketSignals = sanitizeMarketLevels(prices, data.signals);
+      console.warn(`[market] ignoring ${data?.provider || 'unknown'} spot quotes; using only validated derived levels`);
     }
   } catch (error) {
     console.warn('[market] Worker signals unavailable; keeping direct CoinGecko prices', error);
