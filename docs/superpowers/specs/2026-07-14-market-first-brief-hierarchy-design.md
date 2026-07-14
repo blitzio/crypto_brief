@@ -46,7 +46,7 @@ The existing full Market Summary moves above the executive section. It preserves
 
 ## Market Number Presentation
 
-Market card support and resistance values must use the same user-facing price formatter as current prices:
+Market card support and resistance values must use a display-only level formatter aligned with the existing price-formatting conventions:
 
 - BTC example: `$58,067` and `$64,471`
 - ETH example: `$1,715.91` and `$1,810.74`
