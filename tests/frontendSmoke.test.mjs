@@ -13,6 +13,37 @@ assert.equal(fmtBriefLevel('58067'), '$58,067');
 assert.equal(fmtBriefLevel('1810.7350000000001'), '$1,810.74');
 assert.equal(fmtBriefLevel(8.145), '$8.145');
 assert.equal(fmtBriefLevel('—'), '—');
+const marketLevelSanitizerMatch = scriptMatch[1].match(/function sanitizeMarketLevels\(prices, rawSignals[\s\S]*?\n\}/);
+assert.ok(marketLevelSanitizerMatch, 'market level sanitizer should be defined');
+const sanitizeMarketLevels = new Function(`${marketLevelSanitizerMatch[0]}; return sanitizeMarketLevels;`)();
+assert.deepEqual(
+  sanitizeMarketLevels(
+    { bitcoin: { current_price: 100 }, ethereum: { current_price: 50 }, chainlink: { current_price: 10 } },
+    {
+      btc: { support: 90, resistance: 110 },
+      eth: { support: 45, resistance: 55 },
+      link: { support: 9, resistance: 11 },
+    }
+  ),
+  {
+    btc: { support: 90, resistance: 110 },
+    eth: { support: 45, resistance: 55 },
+    link: { support: 9, resistance: 11 },
+  },
+  'valid deterministic support and resistance should remain visible'
+);
+assert.deepEqual(
+  sanitizeMarketLevels(
+    { bitcoin: { current_price: 100 }, ethereum: { current_price: 50 }, chainlink: { current_price: 10 } },
+    {
+      btc: { support: 0, resistance: 110 },
+      eth: { support: 55, resistance: 45 },
+      link: { support: 1, resistance: 100 },
+    }
+  ),
+  {},
+  'zero, inverted, or implausibly distant levels should be rejected'
+);
 assert.ok(scriptMatch[1].includes('function parseBriefJson'), 'front-end JSON parser should stay centralized');
 assert.ok(scriptMatch[1].includes('function setLoadStatus'), 'loading status updates should stay centralized');
 assert.ok(scriptMatch[1].includes('function fetchWithTimeout'), 'network requests should use a shared timeout helper');
