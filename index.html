@@ -888,9 +888,34 @@ async function refreshMarketSummary(_brief) {
   renderMarketSummary(prices, marketSignals);
 }
 
+function sanitizeVisibleEvidence(text = '') {
+  return String(text)
+    .replace(/\[([^\]]+)\]/g, (match, content) => {
+      const tokens = content.split(',').map(token => token.trim()).filter(Boolean);
+      const isEvidenceList = tokens.length > 0 && tokens.every(token => /^(?:market|macro|news):[a-z0-9._-]+(?::[a-z0-9._-]+)*$/i.test(token));
+      if (!isEvidenceList) return match;
+      const newsNumbers = [...new Set(tokens.flatMap(token => {
+        const newsMatch = token.match(/^news:(\d+)$/i);
+        return newsMatch ? [newsMatch[1]] : [];
+      }))];
+      return newsNumbers.length ? `[${newsNumbers.join(', ')}]` : '';
+    })
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function sanitizeBriefForDisplay(value) {
+  if (Array.isArray(value)) return value.map(sanitizeBriefForDisplay);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, sanitizeBriefForDisplay(entry)]));
+  }
+  return typeof value === 'string' ? sanitizeVisibleEvidence(value) : value;
+}
+
 function renderBullets(id, arr) {
   document.getElementById(id).innerHTML =
-    (arr ?? []).map(b => `<li><strong>${escapeHtml(b.label)}:</strong> ${escapeHtml(b.text)}</li>`).join('');
+    (arr ?? []).map(b => `<li><strong>${escapeHtml(b.label)}:</strong> ${escapeHtml(sanitizeVisibleEvidence(b.text))}</li>`).join('');
 }
 
 function renderMacroCards(macro) {
@@ -996,14 +1021,12 @@ function openEvidence(event, sourceNumber) {
 }
 
 function renderEvidence(evidenceIds = []) {
-  const uniqueIds = [...new Set(Array.isArray(evidenceIds) ? evidenceIds : [])];
+  const uniqueIds = [...new Set(Array.isArray(evidenceIds) ? evidenceIds : [])]
+    .filter(id => /^news:\d+$/.test(String(id)));
   if (!uniqueIds.length) return '';
   return `<span class="evidence-list" aria-label="Evidence">${uniqueIds.map(id => {
     const match = String(id).match(/^news:(\d+)$/);
-    if (match) {
-      return `<a class="evidence-link" href="#source-${match[1]}" onclick="return openEvidence(event, ${match[1]})" title="Open source ${match[1]}">[${match[1]}]</a>`;
-    }
-    return `<span class="evidence-chip">${escapeHtml(id)}</span>`;
+    return `<a class="evidence-link" href="#source-${match[1]}" onclick="return openEvidence(event, ${match[1]})" title="Open source ${match[1]}">[${match[1]}]</a>`;
   }).join('')}</span>`;
 }
 
@@ -1170,10 +1193,11 @@ function renderV3Brief(brief, prices, marketSignals, macroData, newsItems, gener
 }
 
 function renderBrief(brief, prices, marketSignals, macro, newsItems, generatedTime) {
+  const visibleBrief = sanitizeBriefForDisplay(brief);
   if (brief?.briefVersion === 'v3') {
-    renderV3Brief(brief, prices, marketSignals, macro, newsItems, generatedTime);
+    renderV3Brief(visibleBrief, prices, marketSignals, macro, newsItems, generatedTime);
   } else {
-    renderLegacyBrief(brief, prices, marketSignals, macro, newsItems, generatedTime);
+    renderLegacyBrief(visibleBrief, prices, marketSignals, macro, newsItems, generatedTime);
   }
 }
 

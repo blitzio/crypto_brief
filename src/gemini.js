@@ -28,10 +28,27 @@ export function parseGeminiBriefJson(raw = '') {
   }
 }
 
-export function normalizeCitationMarkers(text = '') {
+export function sanitizeVisibleEvidenceMarkers(text = '') {
   return String(text)
+    .replace(/\[([^\]]+)\]/g, (match, content) => {
+      const tokens = content.split(',').map(token => token.trim()).filter(Boolean);
+      const isEvidenceList = tokens.length > 0 && tokens.every(token => /^(?:market|macro|news):[a-z0-9._-]+(?::[a-z0-9._-]+)*$/i.test(token));
+      if (!isEvidenceList) return match;
+      const newsNumbers = [...new Set(tokens.flatMap(token => {
+        const newsMatch = token.match(/^news:(\d+)$/i);
+        return newsMatch ? [newsMatch[1]] : [];
+      }))];
+      return newsNumbers.length ? `[${newsNumbers.join(', ')}]` : '';
+    })
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+export function normalizeCitationMarkers(text = '') {
+  return sanitizeVisibleEvidenceMarkers(String(text)
     .replace(/\s*\((?:Doc|Document)\.?\s*(\d+)\)/gi, ' [$1]')
-    .replace(/\b(?:Doc|Document)\.?\s*(\d+)\b/gi, '[$1]');
+    .replace(/\b(?:Doc|Document)\.?\s*(\d+)\b/gi, '[$1]'));
 }
 
 export function normalizeBriefCitationMarkers(value) {
