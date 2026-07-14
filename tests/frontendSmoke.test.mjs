@@ -44,6 +44,23 @@ assert.deepEqual(
   {},
   'zero, inverted, or implausibly distant levels should be rejected'
 );
+const visibleEvidenceSanitizerMatch = scriptMatch[1].match(/function sanitizeVisibleEvidence\(text[\s\S]*?\n\}/);
+assert.ok(visibleEvidenceSanitizerMatch, 'visible evidence sanitizer should be defined');
+const sanitizeVisibleEvidence = new Function(`${visibleEvidenceSanitizerMatch[0]}; return sanitizeVisibleEvidence;`)();
+assert.equal(sanitizeVisibleEvidence('Range [market:link:rangePosition].'), 'Range.');
+assert.equal(
+  sanitizeVisibleEvidence('Risk [macro:usdsgd:change5d, news:13].'),
+  'Risk [13].',
+  'mixed evidence should retain only reader-facing news references'
+);
+assert.equal(sanitizeVisibleEvidence('News-backed claim [4].'), 'News-backed claim [4].');
+const renderEvidenceMatch = scriptMatch[1].match(/function renderEvidence\(evidenceIds = \[\]\) \{[\s\S]*?\n\}/);
+assert.ok(renderEvidenceMatch, 'evidence renderer should be defined');
+assert.equal(
+  renderEvidenceMatch[0].includes('evidence-chip'),
+  false,
+  'internal market and macro evidence chips must never be rendered'
+);
 assert.ok(scriptMatch[1].includes('function parseBriefJson'), 'front-end JSON parser should stay centralized');
 assert.ok(scriptMatch[1].includes('function setLoadStatus'), 'loading status updates should stay centralized');
 assert.ok(scriptMatch[1].includes('function fetchWithTimeout'), 'network requests should use a shared timeout helper');

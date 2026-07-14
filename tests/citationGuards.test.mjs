@@ -24,6 +24,22 @@ assert.equal(typeof geminiModule.resolveGenerationDeadlineMs, 'function');
 assert.equal(geminiModule.resolveGenerationDeadlineMs('v3'), 150_000);
 assert.equal(geminiModule.resolveGenerationDeadlineMs('v2'), 90_000);
 
+assert.equal(
+  normalizeCitationMarkers('Range remains stable [market:link:rangePosition].'),
+  'Range remains stable.',
+  'internal market evidence IDs must not enter reader-facing prose'
+);
+assert.equal(
+  normalizeCitationMarkers('Regional risk persists [macro:usdsgd:change5d, news:13].'),
+  'Regional risk persists [13].',
+  'mixed evidence lists should preserve only the numbered news reference'
+);
+assert.equal(
+  normalizeCitationMarkers('Coverage remains thin [4].'),
+  'Coverage remains thin [4].',
+  'ordinary numbered news references must remain visible'
+);
+
 {
   const evidenceIndex = buildEvidenceIndex({
     newsItems: [
