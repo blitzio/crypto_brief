@@ -648,25 +648,21 @@ async function fetchDirectPrices() {
 }
 
 async function fetchMarketData() {
+  const prices = await fetchDirectPrices();
+  let marketSignals = {};
   try {
     const response = await fetchWithTimeout(WORKER_URL + '/market', { cache: 'no-store' }, DATA_TIMEOUT_MS);
     if (!response.ok) throw new Error(`Worker market route returned ${response.status}`);
     const data = await response.json();
-    const prices = data?.prices;
-    const requiredAssets = ['bitcoin', 'ethereum', 'chainlink'];
-    const hasCurrentPrices = prices && requiredAssets.every(id => {
-      const value = prices[id]?.current_price;
-      return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
-    });
-    if (!hasCurrentPrices) throw new Error('Worker market route omitted a current asset price');
-    const marketSignals = data?.signals && typeof data.signals === 'object' ? data.signals : {};
-    return { prices, marketSignals };
+    if (data?.provider === 'coingecko' && data?.signals && typeof data.signals === 'object') {
+      marketSignals = data.signals;
+    } else if (data?.provider) {
+      console.warn(`[market] ignoring ${data.provider} spot data and derived levels`);
+    }
   } catch (error) {
-    console.warn('[market] Worker route unavailable; using direct current-price fallback', error);
-    const prices = await fetchDirectPrices();
-    const marketSignals = {};
-    return { prices, marketSignals };
+    console.warn('[market] Worker signals unavailable; keeping direct CoinGecko prices', error);
   }
+  return { prices, marketSignals };
 }
 
 async function fetchMacro() {
@@ -1220,6 +1216,9 @@ async function run(forceRefresh = false) {
     setRefreshStatus('Fetching live prices, macro and news…');
     const [marketData, macro, newsItems] = await Promise.all([fetchMarketData(), fetchMacro(), fetchNews()]);
     const { prices, marketSignals } = marketData;
+
+    renderMarketSummary(prices, marketSignals);
+    renderMacroCards(macro);
 
     setRefreshStatus('Generating analysis via Gemini…');
     const { brief } = await callAI(prices, macro, newsItems, marketSignals);
