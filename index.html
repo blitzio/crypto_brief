@@ -44,6 +44,7 @@
 }
 html{font-size:16px;}
 body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%);color:var(--text);font-family:var(--font);font-size:1rem;line-height:1.68;-webkit-font-smoothing:antialiased;min-height:100vh;padding:32px 20px 40px;}
+[hidden]{display:none!important;}
 
 /* ── LOADING ── */
 #loading{display:flex;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
@@ -52,10 +53,14 @@ body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%
 @keyframes spin{to{transform:rotate(360deg);}}
 .load-title{font-size:1.15rem;font-weight:600;color:var(--text);letter-spacing:-.01em;}
 .load-sub{font-size:.9rem;color:var(--muted);font-family:var(--font);letter-spacing:.01em;text-align:center;max-width:420px;line-height:1.6;}
+.refresh-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+.refresh-status{max-width:310px;color:var(--muted);font:600 .68rem/1.35 var(--font);text-align:right;}
 
 /* ── BRIEF ── */
 #brief{display:none;}
 #brief.active{display:block;}
+#brief.active .doc{animation:briefReveal .32s ease-out both;}
+@keyframes briefReveal{from{opacity:.25;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 .doc{max-width:1120px;margin:0 auto;background:linear-gradient(180deg,var(--paper) 0,var(--bg-elevated) 100%);border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);position:relative;}
 .cbar{background:linear-gradient(90deg,rgba(100,61,69,.88),rgba(79,50,57,.78));color:rgba(255,248,249,.92);text-align:center;padding:9px 14px;font-size:.68rem;font-family:var(--font);font-weight:600;letter-spacing:.12em;text-transform:none;}
 .brief-top{padding:30px var(--space-xl) 0;border-bottom:1px solid var(--border2);background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));display:flex;flex-direction:column;}
@@ -73,6 +78,34 @@ body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%
 .m-right{text-align:right;font-size:.84rem;color:var(--muted);line-height:1.55;padding-right:156px;}
 .routing{margin-top:18px;padding:14px 0 0;border-top:1px solid var(--border);background:none;border-bottom:none;display:flex;gap:10px 22px;font-size:.78rem;font-family:var(--font);letter-spacing:.01em;color:var(--faint);flex-wrap:wrap;line-height:1.65;order:3;}
 .routing b{color:var(--muted);font-weight:600;}
+
+/* ── PDB V3 EXECUTIVE ── */
+.executive-section{margin:24px calc(var(--space-xl) * -1) 0;padding:28px var(--space-xl) 30px;border-top:1px solid var(--border2);background:linear-gradient(180deg,rgba(195,171,118,.07),rgba(255,255,255,.012));order:5;}
+.executive-label{font:600 .68rem/1 var(--font);letter-spacing:.11em;text-transform:uppercase;color:var(--gold);margin-bottom:13px;}
+.bottom-line-copy{max-width:900px;font-size:1.14rem;line-height:1.82;letter-spacing:-.006em;color:var(--text);}
+.analysis-meta{display:flex;align-items:center;gap:9px 12px;flex-wrap:wrap;margin-top:14px;color:var(--faint);font-size:.75rem;}
+.confidence{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 9px;font:600 .68rem/1.2 var(--font);letter-spacing:.035em;text-transform:uppercase;}
+.confidence::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
+.confidence-high{color:var(--blue);border-color:rgba(126,165,220,.3);background:var(--blue-bg);}
+.confidence-medium{color:#dcc187;border-color:rgba(195,171,118,.3);background:var(--gold-bg);}
+.confidence-low{color:var(--muted);border-color:var(--border);background:rgba(255,255,255,.025);}
+.confidence-unrated{color:var(--faint);}
+.confidence-basis{color:var(--muted);line-height:1.5;}
+.confidence-guide{margin-top:16px;max-width:760px;color:var(--muted);font-size:.82rem;}
+.confidence-guide summary{width:max-content;cursor:pointer;color:var(--blue);font-weight:600;list-style-position:outside;}
+.confidence-guide-copy{margin-top:10px;padding:12px 14px;border-left:2px solid rgba(126,165,220,.35);background:rgba(126,165,220,.045);line-height:1.65;}
+.confidence-guide-copy ul{margin-top:7px;padding-left:18px;}
+.evidence-list{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.evidence-link,.evidence-chip{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:999px;padding:3px 7px;font:500 .67rem/1.2 var(--mono);color:var(--blue);background:rgba(126,165,220,.06);text-decoration:none;}
+.evidence-link:hover{border-color:rgba(126,165,220,.48);background:var(--blue-bg);}
+.judgments{list-style:none;counter-reset:judgment;margin-top:28px;border-top:1px solid var(--border2);}
+.judgment{counter-increment:judgment;display:grid;grid-template-columns:38px minmax(0,1fr);gap:16px;padding:22px 0;border-bottom:1px solid var(--border);}
+.judgment::before{content:counter(judgment,decimal-leading-zero);font:500 .72rem/1.6 var(--mono);color:var(--gold);padding-top:2px;}
+.judgment-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;}
+.judgment h3{font-size:1rem;line-height:1.4;font-weight:650;letter-spacing:-.01em;}
+.judgment-assessment{margin-top:9px;color:var(--text);line-height:1.78;}
+.judgment-implication,.judgment-invalidators{margin-top:10px;color:var(--muted);font-size:.91rem;line-height:1.7;}
+.judgment-implication strong,.judgment-invalidators strong{color:var(--text);font-weight:600;}
 
 /* ── PRICE STRIP ── */
 .market-summary{margin:18px calc(var(--space-xl) * -1) 0;border-top:1px solid var(--border);background:rgba(255,255,255,.015);order:4;}
@@ -109,6 +142,42 @@ ul.ib>li{padding:14px 0;border-bottom:1px solid var(--border);font-size:1rem;lin
 ul.ib>li:last-child{border-bottom:none;}
 ul.ib>li strong{font-weight:600;color:var(--text);}
 
+/* ── PDB V3 ANALYSIS ── */
+.v3-analysis{grid-column:1/-1;}
+.pdb-section{padding:34px var(--space-xl);border-bottom:1px solid var(--border2);}
+.pdb-section-head{display:flex;justify-content:space-between;align-items:baseline;gap:20px;margin-bottom:22px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.pdb-section-head h2{font-size:1.08rem;font-weight:650;letter-spacing:-.01em;}
+.pdb-section-head span{font:500 .68rem/1 var(--mono);letter-spacing:.08em;color:var(--faint);text-transform:uppercase;}
+.assessment-lead{max-width:930px;font-size:1.04rem;line-height:1.84;color:var(--text);}
+.analysis-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin-top:25px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+.analysis-column{padding:21px 24px 22px 0;min-width:0;}
+.analysis-column + .analysis-column{border-left:1px solid var(--border);padding-left:24px;}
+.analysis-column h3{font-size:.92rem;font-weight:650;line-height:1.45;margin-bottom:10px;}
+.analysis-column p{font-size:.92rem;line-height:1.72;color:var(--muted);}
+.asset-analysis + .asset-analysis{margin-top:34px;padding-top:32px;border-top:1px solid var(--border2);}
+.asset-heading{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:14px;}
+.asset-heading h3{font-size:1.12rem;font-weight:650;}
+.level-strip{font:500 .72rem/1.5 var(--mono);color:var(--muted);}
+.driver-list{list-style:none;margin-top:20px;border-top:1px solid var(--border);}
+.driver{display:grid;grid-template-columns:minmax(150px,.32fr) minmax(0,1fr);gap:24px;padding:17px 0;border-bottom:1px solid var(--border);}
+.driver-title{font-size:.84rem;font-weight:650;color:var(--text);}
+.driver-copy{font-size:.94rem;line-height:1.75;color:var(--muted);}
+.confirmation-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:20px;}
+.indicator-block{border-left:2px solid var(--border2);padding-left:14px;}
+.indicator-block.confirm{border-color:rgba(105,200,156,.45);}
+.indicator-block.invalidate{border-color:rgba(235,141,141,.38);}
+.indicator-label{font:600 .68rem/1.2 var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--faint);margin-bottom:7px;}
+.indicator-block p{font-size:.9rem;line-height:1.7;color:var(--muted);}
+.risk-grid,.watch-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+.analysis-list{list-style:none;border-top:1px solid var(--border);}
+.analysis-list>li{padding:18px 0;border-bottom:1px solid var(--border);}
+.analysis-item-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:8px;}
+.analysis-item-head h3{font-size:.92rem;line-height:1.45;font-weight:650;}
+.analysis-item-copy{font-size:.92rem;line-height:1.74;color:var(--muted);}
+.analysis-item-signal{margin-top:8px;font-size:.84rem;line-height:1.65;color:var(--text);}
+.analysis-item-signal strong{font-weight:600;color:var(--gold);}
+.subsection-title{font:600 .73rem/1.2 var(--font);letter-spacing:.07em;text-transform:uppercase;color:var(--gold);margin-bottom:12px;}
+
 /* ── MACRO CARDS ── */
 .macro-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
 .macro-card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015));border:1px solid var(--border);padding:16px;border-radius:var(--radius-sm);}
@@ -128,7 +197,15 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 .abox strong{font-weight:600;}
 
 /* ── SOURCES ── */
-.sources-section{grid-column:1/-1;border-top:1px solid var(--border2);padding:28px var(--space-xl) 34px;background:rgba(6,10,15,.28);}
+.sources-section{grid-column:1/-1;border-top:1px solid var(--border2);padding:0;background:rgba(6,10,15,.28);}
+.sources-summary{list-style:none;cursor:pointer;padding:22px var(--space-xl);display:flex;justify-content:space-between;align-items:center;gap:18px;color:var(--text);font-size:.91rem;font-weight:600;}
+.sources-summary::-webkit-details-marker{display:none;}
+.sources-summary::after{content:'+';font:400 1.15rem/1 var(--mono);color:var(--gold);transition:transform .16s ease;}
+.sources-section[open] .sources-summary::after{transform:rotate(45deg);}
+.sources-summary-meta{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:.76rem;font-weight:500;margin-left:auto;}
+.sources-preview{max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--faint);}
+.sources-content{padding:0 var(--space-xl) 34px;border-top:1px solid var(--border);}
+.sources-content .sec-head{margin-top:24px;}
 .sources-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
 .source-card{background:rgba(255,255,255,.02);border:1px solid var(--border);padding:16px;border-radius:var(--radius-sm);text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .15s;}
 .source-card:hover{border-color:rgba(126,165,220,.36);background:var(--blue-bg);transform:translateY(-1px);}
@@ -153,11 +230,15 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 .footer{border-top:1px solid var(--border);padding:16px var(--space-xl);display:flex;justify-content:space-between;align-items:center;font-size:.76rem;font-family:var(--font);color:var(--faint);letter-spacing:.02em;flex-wrap:wrap;gap:8px;}
 .footer .warn{color:rgba(232,162,162,.82);}
 
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}
+}
+
 /* ── MOBILE ── */
 @media(max-width:768px){
   html{font-size:15.5px;}
   body{padding:16px 12px 24px;}
-  .brief-top,.full,.sources-section,.footer{padding-left:18px;padding-right:18px;}
+  .brief-top,.full,.footer{padding-left:18px;padding-right:18px;}
   .brief-top{padding-top:24px;}
   .rbar{display:flex;justify-content:flex-start;margin-top:14px;}
   .rbar .accent-btn{position:static;}
@@ -165,6 +246,11 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   .m-right{text-align:left;padding-right:0;}
   .routing{margin-top:14px;padding-top:12px;gap:8px 16px;font-size:.74rem;}
   .market-summary{margin-left:-18px;margin-right:-18px;}
+  .executive-section{margin-left:-18px;margin-right:-18px;padding:24px 18px 26px;}
+  .bottom-line-copy{font-size:1.04rem;}
+  .judgment{grid-template-columns:30px minmax(0,1fr);gap:10px;}
+  .judgment-title-row{display:block;}
+  .judgment-title-row .confidence{margin-top:8px;}
   .market-summary-kicker{padding:10px 18px 0;}
   .price-strip{grid-template-columns:1fr;}
   .pcard{padding:15px 18px 16px;gap:12px;}
@@ -179,6 +265,15 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   .two-col{grid-template-columns:1fr;gap:22px;}
   .sources-grid{grid-template-columns:1fr 1fr;}
   .macro-grid{grid-template-columns:1fr 1fr;}
+  .pdb-section{padding:26px 18px;}
+  .analysis-grid{grid-template-columns:1fr;}
+  .analysis-column{padding:18px 0;}
+  .analysis-column + .analysis-column{border-left:none;border-top:1px solid var(--border);padding-left:0;}
+  .driver{grid-template-columns:1fr;gap:7px;}
+  .risk-grid,.watch-grid,.confirmation-grid{grid-template-columns:1fr;gap:22px;}
+  .sources-summary{padding:19px 18px;align-items:flex-start;}
+  .sources-preview{display:none;}
+  .sources-content{padding:0 18px 24px;}
   .debug-panel{padding:18px;}
   .debug-toggle{float:none;margin-left:8px;}
 }
@@ -192,6 +287,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   .routing{display:block;line-height:1.7;}
   .routing div + div{margin-top:4px;}
   .market-summary{margin-left:-16px;margin-right:-16px;}
+  .executive-section{margin-left:-16px;margin-right:-16px;padding:22px 16px 24px;}
   .market-summary-kicker{padding:9px 16px 0;}
   .pcard{padding:14px 16px 15px;}
   .p-main{grid-template-columns:1fr;gap:12px;align-items:start;}
@@ -207,7 +303,12 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   .macro-grid{grid-template-columns:1fr 1fr;}
   .macro-value{font-size:1.25rem;}
   .full{padding:18px 16px 20px;}
-  .sources-section{padding:18px 16px 20px;}
+  .pdb-section{padding:22px 16px;}
+  .pdb-section-head{display:block;}
+  .pdb-section-head span{display:block;margin-top:6px;}
+  .sources-section{padding:0;}
+  .sources-summary{padding:17px 16px;}
+  .sources-content{padding:0 16px 20px;}
   .sources-grid{grid-template-columns:1fr;}
   .footer{flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;}
   .debug-panel{padding:14px 16px;}
@@ -233,9 +334,12 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
       &nbsp;·&nbsp;
       <b>News:</b> CoinDesk · The Block · Decrypt · Dow Jones · FT · more
       &nbsp;·&nbsp;
-      <b>Analysis:</b> Gemini 3 Flash Preview
+      <b>Analysis:</b> Gemini 3.5 Flash
     </div>
-    <button class="accent-btn" onclick="run(true)">↻ Refresh Brief</button>
+    <div class="refresh-controls">
+      <span class="refresh-status" id="refresh-status" role="status" aria-live="polite"></span>
+      <button class="accent-btn" id="refresh-btn" onclick="run(true)">↻ Refresh Brief</button>
+    </div>
   </div>
 
   <div class="masthead">
@@ -292,10 +396,52 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
     </div>
   </div>
 
+  <section class="executive-section" id="v3-executive" aria-labelledby="bottom-line-heading" hidden>
+    <div class="executive-label" id="bottom-line-heading">Bottom Line</div>
+    <div id="bottom-line"></div>
+    <details class="confidence-guide">
+      <summary>How to read confidence</summary>
+      <div class="confidence-guide-copy">
+        <p>Confidence measures evidence strength, not market direction, certainty, or a buy/sell signal.</p>
+        <ul>
+          <li><strong>High:</strong> Multiple reliable and independent facts or signals align.</li>
+          <li><strong>Medium:</strong> Credible evidence supports the assessment, but material uncertainty or mixed signals remain.</li>
+          <li><strong>Low:</strong> Evidence is limited, indirect, or conflicting.</li>
+        </ul>
+      </div>
+    </details>
+    <div class="executive-label" style="margin-top:30px;">Key Judgments</div>
+    <ol class="judgments" id="key-judgments"></ol>
+  </section>
+
   </div>
 
   <div class="body">
-    <div class="col-l">
+    <div class="v3-analysis" id="v3-analysis" hidden>
+      <section class="pdb-section" id="asset-assessments"></section>
+      <section class="pdb-section" id="macro-assessment"></section>
+      <section class="pdb-section" id="scenario-outlook"></section>
+      <section class="pdb-section">
+        <div class="pdb-section-head"><h2>Threats &amp; Opportunities</h2><span>Asymmetric developments</span></div>
+        <div class="risk-grid">
+          <div><div class="subsection-title">Active threats</div><ul class="analysis-list" id="threats"></ul></div>
+          <div><div class="subsection-title">Potential opportunities</div><ul class="analysis-list" id="opportunities"></ul></div>
+        </div>
+      </section>
+      <section class="pdb-section">
+        <div class="pdb-section-head"><h2>Forward Watch</h2><span>Observable indicators</span></div>
+        <div class="watch-grid">
+          <div><div class="subsection-title">Next 24 hours</div><ul class="analysis-list" id="watch-24h"></ul></div>
+          <div><div class="subsection-title">Next 7 days</div><ul class="analysis-list" id="watch-7d"></ul></div>
+        </div>
+      </section>
+      <section class="pdb-section">
+        <div class="pdb-section-head"><h2>Intelligence Gaps</h2><span>What could change the assessment</span></div>
+        <ul class="analysis-list" id="intelligence-gaps"></ul>
+      </section>
+    </div>
+
+    <div class="col-l legacy-analysis">
       <div class="sec">
         <div class="sec-head">₿ &nbsp; Bitcoin — BTC</div>
         <ul class="ib" id="btc-bullets"></ul>
@@ -305,7 +451,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
         <ul class="ib" id="eth-bullets"></ul>
       </div>
     </div>
-    <div>
+    <div class="legacy-analysis">
       <div class="sec">
         <div class="sec-head">Macro &amp; Threat Landscape</div>
         <div class="macro-grid" id="macro-grid"></div>
@@ -319,16 +465,16 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 
     <div class="psep">— END OF PAGE 1 · PAGE 2 FOLLOWS — HANDLE WITH CARE —</div>
 
-    <div class="full">
+    <div class="full legacy-analysis">
       <div class="sec-head">§ IV &nbsp;·&nbsp; Directorate Assessment &amp; Forward Watch</div>
       <div class="two-col">
         <div>
           <div class="col-head">⚠ Active Threat Stack</div>
-          <ul class="ib" id="threats"></ul>
+          <ul class="ib" id="legacy-threats"></ul>
         </div>
         <div>
           <div class="col-head">📡 Forward Watch — Next 7 Days</div>
-          <ul class="ib" id="watch"></ul>
+          <ul class="ib" id="legacy-watch"></ul>
         </div>
       </div>
       <div class="abox">
@@ -337,13 +483,19 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
       </div>
     </div>
 
-    <div class="sources-section">
-      <div class="sec-head">
-        § V &nbsp;·&nbsp; Intelligence Sources — Live RSS News Feed
-        <button class="debug-toggle" onclick="toggleDebug()">⚙ Show Raw Sources</button>
+    <details class="sources-section" id="sources-annex">
+      <summary class="sources-summary">
+        <span>Intelligence Sources</span>
+        <span class="sources-summary-meta"><span id="source-count">0 sources</span><span class="sources-preview" id="sources-preview"></span></span>
+      </summary>
+      <div class="sources-content">
+        <div class="sec-head">
+          Live RSS evidence annex
+          <button class="debug-toggle" onclick="toggleDebug()">⚙ Show Raw Sources</button>
+        </div>
+        <div class="sources-grid" id="sources-grid"></div>
       </div>
-      <div class="sources-grid" id="sources-grid"></div>
-    </div>
+    </details>
 
     <div class="debug-panel" id="debug-panel">
       <h4>Raw News Articles Fed to Gemini</h4>
@@ -366,6 +518,9 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 
 // ─── CONFIG ────────────────────────────────────────────────────────
 const WORKER_URL = 'https://crypto-brief-proxy.blitzio.workers.dev';
+const DATA_TIMEOUT_MS = 15000;
+const GEMINI_TIMEOUT_MS = 165000;
+let refreshInFlight = false;
 
 // ─── SGT UTILITIES ─────────────────────────────────────────────────
 const MONS  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
@@ -379,6 +534,20 @@ const fmtDate = d   => `${pad(d.getDate())} ${MONS[d.getMonth()]} ${d.getFullYea
 const fmtPrice = n  => n >= 1000  ? '$' + n.toLocaleString('en-US', { maximumFractionDigits: 0 })
                      : n >= 10    ? '$' + n.toFixed(2)
                      : '$' + n.toFixed(3);
+function fmtBriefLevel(value) {
+  const numeric = typeof value === 'number'
+    ? value
+    : Number(String(value ?? '').replace(/[$,\s]/g, ''));
+  if (!Number.isFinite(numeric)) return '—';
+  if (Math.abs(numeric) >= 10000) {
+    return '$' + numeric.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  }
+  if (Math.abs(numeric) >= 1000) {
+    return '$' + numeric.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  if (Math.abs(numeric) >= 10) return '$' + numeric.toFixed(2);
+  return '$' + numeric.toFixed(3);
+}
 const fmtCap   = n  => !n        ? 'N/A'
                      : n >= 1e12 ? '$' + (n / 1e12).toFixed(2) + 'T'
                      : n >= 1e9  ? '$' + (n / 1e9).toFixed(1)  + 'B'
@@ -436,23 +605,73 @@ function setLoadStatus(message = '') {
   document.getElementById('load-sub').textContent = message;
 }
 
+function setRefreshStatus(message = '') {
+  const status = document.getElementById('refresh-status');
+  if (status) status.textContent = message;
+  if (!document.getElementById('brief').classList.contains('active')) setLoadStatus(message);
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = DATA_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // ─── DATA FETCHERS ──────────────────────────────────────────────────
-async function fetchPrices() {
-  const res = await fetch(
+async function fetchDirectPrices() {
+  const res = await fetchWithTimeout(
     'https://api.coingecko.com/api/v3/coins/markets' +
     '?vs_currency=usd&ids=bitcoin,ethereum,chainlink' +
     '&order=market_cap_desc&per_page=3&page=1&sparkline=false' +
     '&price_change_percentage=24h,7d',
-    { cache: 'no-store' }
+    { cache: 'no-store' },
+    DATA_TIMEOUT_MS
   );
   if (!res.ok) throw new Error('CoinGecko unavailable — try again shortly.');
   const arr = await res.json();
-  return Object.fromEntries(arr.map(c => [c.id, c]));
+  const prices = Object.fromEntries((Array.isArray(arr) ? arr : []).filter(c => c?.id).map(c => [c.id, c]));
+  const hasAllPrices = ['bitcoin', 'ethereum', 'chainlink'].every(id => {
+    const value = prices[id]?.current_price;
+    return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+  });
+  if (!hasAllPrices) throw new Error('CoinGecko response omitted a current asset price.');
+  return prices;
+}
+
+async function fetchMarketData() {
+  try {
+    const response = await fetchWithTimeout(WORKER_URL + '/market', { cache: 'no-store' }, DATA_TIMEOUT_MS);
+    if (!response.ok) throw new Error(`Worker market route returned ${response.status}`);
+    const data = await response.json();
+    const prices = data?.prices;
+    const requiredAssets = ['bitcoin', 'ethereum', 'chainlink'];
+    const hasCurrentPrices = prices && requiredAssets.every(id => {
+      const value = prices[id]?.current_price;
+      return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+    });
+    if (!hasCurrentPrices) throw new Error('Worker market route omitted a current asset price');
+    const marketSignals = data?.signals && typeof data.signals === 'object' ? data.signals : {};
+    return { prices, marketSignals };
+  } catch (error) {
+    console.warn('[market] Worker route unavailable; using direct current-price fallback', error);
+    const prices = await fetchDirectPrices();
+    const marketSignals = {};
+    return { prices, marketSignals };
+  }
 }
 
 async function fetchMacro() {
   try {
-    const res  = await fetch(WORKER_URL + '/macro', { cache: 'no-store' });
+    const res  = await fetchWithTimeout(WORKER_URL + '/macro', { cache: 'no-store' }, DATA_TIMEOUT_MS);
     const data = await res.json();
     return (data && typeof data === 'object') ? data : {};
   } catch {
@@ -462,7 +681,7 @@ async function fetchMacro() {
 
 async function fetchNews() {
   try {
-    const res  = await fetch(WORKER_URL + '/news', { cache: 'no-store' });
+    const res  = await fetchWithTimeout(WORKER_URL + '/news', { cache: 'no-store' }, DATA_TIMEOUT_MS);
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
@@ -472,7 +691,7 @@ async function fetchNews() {
 }
 
 // ─── AI CALL ────────────────────────────────────────────────────────
-async function callAI(prices, macro, newsItems = []) {
+async function callAI(prices, macro, newsItems = [], marketSignals = {}) {
   const b = prices['bitcoin'];
   const e = prices['ethereum'];
   const l = prices['chainlink'];
@@ -480,55 +699,85 @@ async function callAI(prices, macro, newsItems = []) {
 
   const macroLines = [
     macro.fedRate?.rateStr && macro.fedRate.rateStr !== 'UNAVAILABLE'
-      ? `Fed Funds Rate (NY Fed EFFR): ${macro.fedRate.rateStr}${macro.fedRate.date ? ` as of ${macro.fedRate.date}` : ''}`
+      ? `macro:fedRate:current | Fed Funds Rate (NY Fed EFFR): ${macro.fedRate.rateStr}${macro.fedRate.date ? ` as of ${macro.fedRate.date}` : ''}`
+      : null,
+    Number.isFinite(macro.fedRate?.change)
+      ? `macro:fedRate:change | EFFR change: ${macro.fedRate.change.toFixed(2)} percentage points (${macro.fedRate.direction})`
       : null,
     Number.isFinite(macro.usdsgd?.price)
-      ? `USD/SGD: ${macro.usdsgd.price.toFixed(4)} (${fmtPct(macro.usdsgd.pct)} today)`
+      ? `macro:usdsgd:current | USD/SGD: ${macro.usdsgd.price.toFixed(4)}`
       : null,
+    Number.isFinite(macro.usdsgd?.pct) ? `macro:usdsgd:change1d | USD/SGD 1D: ${fmtPct(macro.usdsgd.pct)}` : null,
+    Number.isFinite(macro.usdsgd?.change5dPct) ? `macro:usdsgd:change5d | USD/SGD 5D: ${fmtPct(macro.usdsgd.change5dPct)}` : null,
     Number.isFinite(macro.sp500?.price)
-      ? `S&P 500: $${macro.sp500.price.toLocaleString('en-US', { maximumFractionDigits: 0 })} (${fmtPct(macro.sp500.pct)} today)`
+      ? `macro:sp500:current | S&P 500: $${macro.sp500.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
       : null,
+    Number.isFinite(macro.sp500?.pct) ? `macro:sp500:change1d | S&P 500 1D: ${fmtPct(macro.sp500.pct)}` : null,
+    Number.isFinite(macro.sp500?.change5dPct) ? `macro:sp500:change5d | S&P 500 5D: ${fmtPct(macro.sp500.change5dPct)}` : null,
     Number.isFinite(macro.gold?.price)
-      ? `Gold: $${macro.gold.price.toLocaleString('en-US', { maximumFractionDigits: 0 })} (${fmtPct(macro.gold.pct)} today)`
+      ? `macro:gold:current | Gold: $${macro.gold.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
       : null,
+    Number.isFinite(macro.gold?.pct) ? `macro:gold:change1d | Gold 1D: ${fmtPct(macro.gold.pct)}` : null,
+    Number.isFinite(macro.gold?.change5dPct) ? `macro:gold:change5d | Gold 5D: ${fmtPct(macro.gold.change5dPct)}` : null,
     macro.stablecoins?.total && macro.stablecoins.total !== 'N/A'
-      ? `Stablecoin Supply (DefiLlama): Total ${macro.stablecoins.total} — USDT ${macro.stablecoins.usdt}, USDC ${macro.stablecoins.usdc}`
+      ? `macro:stablecoins:total | Stablecoin Supply: ${macro.stablecoins.total} — USDT ${macro.stablecoins.usdt}, USDC ${macro.stablecoins.usdc}`
       : null,
+    Number.isFinite(macro.stablecoins?.change7dPct) ? `macro:stablecoins:change7d | Stablecoin supply 7D: ${fmtPct(macro.stablecoins.change7dPct)}` : null,
+    Number.isFinite(macro.stablecoins?.change30dPct) ? `macro:stablecoins:change30d | Stablecoin supply 30D: ${fmtPct(macro.stablecoins.change30dPct)}` : null,
     Number.isFinite(macro.cryptoSentiment?.value)
-      ? `Crypto Fear & Greed: ${macro.cryptoSentiment.value}/100 (${macro.cryptoSentiment.classification})`
+      ? `macro:sentiment:current | Crypto Fear & Greed: ${macro.cryptoSentiment.value}/100 (${macro.cryptoSentiment.classification})`
       : null,
     macro.cpi?.yoy && macro.cpi.yoy !== 'N/A'
-      ? `CPI Inflation (BLS): ${macro.cpi.yoy} YoY — ${macro.cpi.period}`
+      ? `macro:cpi:current | CPI Inflation: ${macro.cpi.yoy} YoY — ${macro.cpi.period}`
       : null,
+    Number.isFinite(macro.cpi?.change) ? `macro:cpi:change | CPI YoY change: ${macro.cpi.change.toFixed(2)} percentage points (${macro.cpi.direction})` : null,
   ].filter(Boolean).join('\n');
+
+  const marketLines = [
+    ['btc', b], ['eth', e], ['link', l],
+  ].flatMap(([asset, coin]) => {
+    const signals = marketSignals?.[asset] || {};
+    const lines = [
+      `market:${asset}:current | ${asset.toUpperCase()} current price: ${fmtPrice(coin.current_price)}`,
+      Number.isFinite(coin.price_change_percentage_24h) ? `market:${asset}:change24h | ${asset.toUpperCase()} 24H: ${fmtPct(coin.price_change_percentage_24h)}` : null,
+      Number.isFinite(coin.price_change_percentage_7d_in_currency) ? `market:${asset}:change7d | ${asset.toUpperCase()} 7D: ${fmtPct(coin.price_change_percentage_7d_in_currency)}` : null,
+      Number.isFinite(coin.market_cap) ? `market:${asset}:marketCap | ${asset.toUpperCase()} market cap: ${fmtCap(coin.market_cap)}` : null,
+      Number.isFinite(coin.total_volume) ? `market:${asset}:volume | ${asset.toUpperCase()} volume: ${fmtCap(coin.total_volume)}` : null,
+      signals.range7d ? `market:${asset}:range7d | ${asset.toUpperCase()} 7D range: ${fmtPrice(signals.range7d.low)} to ${fmtPrice(signals.range7d.high)}` : null,
+      signals.range30d ? `market:${asset}:range30d | ${asset.toUpperCase()} 30D range: ${fmtPrice(signals.range30d.low)} to ${fmtPrice(signals.range30d.high)}` : null,
+      Number.isFinite(signals.rangePosition30d) ? `market:${asset}:rangePosition | ${asset.toUpperCase()} 30D range position: ${(signals.rangePosition30d * 100).toFixed(1)}%` : null,
+      Number.isFinite(signals.momentum7dPctPoints) ? `market:${asset}:momentum | ${asset.toUpperCase()} latest-vs-prior 7D momentum: ${signals.momentum7dPctPoints.toFixed(2)} percentage points` : null,
+      Number.isFinite(signals.volumeTrend) ? `market:${asset}:volumeTrend | ${asset.toUpperCase()} volume vs prior 7-day mean: ${(signals.volumeTrend * 100).toFixed(1)}%` : null,
+      Number.isFinite(signals.realizedVolatilityAnnualized) ? `market:${asset}:volatility | ${asset.toUpperCase()} annualized realized volatility: ${(signals.realizedVolatilityAnnualized * 100).toFixed(1)}%` : null,
+      Number.isFinite(signals.support) ? `market:${asset}:support | ${asset.toUpperCase()} deterministic support: ${fmtPrice(signals.support)}` : null,
+      Number.isFinite(signals.resistance) ? `market:${asset}:resistance | ${asset.toUpperCase()} deterministic resistance: ${fmtPrice(signals.resistance)}` : null,
+    ];
+    return lines.filter(Boolean);
+  }).join('\n');
 
   const prompt =
 `You are a senior crypto intelligence analyst producing a classified daily brief for a sophisticated investor in Singapore. Today is ${today}.
 
-LIVE PRICES (CoinGecko — use exact figures below, do not substitute):
-BTC:  ${fmtPrice(b.current_price)} | 24h: ${fmtPct(b.price_change_percentage_24h)} | 7d: ${fmtPct(b.price_change_percentage_7d_in_currency)} | MCap: ${fmtCap(b.market_cap)} | Vol: ${fmtCap(b.total_volume)}
-ETH:  ${fmtPrice(e.current_price)} | 24h: ${fmtPct(e.price_change_percentage_24h)} | 7d: ${fmtPct(e.price_change_percentage_7d_in_currency)} | MCap: ${fmtCap(e.market_cap)} | Vol: ${fmtCap(e.total_volume)}
-LINK: ${fmtPrice(l.current_price)} | 24h: ${fmtPct(l.price_change_percentage_24h)} | 7d: ${fmtPct(l.price_change_percentage_7d_in_currency)} | MCap: ${fmtCap(l.market_cap)} | Vol: ${fmtCap(l.total_volume)}
+DETERMINISTIC MARKET EVIDENCE (use exact IDs and values; do not substitute):
+${marketLines}
 
-LIVE MACRO DATA (use exact figures below, do not substitute):
+DETERMINISTIC MACRO EVIDENCE (use exact IDs and values; do not substitute):
 ${macroLines || 'Macro data temporarily unavailable.'}
 
 RECENT FEED SOURCES (LAST 72H MAX) — CITE BY doc id ONLY WHEN THE ASSET TAG MATCHES:
 ${newsItems.length
-  ? newsItems.map((n,i) => `<doc id="${i+1}">\nSOURCE: ${n.source}\nASSET_TAGS: ${(n.assetMentions || []).join(', ') || 'none'}\nHEADLINE: ${n.title}\nCONTENT: ${n.content || n.description || 'No content available'}\n</doc>`).join('\n\n')
+  ? newsItems.map((n,i) => `<doc id="${i+1}">\nEVIDENCE_ID: news:${i+1}\nSOURCE: ${n.source}\nASSET_TAGS: ${(n.assetMentions || []).join(', ') || 'none'}\nHEADLINE: ${n.title}\nCONTENT: ${n.content || n.description || 'No content available'}\n</doc>`).join('\n\n')
   : 'No news retrieved — rely only on the live price and macro data above. Do not invent events.'}
 
 ANALYSIS INSTRUCTIONS:
 
 GENERAL:
-- Every BTC, ETH, and LINK news claim MUST reference a <doc id> — write it as [N] inline
-- If a useful asset point is not directly supported by a matching <doc>, use only exact live price/volume/24h/7d/support/resistance data and label it "Live market data:"
-- If no <doc> supports an asset-specific news claim, DO NOT cite a loosely related or generic crypto doc
-- A BTC bullet may cite only docs tagged btc; ETH may cite only docs tagged eth; LINK may cite only docs tagged link
-- Docs tagged none can be used only for macro, threats, watch, verdict, or ranking — never as BTC/ETH/LINK evidence
-- For each asset: write 4-6 bullets; keep the section visually substantial without inventing news
-- For source-backed bullets, identify the most significant real developments from the docs and synthesize into sharp bullets
-- For uncited live-data bullets, cover price action, relative strength, liquidity/volume, support/resistance, and what invalidates the setup
+- Every bullet in BTC, ETH, LINK, macro, threats, and watch MUST include evidenceIds with at least one exact ID above and confidence set to high, medium, or low
+- BTC bullets may use only news tagged btc or market:btc IDs; apply the equivalent rule to ETH and LINK
+- Macro, threats, and watch may use news or macro IDs; do not use asset market IDs in those sections
+- When a bullet uses news:N, also write [N] inline in its text so the reader can match the visible source list
+- For each asset write 3-5 evidence-backed bullets; write 3-5 macro bullets, 3-5 threats, and 3-6 watch items
+- Prefer fewer high-value bullets over filler. Thin selected news does not imply no real-world activity; use deterministic market facts without claiming news absence
 - DO NOT hallucinate events, dates, prices, or developments not present in the docs above
 - Support and resistance levels must be actual dollar figures derived from the current price data
 - Avoid explicit buy/sell language; frame verdict as market conditions and levels to monitor
@@ -550,27 +799,27 @@ MACRO BULLETS — CRITICAL:
 - GOOD: "Simultaneous equity selloff and extreme fear historically precede either capitulation bottoms or sharp relief rallies — $263B stablecoin supply suggests sideline capital is positioned to re-enter fast on any positive macro catalyst"
 - BAD (forbidden): "The Fed Funds Rate stands at 3.64%, indicating restrictive monetary policy" — pure restatement, zero inference`;
 
-  const res = await fetch(WORKER_URL, {
+  const res = await fetchWithTimeout(WORKER_URL, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       messages: [
         {
           role:    'system',
-          content: "You are a senior crypto intelligence analyst. You MUST complete all sections of the JSON. Asset sections must contain 4-6 bullets; macro must contain 5 bullets, threats 5 items, watch 6 items, plus verdict, ranking, bullTrigger, bearTrigger. Keep asset sections visually substantial without inventing news. For BTC/ETH/LINK: cite sources with [N] only when ASSET_TAGS includes that asset. Where coverage is thin, use exact live price/volume/24h/7d/support/resistance data and visibly label uncited asset points as Live market data. Cover price action, relative strength, liquidity/volume, support/resistance, and invalidation levels. Do not write broad uncited Model inference in asset sections. Never cite a loosely related or generic crypto doc as asset evidence. Never write 'No Specific News'. Be concise but analytical — each bullet should explain signal, implication, and what matters next when evidence supports it. MACRO BULLETS RULE: never restate the gauge values already shown in the cards — every macro bullet must combine at least 2 signals into a forward-looking cross-asset inference for crypto. Zero restatement, all synthesis.",
+          content: "You are a senior crypto intelligence analyst using evidence pipeline v2. Complete every section, but prefer 3-5 high-value asset and macro bullets, 3-5 threats, and 3-6 watch items over filler. Every bullet must include evidenceIds using only exact IDs supplied in the prompt and confidence set to high, medium, or low. Asset evidence must match that asset. When using news:N, retain [N] inline in text. Explain signal, implication, invalidation, and what matters next without inventing claims. Macro bullets should synthesize at least two available macro facts when possible rather than restating cards.",
         },
         { role: 'user', content: prompt },
       ],
-      cachePayload: { prices, macro, newsItems },
+      cachePayload: { prices, macro, newsItems, marketSignals },
       temperature: 0.3,
       max_tokens:  4000,
     }),
-  });
+  }, GEMINI_TIMEOUT_MS);
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    const citationCount = err?.error?.citationViolations?.length;
-    const suffix = citationCount ? ` (${citationCount} citation checks failed)` : '';
+    const validationCount = err?.error?.evidenceViolations?.length ?? err?.error?.citationViolations?.length;
+    const suffix = validationCount ? ` (${validationCount} evidence checks failed)` : '';
     throw new Error((err?.error?.message ?? `Worker error ${res.status}`) + suffix);
   }
 
@@ -606,11 +855,11 @@ function renderCard(id, coin, support, resist) {
      </div>
      <div class="p-stat">
        <dt class="p-stat-label">Support</dt>
-       <dd class="p-stat-value">${support}</dd>
+       <dd class="p-stat-value">${fmtBriefLevel(support)}</dd>
      </div>
      <div class="p-stat">
        <dt class="p-stat-label">Resist</dt>
-       <dd class="p-stat-value">${resist}</dd>
+       <dd class="p-stat-value">${fmtBriefLevel(resist)}</dd>
      </div>`;
 }
 
@@ -657,6 +906,15 @@ function renderMacroCards(macro) {
 
 function renderSources(items) {
   const grid = document.getElementById('sources-grid');
+  const count = Array.isArray(items) ? items.length : 0;
+  const countEl = document.getElementById('source-count');
+  const previewEl = document.getElementById('sources-preview');
+  if (countEl) countEl.textContent = `${count} source${count === 1 ? '' : 's'}`;
+  if (previewEl) {
+    previewEl.textContent = count
+      ? `· ${items.slice(0, 3).map(item => item.source || 'Unknown').join(' · ')}`
+      : '· no live news retrieved';
+  }
   if (!items?.length) {
     grid.innerHTML = '<p style="color:var(--muted);font-size:.9rem;grid-column:1/-1;">No news sources retrieved.</p>';
     return;
@@ -678,7 +936,7 @@ function renderSources(items) {
     const topic = (n.topic || 'general').toLowerCase();
     const topicClass = safeClass(topic) || 'general';
     const age = fmtAge(n.pubDate);
-    return `<a class="source-card" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer">
+    return `<a class="source-card" id="source-${i + 1}" href="${escapeHtml(n.url)}" target="_blank" rel="noopener noreferrer">
       <div class="source-tag">[${i + 1}] ${escapeHtml(n.source || domain)}</div>
       <div class="source-title">${escapeHtml(title)}</div>
       ${snippet ? `<div class="source-snippet">${escapeHtml(snippet)}</div>` : ''}
@@ -691,7 +949,124 @@ function renderSources(items) {
   }).join('');
 }
 
-function renderBrief(brief, prices, macro, newsItems, generatedTime) {
+function renderConfidence(confidence, basis = '') {
+  const normalized = ['high', 'medium', 'low'].includes(confidence) ? confidence : 'unrated';
+  const label = normalized === 'unrated' ? 'Unrated' : `${normalized} confidence`;
+  return `<span class="confidence confidence-${normalized}">${escapeHtml(label)}</span>${basis
+    ? `<span class="confidence-basis">${escapeHtml(basis)}</span>`
+    : ''}`;
+}
+
+function openEvidence(event, sourceNumber) {
+  const annex = document.getElementById('sources-annex');
+  const target = document.getElementById(`source-${sourceNumber}`);
+  if (!annex || !target) return true;
+  event.preventDefault();
+  annex.open = true;
+  requestAnimationFrame(() => {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    history.replaceState(null, '', `#source-${sourceNumber}`);
+  });
+  return false;
+}
+
+function renderEvidence(evidenceIds = []) {
+  const uniqueIds = [...new Set(Array.isArray(evidenceIds) ? evidenceIds : [])];
+  if (!uniqueIds.length) return '';
+  return `<span class="evidence-list" aria-label="Evidence">${uniqueIds.map(id => {
+    const match = String(id).match(/^news:(\d+)$/);
+    if (match) {
+      return `<a class="evidence-link" href="#source-${match[1]}" onclick="return openEvidence(event, ${match[1]})" title="Open source ${match[1]}">[${match[1]}]</a>`;
+    }
+    return `<span class="evidence-chip">${escapeHtml(id)}</span>`;
+  }).join('')}</span>`;
+}
+
+function renderAnalysisMeta(item = {}, { showConfidence = true } = {}) {
+  const confidenceMarkup = showConfidence ? renderConfidence(item.confidence) : '';
+  const basisMarkup = item.confidenceBasis
+    ? `<span class="confidence-basis">${escapeHtml(item.confidenceBasis)}</span>`
+    : '';
+  return `<div class="analysis-meta">${confidenceMarkup}${basisMarkup}${renderEvidence(item.evidenceIds)}</div>`;
+}
+
+function renderAnalysisItems(items = [], signalLabel = 'Indicator') {
+  return (items || []).map(item => {
+    const primaryAnalysis = item.assessment || item.gap || item.whyItMatters || '';
+    return `<li>
+      <div class="analysis-item-head"><h3>${escapeHtml(item.title || 'Untitled assessment')}</h3></div>
+      <div class="analysis-item-copy">${escapeHtml(primaryAnalysis)}</div>
+      ${item.impact || item.likelihood || item.horizon
+        ? `<div class="analysis-meta"><span>${escapeHtml([item.impact && `Impact: ${item.impact}`, item.likelihood, item.horizon].filter(Boolean).join(' · '))}</span></div>`
+        : ''}
+      ${item.indicator || item.signal || item.closureEvidence
+        ? `<div class="analysis-item-signal"><strong>${escapeHtml(signalLabel)}:</strong> ${escapeHtml(item.indicator || item.signal || item.closureEvidence)}</div>`
+        : ''}
+      ${item.whyItMatters && (item.assessment || item.gap)
+        ? `<div class="analysis-item-signal"><strong>Why it matters:</strong> ${escapeHtml(item.whyItMatters)}</div>`
+        : ''}
+      <div class="analysis-meta">${renderEvidence(item.evidenceIds)}</div>
+    </li>`;
+  }).join('');
+}
+
+function renderAssetAssessment(symbol, asset = {}) {
+  const label = { btc: 'Bitcoin', eth: 'Ethereum', link: 'Chainlink' }[symbol] || symbol.toUpperCase();
+  return `<article class="asset-analysis">
+    <div class="asset-heading">
+      <h3>${escapeHtml(label)} <span style="color:var(--faint);font-weight:500;">${escapeHtml(symbol.toUpperCase())}</span></h3>
+      <div class="level-strip">Support ${escapeHtml(fmtBriefLevel(asset.support))} · Resistance ${escapeHtml(fmtBriefLevel(asset.resistance))}</div>
+    </div>
+    <p class="assessment-lead">${escapeHtml(asset.assessment || '')}</p>
+    ${renderAnalysisMeta(asset, { showConfidence: false })}
+    <ul class="driver-list">${(asset.drivers || []).map(driver => `<li class="driver">
+      <div><div class="driver-title">${escapeHtml(driver.title || 'Driver')}</div>${renderAnalysisMeta(driver, { showConfidence: false })}</div>
+      <div class="driver-copy">${escapeHtml(driver.analysis || '')}</div>
+    </li>`).join('')}</ul>
+    <div class="confirmation-grid">
+      <div class="indicator-block confirm"><div class="indicator-label">Confirmation</div><p>${escapeHtml(asset.confirmation || '')}</p></div>
+      <div class="indicator-block invalidate"><div class="indicator-label">Invalidation</div><p>${escapeHtml(asset.invalidation || '')}</p></div>
+    </div>
+  </article>`;
+}
+
+function renderScenario(name, scenario = {}) {
+  const label = { base: 'Base case', bullish: 'Bullish case', bearish: 'Bearish case' }[name] || name;
+  return `<article class="analysis-column">
+    <h3>${escapeHtml(label)}</h3>
+    <p>${escapeHtml(scenario.outlook || '')}</p>
+    <div class="analysis-item-signal"><strong>Causal path:</strong> ${escapeHtml(scenario.causalPath || '')}</div>
+    <div class="analysis-item-signal"><strong>Triggers:</strong> ${escapeHtml((scenario.triggers || []).join(' · '))}</div>
+    <div class="analysis-meta"><span>${escapeHtml([scenario.likelihood, scenario.horizon].filter(Boolean).join(' · '))}</span>${renderConfidence(scenario.confidence)}${renderEvidence(scenario.evidenceIds)}</div>
+  </article>`;
+}
+
+function setBriefVersionVisibility(isV3) {
+  document.getElementById('v3-executive').hidden = !isV3;
+  document.getElementById('v3-analysis').hidden = !isV3;
+  document.querySelectorAll('.legacy-analysis').forEach(element => { element.hidden = isV3; });
+}
+
+function populateSourceDiagnostics(newsItems = []) {
+  renderSources(newsItems);
+  const debugEl = document.getElementById('debug-content');
+  if (debugEl) {
+    debugEl.textContent = newsItems.length
+      ? newsItems.map((n, i) => `[${i+1}] ${n.title} (${n.source})\n    tags: ${(n.assetMentions || []).join(', ') || 'none'}\n    ${n.url}\n    ${n.description || ''}`).join('\n\n' + '─'.repeat(50) + '\n\n')
+      : 'No news items retrieved.';
+  }
+}
+
+function finishBriefRender(newsItems, generatedTime) {
+  populateSourceDiagnostics(newsItems);
+  document.getElementById('brief-generated').textContent = fmtSGT(generatedTime);
+  document.getElementById('footer-date').textContent = fmtDate(generatedTime);
+  document.getElementById('brief').classList.add('active');
+  document.getElementById('loading').classList.add('hidden');
+}
+
+function renderLegacyBrief(brief, prices, macro, newsItems, generatedTime) {
+  setBriefVersionVisibility(false);
   brief.btc      = brief.btc      || { support: '—', resist: '—', bullets: [] };
   brief.eth      = brief.eth      || { support: '—', resist: '—', bullets: [] };
   brief.link     = brief.link     || { support: '—', resist: '—', bullets: [] };
@@ -712,16 +1087,8 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
   renderBullets('eth-bullets',   brief.eth.bullets);
   renderBullets('link-bullets',  brief.link.bullets);
   renderBullets('macro-bullets', brief.macro.bullets);
-  renderBullets('threats',       brief.threats);
-  renderBullets('watch',         brief.watch);
-  renderSources(newsItems);
-
-  const debugEl = document.getElementById('debug-content');
-  if (debugEl) {
-    debugEl.textContent = newsItems.length
-      ? newsItems.map((n, i) => `[${i+1}] ${n.title} (${n.source})\n    tags: ${(n.assetMentions || []).join(', ') || 'none'}\n    ${n.url}\n    ${n.description || ''}`).join('\n\n' + '─'.repeat(50) + '\n\n')
-      : 'No news items retrieved.';
-  }
+  renderBullets('legacy-threats', brief.threats);
+  renderBullets('legacy-watch',   brief.watch);
 
   document.getElementById('verdict-content').innerHTML =
     `<p>${escapeHtml(brief.verdict)}</p>
@@ -729,28 +1096,87 @@ function renderBrief(brief, prices, macro, newsItems, generatedTime) {
      <p><strong>Bull Trigger:</strong> ${escapeHtml(brief.bullTrigger)}<br/>
         <strong>Bear Trigger:</strong> ${escapeHtml(brief.bearTrigger)}</p>`;
 
-  document.getElementById('brief-generated').textContent = fmtSGT(generatedTime);
-  document.getElementById('footer-date').textContent     = fmtDate(generatedTime);
+  finishBriefRender(newsItems, generatedTime);
+}
 
-  document.getElementById('brief').classList.add('active');
-  document.getElementById('loading').classList.add('hidden');
+function renderV3Brief(brief, prices, macroData, newsItems, generatedTime) {
+  setBriefVersionVisibility(true);
+  const assets = brief.assets || {};
+  const executive = brief.executive || {};
+  const macro = brief.macro || {};
+
+  renderCard('btc', prices.bitcoin, assets.btc?.support || '—', assets.btc?.resistance || '—');
+  renderCard('eth', prices.ethereum, assets.eth?.support || '—', assets.eth?.resistance || '—');
+  renderCard('link', prices.chainlink, assets.link?.support || '—', assets.link?.resistance || '—');
+  renderMacroCards(macroData);
+
+  document.getElementById('bottom-line').innerHTML =
+    `<p class="bottom-line-copy">${escapeHtml(executive.bottomLine || '')}</p>${renderAnalysisMeta(executive)}`;
+  document.getElementById('key-judgments').innerHTML = (executive.keyJudgments || []).map(judgment => `<li class="judgment">
+    <div>
+      <div class="judgment-title-row"><h3>${escapeHtml(judgment.title || 'Key judgment')}</h3>${renderConfidence(judgment.confidence)}</div>
+      <p class="judgment-assessment">${escapeHtml(judgment.assessment || '')}</p>
+      <p class="judgment-implication"><strong>Why it matters:</strong> ${escapeHtml(judgment.whyItMatters || '')}</p>
+      <p class="judgment-invalidators"><strong>Would change this view:</strong> ${escapeHtml((judgment.invalidators || []).join(' · '))}</p>
+      <div class="analysis-meta">${judgment.confidenceBasis ? `<span class="confidence-basis">${escapeHtml(judgment.confidenceBasis)}</span>` : ''}${renderEvidence(judgment.evidenceIds)}</div>
+    </div>
+  </li>`).join('');
+
+  document.getElementById('asset-assessments').innerHTML =
+    `<div class="pdb-section-head"><h2>Asset Assessments</h2><span>Structure · liquidity · catalysts</span></div>` +
+    ['btc', 'eth', 'link'].map(symbol => renderAssetAssessment(symbol, assets[symbol])).join('');
+
+  document.getElementById('macro-assessment').innerHTML = `
+    <div class="pdb-section-head"><h2>Macro &amp; Cross-Asset Regime</h2><span>Transmission into crypto</span></div>
+    <p class="assessment-lead">${escapeHtml(macro.assessment || '')}</p>
+    ${renderAnalysisMeta(macro, { showConfidence: false })}
+    <div class="analysis-grid">${(macro.transmissionChannels || []).map(channel => `<article class="analysis-column">
+      <h3>${escapeHtml(channel.title || 'Transmission channel')}</h3>
+      <p>${escapeHtml(channel.analysis || '')}</p>
+      <div class="analysis-meta">${renderEvidence(channel.evidenceIds)}</div>
+    </article>`).join('')}</div>`;
+
+  document.getElementById('scenario-outlook').innerHTML = `
+    <div class="pdb-section-head"><h2>Scenario Outlook</h2><span>Next 1–7 days</span></div>
+    <div class="analysis-grid">${['base', 'bullish', 'bearish'].map(name => renderScenario(name, brief.scenarios?.[name])).join('')}</div>`;
+  document.getElementById('threats').innerHTML = renderAnalysisItems(brief.threats, 'Materialization indicator');
+  document.getElementById('opportunities').innerHTML = renderAnalysisItems(brief.opportunities, 'Materialization indicator');
+  document.getElementById('watch-24h').innerHTML = renderAnalysisItems(brief.watch?.next24Hours, 'Watch for');
+  document.getElementById('watch-7d').innerHTML = renderAnalysisItems(brief.watch?.next7Days, 'Watch for');
+  document.getElementById('intelligence-gaps').innerHTML = renderAnalysisItems(brief.intelligenceGaps, 'Evidence required');
+
+  finishBriefRender(newsItems, generatedTime);
+}
+
+function renderBrief(brief, prices, macro, newsItems, generatedTime) {
+  if (brief?.briefVersion === 'v3') {
+    renderV3Brief(brief, prices, macro, newsItems, generatedTime);
+  } else {
+    renderLegacyBrief(brief, prices, macro, newsItems, generatedTime);
+  }
 }
 
 // ─── MAIN ────────────────────────────────────────────────────────────
 async function run(forceRefresh = false) {
+  if (refreshInFlight) return;
+  refreshInFlight = true;
   const shouldForceRefresh = forceRefresh === true;
-  document.getElementById('brief').classList.remove('active');
-  document.getElementById('loading').classList.remove('hidden');
+  const briefElement = document.getElementById('brief');
+  const loadingElement = document.getElementById('loading');
+  const refreshButton = document.getElementById('refresh-btn');
+  const hadActiveBrief = briefElement.classList.contains('active');
+  if (!hadActiveBrief) loadingElement.classList.remove('hidden');
+  if (refreshButton) refreshButton.disabled = true;
 
   try {
     if (!shouldForceRefresh) {
-      setLoadStatus('Checking for cached brief…');
+      setRefreshStatus('Checking for cached brief…');
       try {
-        const cacheRes  = await fetch(WORKER_URL + '/brief', { cache: 'no-store' });
+        const cacheRes  = await fetchWithTimeout(WORKER_URL + '/brief?allowStale=1', { cache: 'no-store' }, DATA_TIMEOUT_MS);
         const cacheData = await cacheRes.json();
         if (cacheData.cached && cacheData.brief) {
-          console.log('[cache] hit: rendering cached brief');
-          setLoadStatus('Loading cached brief…');
+          console.log(`[cache] ${cacheData.fresh === false ? 'stale fallback' : 'hit'}: rendering cached brief`);
+          setRefreshStatus('Loading cached brief…');
           try {
             renderBrief(
               cacheData.brief,
@@ -763,18 +1189,22 @@ async function run(forceRefresh = false) {
             console.error('[cache] render failed for cached brief:', renderErr);
             throw renderErr;
           }
-          setLoadStatus();
-          return;
+          if (cacheData.fresh !== false) {
+            setRefreshStatus();
+            return;
+          }
+          setRefreshStatus('Showing the last brief while refreshing live data…');
         }
-        console.log(`[cache] miss: ${cacheData.reason || 'no usable cached brief'}`);
+        if (!cacheData.cached) console.log(`[cache] miss: ${cacheData.reason || 'no usable cached brief'}`);
       } catch (e) { console.warn('[cache] miss: cache check failed', e); }
     }
 
-    setLoadStatus('Fetching live prices, macro and news…');
-    const [prices, macro, newsItems] = await Promise.all([fetchPrices(), fetchMacro(), fetchNews()]);
+    setRefreshStatus('Fetching live prices, macro and news…');
+    const [marketData, macro, newsItems] = await Promise.all([fetchMarketData(), fetchMacro(), fetchNews()]);
+    const { prices, marketSignals } = marketData;
 
-    setLoadStatus('Generating analysis via Gemini…');
-    const { brief } = await callAI(prices, macro, newsItems);
+    setRefreshStatus('Generating analysis via Gemini…');
+    const { brief } = await callAI(prices, macro, newsItems, marketSignals);
     const generatedTime = sgtNow();
 
     try {
@@ -783,10 +1213,14 @@ async function run(forceRefresh = false) {
       console.error('[render] failed for freshly generated brief:', renderErr);
       throw renderErr;
     }
+    setRefreshStatus();
 
   } catch (err) {
     console.error(err);
-    setLoadStatus('❌ ' + err.message + ' — refresh to retry.');
+    setRefreshStatus('❌ ' + err.message + ' — refresh to retry.');
+  } finally {
+    refreshInFlight = false;
+    if (refreshButton) refreshButton.disabled = false;
   }
 }
 

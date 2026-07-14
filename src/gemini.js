@@ -1,5 +1,9 @@
 import { buildPromptNewsItems } from './news.js';
 
+export function resolveGenerationDeadlineMs(pipelineVersion = 'v2') {
+  return pipelineVersion === 'v3' ? 150_000 : 90_000;
+}
+
 export function parseGeminiBriefJson(raw = '') {
   let clean = String(raw)
     .replace(/<think>[\s\S]*?<\/think>/gi, '')
@@ -95,6 +99,134 @@ export function validateBriefCitations(brief = {}, newsItems = []) {
   return { ok: violations.length === 0, violations };
 }
 
+function hasEvidenceValue(value) {
+  if (value === null || value === undefined || value === '') return false;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value === 'string' && /^(?:n\/?a|unavailable|—)$/i.test(value.trim())) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.values(value).some(hasEvidenceValue);
+  return true;
+}
+
+export function buildEvidenceIndex({ newsItems = [], prices = {}, marketSignals = {}, macro = {} } = {}) {
+  const index = new Map();
+  const add = (id, evidence) => {
+    if (!id || !hasEvidenceValue(evidence?.value)) return;
+    index.set(id, { id, ...evidence });
+  };
+
+  for (const [itemIndex, item] of buildPromptNewsItems(newsItems).entries()) {
+    add(`news:${itemIndex + 1}`, {
+      type: 'news',
+      assetMentions: item.assetMentions || [],
+      value: { title: item.title, source: item.source, content: item.content || item.description },
+    });
+  }
+
+  const assets = [
+    { asset: 'btc', priceId: 'bitcoin' },
+    { asset: 'eth', priceId: 'ethereum' },
+    { asset: 'link', priceId: 'chainlink' },
+  ];
+  const marketFields = [
+    ['range7d', 'range7d'],
+    ['range30d', 'range30d'],
+    ['rangePosition', 'rangePosition30d'],
+    ['momentum', 'momentum7dPctPoints'],
+    ['volumeTrend', 'volumeTrend'],
+    ['volatility', 'realizedVolatilityAnnualized'],
+    ['support', 'support'],
+    ['resistance', 'resistance'],
+  ];
+
+  for (const { asset, priceId } of assets) {
+    const price = prices?.[priceId] || {};
+    const signals = marketSignals?.[asset] || {};
+    const priceFields = [
+      ['current', price.current_price],
+      ['change24h', price.price_change_percentage_24h],
+      ['change7d', price.price_change_percentage_7d_in_currency],
+      ['marketCap', price.market_cap],
+      ['volume', price.total_volume],
+    ];
+    for (const [fact, value] of priceFields) add(`market:${asset}:${fact}`, { type: 'market', asset, value });
+    for (const [fact, field] of marketFields) add(`market:${asset}:${fact}`, { type: 'market', asset, value: signals[field] });
+  }
+
+  const macroFacts = [
+    ['fedRate:current', macro.fedRate?.rate],
+    ['fedRate:change', macro.fedRate?.change],
+    ['usdsgd:current', macro.usdsgd?.price],
+    ['usdsgd:change1d', macro.usdsgd?.pct],
+    ['usdsgd:change5d', macro.usdsgd?.change5dPct],
+    ['sp500:current', macro.sp500?.price],
+    ['sp500:change1d', macro.sp500?.pct],
+    ['sp500:change5d', macro.sp500?.change5dPct],
+    ['gold:current', macro.gold?.price],
+    ['gold:change1d', macro.gold?.pct],
+    ['gold:change5d', macro.gold?.change5dPct],
+    ['stablecoins:total', macro.stablecoins?.total],
+    ['stablecoins:change7d', macro.stablecoins?.change7dPct],
+    ['stablecoins:change30d', macro.stablecoins?.change30dPct],
+    ['sentiment:current', macro.cryptoSentiment?.value],
+    ['cpi:current', macro.cpi?.yoy],
+    ['cpi:change', macro.cpi?.change],
+  ];
+  for (const [fact, value] of macroFacts) add(`macro:${fact}`, { type: 'macro', value });
+
+  return index;
+}
+
+export function validateBriefEvidence(brief = {}, evidenceIndex = new Map()) {
+  const violations = [];
+  const confidenceValues = new Set(['high', 'medium', 'low']);
+  const sections = [
+    { section: 'btc', asset: 'btc', bullets: brief.btc?.bullets || [] },
+    { section: 'eth', asset: 'eth', bullets: brief.eth?.bullets || [] },
+    { section: 'link', asset: 'link', bullets: brief.link?.bullets || [] },
+    { section: 'macro', asset: null, bullets: brief.macro?.bullets || [] },
+    { section: 'threats', asset: null, bullets: brief.threats || [] },
+    { section: 'watch', asset: null, bullets: brief.watch || [] },
+  ];
+
+  for (const { section, asset, bullets } of sections) {
+    for (const [bulletIndex, bullet] of (Array.isArray(bullets) ? bullets : []).entries()) {
+      const evidenceIds = Array.isArray(bullet?.evidenceIds)
+        ? [...new Set(bullet.evidenceIds.filter(id => typeof id === 'string' && id.trim()))]
+        : [];
+      if (!evidenceIds.length) {
+        violations.push({ section, bulletIndex, reason: 'missing_evidence' });
+      }
+      if (!confidenceValues.has(bullet?.confidence)) {
+        violations.push({ section, bulletIndex, reason: 'invalid_confidence', confidence: bullet?.confidence ?? null });
+      }
+
+      for (const evidenceId of evidenceIds) {
+        const evidence = evidenceIndex.get(evidenceId);
+        if (!evidence) {
+          violations.push({ section, bulletIndex, evidenceId, reason: 'unknown_evidence' });
+          continue;
+        }
+        if (asset) {
+          const alignedNews = evidence.type === 'news' && evidence.assetMentions?.includes(asset);
+          const alignedMarket = evidence.type === 'market' && evidence.asset === asset;
+          if (evidence.type === 'market' && evidence.asset !== asset) {
+            violations.push({ section, bulletIndex, evidenceId, reason: 'cross_asset_evidence' });
+          } else if (evidence.type === 'news' && !alignedNews) {
+            violations.push({ section, bulletIndex, evidenceId, reason: 'cross_asset_evidence' });
+          } else if (!alignedNews && !alignedMarket) {
+            violations.push({ section, bulletIndex, evidenceId, reason: 'disallowed_evidence' });
+          }
+        } else if (!['news', 'macro'].includes(evidence.type)) {
+          violations.push({ section, bulletIndex, evidenceId, reason: 'disallowed_evidence' });
+        }
+      }
+    }
+  }
+
+  return { ok: violations.length === 0, violations };
+}
+
 export function listUnavailableMacroFields(macro = {}) {
   const unavailableFields = [];
   if (!macro.fedRate?.rateStr || macro.fedRate.rateStr === 'UNAVAILABLE') unavailableFields.push('fedRate');
@@ -108,11 +240,16 @@ export function listUnavailableMacroFields(macro = {}) {
 }
 
 export function resolveModelFallbacks(env = {}) {
-  const primary = env.GEMINI_MODEL || 'gemini-3-flash-preview';
-  const configuredFallback = env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash';
-  const models = [primary];
-  if (/gemini-3/i.test(primary) && configuredFallback && configuredFallback !== primary) {
-    models.push(configuredFallback);
-  }
-  return models;
+  const primary = String(env.GEMINI_MODEL || 'gemini-3.5-flash').trim();
+  const fallback = String(env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-lite').trim();
+  return [...new Set([primary, fallback].filter(Boolean))];
+}
+
+export function isRetryableGeminiStatus(status) {
+  return [404, 408, 429, 500, 502, 503, 504].includes(Number(status));
+}
+
+export function resolvePipelineVersion(env = {}) {
+  const requested = String(env.BRIEF_PIPELINE_VERSION || '').toLowerCase();
+  return ['v1', 'v2', 'v3'].includes(requested) ? requested : 'v2';
 }

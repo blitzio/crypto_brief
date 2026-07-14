@@ -49,6 +49,270 @@ async function jsonResponse(response) {
   return response.json();
 }
 
+function v2CachePayload() {
+  return {
+    prices: {
+      bitcoin: { current_price: 100 },
+      ethereum: { current_price: 50 },
+      chainlink: { current_price: 10 },
+    },
+    marketSignals: {
+      btc: { rangePosition30d: 0.5 },
+      eth: { rangePosition30d: 0.4 },
+      link: { rangePosition30d: 0.3 },
+    },
+    macro: { sp500: { pct: 1.2 } },
+    newsItems: [],
+  };
+}
+
+function validV2Brief() {
+  const assetSection = (asset, price) => ({
+    support: `$${price - 1}`,
+    resist: `$${price + 1}`,
+    bullets: Array.from({ length: 3 }, (_, index) => ({
+      label: `Market ${index + 1}`,
+      text: `Deterministic ${asset.toUpperCase()} market observation.`,
+      evidenceIds: [`market:${asset}:${index === 0 ? 'current' : 'rangePosition'}`],
+      confidence: index === 2 ? 'medium' : 'high',
+    })),
+  });
+  const supportedItems = (count, prefix) => Array.from({ length: count }, (_, index) => ({
+    label: `${prefix} ${index + 1}`,
+    text: 'Evidence-backed macro observation.',
+    evidenceIds: ['macro:sp500:change1d'],
+    confidence: 'medium',
+  }));
+  return {
+    btc: assetSection('btc', 100),
+    eth: assetSection('eth', 50),
+    link: { ...assetSection('link', 10), badge: 'Neutral' },
+    macro: { bullets: supportedItems(3, 'Macro') },
+    threats: supportedItems(3, 'Threat'),
+    watch: supportedItems(3, 'Watch'),
+    verdict: 'A full verdict sentence. A second full verdict sentence.',
+    ranking: 'BTC > ETH > LINK because liquidity leads.',
+    bullTrigger: 'A break above resistance improves conditions.',
+    bearTrigger: 'A break below support weakens conditions.',
+  };
+}
+
+const v3Prose = (count, prefix = 'analysis') =>
+  Array.from({ length: count }, (_, index) => `${prefix}${index + 1}`).join(' ');
+
+function v3CachePayload() {
+  return {
+    prices: {
+      bitcoin: { current_price: 100 },
+      ethereum: { current_price: 50 },
+      chainlink: { current_price: 10 },
+    },
+    marketSignals: {
+      btc: { rangePosition30d: 0.5, support: 95, resistance: 105 },
+      eth: { rangePosition30d: 0.4, support: 45, resistance: 55 },
+      link: { rangePosition30d: 0.3, support: 9, resistance: 11 },
+    },
+    macro: {
+      sp500: { pct: 1.2 },
+      cryptoSentiment: { value: 50 },
+    },
+    newsItems: [],
+  };
+}
+
+function validV3Brief() {
+  const judgment = index => ({
+    title: `Judgment ${index}`,
+    assessment: v3Prose(66, 'assessment'),
+    whyItMatters: v3Prose(18, 'implication'),
+    evidenceIds: ['market:btc:current', 'market:btc:rangePosition'],
+    confidence: 'medium',
+    confidenceBasis: v3Prose(12, 'basis'),
+    invalidators: [v3Prose(9, 'invalidator')],
+  });
+  const asset = (symbol, support, resistance) => ({
+    assessment: v3Prose(72, `${symbol}assessment`),
+    support,
+    resistance,
+    evidenceIds: [`market:${symbol}:current`, `market:${symbol}:rangePosition`],
+    confidence: 'medium',
+    confidenceBasis: v3Prose(12, 'basis'),
+    drivers: [1, 2, 3].map(index => ({
+      title: `Driver ${index}`,
+      analysis: v3Prose(42, `${symbol}driver`),
+      evidenceIds: [`market:${symbol}:current`, `market:${symbol}:rangePosition`],
+      confidence: 'medium',
+    })),
+    confirmation: v3Prose(18, 'confirmation'),
+    invalidation: v3Prose(18, 'invalidation'),
+  });
+  const scenario = likelihood => ({
+    outlook: v3Prose(28, 'outlook'),
+    causalPath: v3Prose(24, 'causal'),
+    triggers: [v3Prose(12, 'trigger')],
+    horizon: 'next 1-7 days',
+    likelihood,
+    evidenceIds: ['macro:sp500:change1d', 'macro:sentiment:current'],
+    confidence: 'medium',
+  });
+  const risk = title => ({
+    title,
+    assessment: v3Prose(33, 'risk'),
+    impact: 'high',
+    likelihood: 'credible',
+    horizon: 'next 7 days',
+    indicator: v3Prose(13, 'indicator'),
+    evidenceIds: ['macro:sp500:change1d'],
+    confidence: 'medium',
+  });
+  const watch = title => ({
+    title,
+    whyItMatters: v3Prose(18, 'watch'),
+    signal: v3Prose(10, 'signal'),
+    evidenceIds: ['macro:sp500:change1d'],
+    confidence: 'medium',
+  });
+  return {
+    briefVersion: 'v3',
+    executive: {
+      bottomLine: v3Prose(112, 'bottom'),
+      evidenceIds: ['market:btc:current', 'macro:sp500:change1d'],
+      confidence: 'medium',
+      confidenceBasis: v3Prose(14, 'basis'),
+      keyJudgments: [1, 2, 3, 4].map(judgment),
+    },
+    assets: {
+      btc: asset('btc', '$95', '$105'),
+      eth: asset('eth', '$45', '$55'),
+      link: asset('link', '$9', '$11'),
+    },
+    macro: {
+      assessment: v3Prose(92, 'macro'),
+      evidenceIds: ['macro:sp500:change1d', 'macro:sentiment:current'],
+      confidence: 'medium',
+      confidenceBasis: v3Prose(12, 'basis'),
+      transmissionChannels: [1, 2, 3].map(index => ({
+        title: `Channel ${index}`,
+        analysis: v3Prose(38, 'channel'),
+        evidenceIds: ['macro:sp500:change1d', 'macro:sentiment:current'],
+        confidence: 'medium',
+      })),
+    },
+    scenarios: {
+      base: scenario('most likely'),
+      bullish: scenario('credible'),
+      bearish: scenario('lower probability'),
+    },
+    threats: [risk('Threat one'), risk('Threat two')],
+    opportunities: [risk('Opportunity one'), risk('Opportunity two')],
+    watch: {
+      next24Hours: [watch('Watch 24A'), watch('Watch 24B'), watch('Watch 24C')],
+      next7Days: [watch('Watch 7A'), watch('Watch 7B'), watch('Watch 7C')],
+    },
+    intelligenceGaps: [1, 2].map(index => ({
+      title: `Gap ${index}`,
+      gap: v3Prose(16, 'gap'),
+      whyItMatters: v3Prose(12, 'meaning'),
+      closureEvidence: v3Prose(12, 'closure'),
+      evidenceIds: ['macro:sp500:change1d'],
+      confidence: 'low',
+    })),
+  };
+}
+
+function thinV3Brief() {
+  const brief = validV3Brief();
+  const proseKeys = new Set([
+    'assessment',
+    'whyItMatters',
+    'confidenceBasis',
+    'invalidators',
+    'analysis',
+    'confirmation',
+    'invalidation',
+    'outlook',
+    'causalPath',
+    'triggers',
+    'indicator',
+    'signal',
+    'gap',
+    'closureEvidence',
+    'bottomLine',
+  ]);
+  const shrink = value => {
+    if (Array.isArray(value)) return value.map(shrink);
+    if (!value || typeof value !== 'object') return value;
+    for (const [key, entry] of Object.entries(value)) {
+      if (!proseKeys.has(key)) {
+        shrink(entry);
+      } else if (Array.isArray(entry)) {
+        value[key] = ['Too thin to be useful.'];
+      } else {
+        value[key] = 'Too thin to be useful.';
+      }
+    }
+    return value;
+  };
+  return shrink(brief);
+}
+
+function validV1Brief() {
+  const liveItems = (count, asset) => Array.from({ length: count }, (_, index) => ({
+    label: `${asset} ${index + 1}`,
+    text: `Live market data: ${asset} price remains above support.`,
+  }));
+  const plainItems = (count, label) => Array.from({ length: count }, (_, index) => ({
+    label: `${label} ${index + 1}`,
+    text: 'Legacy compatible observation.',
+  }));
+  return {
+    btc: { support: '$99', resist: '$101', bullets: liveItems(4, 'BTC') },
+    eth: { support: '$49', resist: '$51', bullets: liveItems(4, 'ETH') },
+    link: { support: '$9', resist: '$11', badge: 'Neutral', bullets: liveItems(4, 'LINK') },
+    macro: { bullets: plainItems(5, 'Macro') },
+    threats: plainItems(5, 'Threat'),
+    watch: plainItems(6, 'Watch'),
+    verdict: 'A full verdict sentence. A second full verdict sentence.',
+    ranking: 'BTC > ETH > LINK because liquidity leads.',
+    bullTrigger: 'A break above resistance improves conditions.',
+    bearTrigger: 'A break below support weakens conditions.',
+  };
+}
+
+function marketHistory(base = 100) {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const start = Date.UTC(2026, 5, 1);
+  const closes = Array.from({ length: 30 }, (_, index) => base * (0.9 + index / 290));
+  return {
+    ohlc: closes.map((close, index) => [start + index * dayMs, close, close * 1.02, close * 0.98, close]),
+    chart: {
+      prices: closes.map((close, index) => [start + index * dayMs, close]),
+      total_volumes: closes.map((_, index) => [start + index * dayMs, 1_000_000 + index * 10_000]),
+    },
+  };
+}
+
+function yahooCryptoChart(base = 100) {
+  const history = marketHistory(base);
+  return {
+    chart: {
+      result: [{
+        meta: { regularMarketPrice: base, chartPreviousClose: base * 0.99 },
+        timestamp: history.ohlc.map(bar => Math.floor(bar[0] / 1000)),
+        indicators: {
+          quote: [{
+            open: history.ohlc.map(bar => bar[1]),
+            high: history.ohlc.map(bar => bar[2]),
+            low: history.ohlc.map(bar => bar[3]),
+            close: history.ohlc.map(bar => bar[4]),
+            volume: history.chart.total_volumes.map(point => point[1]),
+          }],
+        },
+      }],
+    },
+  };
+}
+
 {
   const env = { ALLOWED_ORIGINS: 'https://blitzio.github.io' };
   const response = await worker.fetch(
@@ -105,9 +369,10 @@ async function jsonResponse(response) {
     generatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     brief: { btc: { bullets: [] } },
   };
+  const env = { ALLOWED_ORIGINS: 'https://blitzio.github.io', BRIEF_CACHE: makeKv(stale) };
   const response = await worker.fetch(
     new Request('https://worker.test/brief'),
-    { ALLOWED_ORIGINS: 'https://blitzio.github.io', BRIEF_CACHE: makeKv(stale) },
+    env,
     { waitUntil() {} }
   );
 
@@ -115,6 +380,539 @@ async function jsonResponse(response) {
   assert.equal(response.status, 200);
   assert.equal(body.cached, false);
   assert.equal(body.reason, 'stale');
+
+  const staleResponse = await worker.fetch(
+    new Request('https://worker.test/brief?allowStale=1'),
+    env,
+    { waitUntil() {} }
+  );
+  const staleBody = await jsonResponse(staleResponse);
+  assert.equal(staleResponse.status, 200);
+  assert.equal(staleBody.cached, true);
+  assert.equal(staleBody.fresh, false);
+  assert.equal(staleBody.reason, 'stale');
+  assert.deepEqual(staleBody.brief, stale.brief);
+}
+
+{
+  const calls = [];
+  await withGlobals({
+    fetch: async (_url, options) => {
+      calls.push(JSON.parse(options.body));
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validV1Brief()) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate legacy brief' }], cachePayload: { newsItems: [] } }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash',
+        BRIEF_PIPELINE_VERSION: 'v1',
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    const renderedEnvelope = JSON.parse(body.choices[0].message.content);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.pipelineVersion, 'v1');
+    assert.equal(body.meta.validation.type, 'citation');
+    assert.equal(renderedEnvelope.btc.bullets[0].label, 'BTC 1');
+    assert.equal(calls[0].generationConfig.responseJsonSchema.properties.btc.properties.bullets.minItems, 4);
+    assert.equal(calls[0].generationConfig.responseJsonSchema.properties.btc.properties.bullets.items.required.includes('evidenceIds'), false);
+    assert.match(calls[0].systemInstruction.parts[0].text, /PIPELINE V1 ROLLBACK/);
+  });
+}
+
+{
+  const histories = {
+    bitcoin: marketHistory(100),
+    ethereum: marketHistory(50),
+    chainlink: marketHistory(10),
+  };
+  const current = [
+    { id: 'bitcoin', current_price: 100, price_change_percentage_24h: 1, price_change_percentage_7d_in_currency: 2 },
+    { id: 'ethereum', current_price: 50, price_change_percentage_24h: 2, price_change_percentage_7d_in_currency: 3 },
+    { id: 'chainlink', current_price: 10, price_change_percentage_24h: 3, price_change_percentage_7d_in_currency: 4 },
+  ];
+  let fetchCount = 0;
+  await withGlobals({
+    caches: { default: makeCache() },
+    fetch: async (url) => {
+      fetchCount += 1;
+      const value = String(url);
+      if (value.includes('/coins/markets')) return Response.json(current);
+      const id = ['bitcoin', 'ethereum', 'chainlink'].find(asset => value.includes(`/coins/${asset}/`));
+      if (value.includes('/ohlc')) return Response.json(histories[id].ohlc);
+      if (value.includes('/market_chart')) return Response.json(histories[id].chart);
+      throw new Error(`unexpected URL ${value}`);
+    },
+  }, async () => {
+    const env = { ALLOWED_ORIGINS: 'https://blitzio.github.io' };
+    const ctx = { waitUntil() {} };
+    const response = await worker.fetch(new Request('https://worker.test/market'), env, ctx);
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.deepEqual(Object.keys(body.prices).sort(), ['bitcoin', 'chainlink', 'ethereum']);
+    assert.deepEqual(Object.keys(body.signals).sort(), ['btc', 'eth', 'link']);
+    assert.equal(body.signals.btc.current, 100);
+
+    const firstFetchCount = fetchCount;
+    const cachedResponse = await worker.fetch(new Request('https://worker.test/market'), env, ctx);
+    assert.equal(cachedResponse.status, 200);
+    assert.equal(fetchCount, firstFetchCount, 'second /market request should use edge cache');
+  });
+}
+
+{
+  const histories = { bitcoin: marketHistory(100), ethereum: marketHistory(50), chainlink: marketHistory(10) };
+  const current = [
+    { id: 'bitcoin', current_price: 100 },
+    { id: 'ethereum', current_price: 50 },
+    { id: 'chainlink', current_price: 10 },
+  ];
+  await withGlobals({
+    caches: { default: makeCache() },
+    fetch: async (url) => {
+      const value = String(url);
+      if (value.includes('/coins/markets')) return Response.json(current);
+      if (value.includes('query1.finance.yahoo.com') && value.includes('ETH-USD')) {
+        return Response.json(yahooCryptoChart(50));
+      }
+      const id = ['bitcoin', 'ethereum', 'chainlink'].find(asset => value.includes(`/coins/${asset}/`));
+      if (id === 'ethereum') return new Response('unavailable', { status: 502 });
+      if (value.includes('/ohlc')) return Response.json(histories[id].ohlc);
+      if (value.includes('/market_chart')) return Response.json(histories[id].chart);
+      throw new Error(`unexpected URL ${value}`);
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/market?nocache=1'),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io' },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.prices.ethereum.current_price, 50);
+    assert.equal(body.signals.eth.current, 50);
+    assert.notEqual(body.signals.eth.range30d, null);
+    assert.equal(body.signals.eth.unavailableFields.includes('range30d'), false);
+    assert.equal(body.signalProviders.eth, 'yahoo-finance');
+  });
+}
+
+{
+  const histories = { bitcoin: marketHistory(100), ethereum: marketHistory(50), chainlink: marketHistory(10) };
+  await withGlobals({
+    caches: { default: makeCache() },
+    fetch: async (url) => {
+      const value = String(url);
+      if (value.includes('api.coingecko.com')) return new Response('forbidden', { status: 403 });
+      if (value.includes('query1.finance.yahoo.com')) {
+        const base = value.includes('BTC-USD') ? 100 : value.includes('ETH-USD') ? 50 : 10;
+        return Response.json(yahooCryptoChart(base));
+      }
+      throw new Error(`unexpected URL ${value}`);
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/market?nocache=1'),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io' },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.provider, 'yahoo-finance');
+    assert.equal(body.prices.bitcoin.current_price, 100);
+    assert.equal(body.prices.ethereum.current_price, 50);
+    assert.equal(body.prices.chainlink.current_price, 10);
+    assert.equal(body.signals.btc.current, 100);
+    assert.equal(body.degraded, true);
+  });
+}
+
+{
+  const histories = { bitcoin: marketHistory(100), ethereum: marketHistory(50), chainlink: marketHistory(10) };
+  await withGlobals({
+    caches: { default: makeCache() },
+    fetch: async (url) => {
+      const value = String(url);
+      if (value.includes('/coins/markets')) return new Response('unavailable', { status: 502 });
+      const id = ['bitcoin', 'ethereum', 'chainlink'].find(asset => value.includes(`/coins/${asset}/`));
+      if (value.includes('/ohlc')) return Response.json(histories[id].ohlc);
+      if (value.includes('/market_chart')) return Response.json(histories[id].chart);
+      throw new Error(`unexpected URL ${value}`);
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/market?nocache=1'),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io' },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 502);
+    assert.match(body.error.message, /CoinGecko returned HTTP 502/);
+  });
+}
+
+{
+  const kv = makeKv();
+  const calls = [];
+  await withGlobals({
+    fetch: async (url, options) => {
+      calls.push({ url: String(url), body: JSON.parse(options.body) });
+      if (String(url).includes('gemini-3.5-flash')) {
+        return Response.json({ error: { message: 'model not found' } }, { status: 404 });
+      }
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validV2Brief()) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v2CachePayload() }),
+      }),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.model, 'gemini-3.1-flash-lite');
+    assert.equal(body.meta.attemptCount, 2);
+    assert.equal(body.meta.pipelineVersion, 'v2');
+    assert.equal(calls[1].body.generationConfig.maxOutputTokens, 8192);
+    assert.equal(calls[1].body.generationConfig.thinkingConfig.thinkingLevel, 'low');
+    assert.equal('temperature' in calls[1].body.generationConfig, false);
+    assert.equal(calls[1].body.generationConfig.responseJsonSchema.properties.btc.properties.bullets.minItems, 3);
+    assert.equal(calls[1].body.generationConfig.responseJsonSchema.properties.watch.minItems, 3);
+  });
+  const cacheWrite = kv.calls.find(call => call.op === 'put');
+  assert.ok(cacheWrite);
+  assert.equal(cacheWrite.options.expirationTtl, 7 * 24 * 60 * 60);
+  assert.equal(JSON.parse(cacheWrite.body).meta.model, 'gemini-3.1-flash-lite');
+}
+
+{
+  const kv = makeKv();
+  const calls = [];
+  await withGlobals({
+    fetch: async (url, options) => {
+      calls.push({ url: String(url), body: JSON.parse(options.body) });
+      return Response.json({
+        candidates: [{ content: { parts: [{ text: JSON.stringify(validV3Brief()) }] } }],
+      });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: 'browser override sentinel' },
+            { role: 'user', content: 'Generate brief' },
+          ],
+          cachePayload: v3CachePayload(),
+        }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.1-flash-lite',
+        GEMINI_THINKING_LEVEL: 'low',
+        GEMINI_V3_THINKING_LEVEL: 'medium',
+        BRIEF_PIPELINE_VERSION: 'v3',
+        BRIEF_CACHE: kv,
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].body.generationConfig.responseJsonSchema.properties.briefVersion.enum[0], 'v3');
+    assert.equal(
+      'minItems' in calls[0].body.generationConfig.responseJsonSchema.properties.executive.properties.keyJudgments,
+      false,
+    );
+    assert.equal(
+      'maxItems' in calls[0].body.generationConfig.responseJsonSchema.properties.executive.properties.keyJudgments,
+      false,
+    );
+    assert.equal(calls[0].body.generationConfig.thinkingConfig.thinkingLevel, 'medium');
+    assert.match(calls[0].body.systemInstruction.parts[0].text, /PDB v3/);
+    assert.doesNotMatch(calls[0].body.systemInstruction.parts[0].text, /browser override sentinel/);
+    assert.equal(body.meta.pipelineVersion, 'v3');
+    assert.equal(body.meta.validation.type, 'pdb-v3');
+    assert.equal(body.meta.quality.totalWords >= 1300, true);
+  });
+  assert.equal(kv.calls.some(call => call.op === 'put'), true);
+}
+
+{
+  const kv = makeKv();
+  const calls = [];
+  const invalidV3 = thinV3Brief();
+  invalidV3.assets.btc.assessment += ' Bitcoin is trading at $999,999.';
+  invalidV3.scenarios.base.outlook += ' Bitcoin then advances to $888,888.';
+  await withGlobals({
+    fetch: async (url, options) => {
+      calls.push({ url: String(url), body: JSON.parse(options.body) });
+      return Response.json({
+        candidates: [{ content: { parts: [{ text: JSON.stringify(invalidV3) }] } }],
+      });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v3CachePayload() }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash',
+        BRIEF_PIPELINE_VERSION: 'v3',
+        BRIEF_CACHE: kv,
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 422);
+    assert.equal(calls.length, 4);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /executive\.bottomLine: section_too_thin/);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /brief: section_too_thin/);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /unsupported_numeric_claim/);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /\$999,999/);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /\$888,888/);
+    assert.equal(body.error.qualityViolations.length > 0, true);
+    assert.equal(body.meta.validation.type, 'pdb-v3');
+  });
+  assert.equal(kv.calls.some(call => call.op === 'put'), false);
+}
+
+{
+  const kv = makeKv();
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      const brief = callCount === 1 ? thinV3Brief() : validV3Brief();
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(brief) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v3CachePayload() }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash',
+        BRIEF_PIPELINE_VERSION: 'v3',
+        BRIEF_CACHE: kv,
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.attemptCount, 2);
+    assert.equal(body.meta.validation.ok, true);
+  });
+  assert.equal(kv.calls.filter(call => call.op === 'put').length, 1);
+}
+
+{
+  const kv = makeKv();
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      const brief = callCount < 3 ? thinV3Brief() : validV3Brief();
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(brief) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v3CachePayload() }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash',
+        BRIEF_PIPELINE_VERSION: 'v3',
+        BRIEF_CACHE: kv,
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.attemptCount, 3);
+    assert.equal(body.meta.validation.ok, true);
+  });
+  assert.equal(kv.calls.filter(call => call.op === 'put').length, 1);
+}
+
+{
+  const kv = makeKv();
+  const calls = [];
+  await withGlobals({
+    fetch: async (url, options) => {
+      calls.push({ url: String(url), body: JSON.parse(options.body) });
+      if (String(url).includes('gemini-3.5-flash')) {
+        return Response.json({ error: { message: 'model unavailable' } }, { status: 404 });
+      }
+      return Response.json({
+        candidates: [{ content: { parts: [{ text: JSON.stringify(thinV3Brief()) }] } }],
+      });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v3CachePayload() }),
+      }),
+      {
+        ALLOWED_ORIGINS: 'https://blitzio.github.io',
+        GEMINI_API_KEY: 'test-key',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.1-flash-lite',
+        BRIEF_PIPELINE_VERSION: 'v3',
+        BRIEF_CACHE: kv,
+      },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 422);
+    assert.equal(calls.length, 5);
+    assert.equal(body.meta.model, 'gemini-3.1-flash-lite');
+  });
+  assert.equal(kv.calls.some(call => call.op === 'put'), false);
+}
+
+{
+  const kv = makeKv();
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      return Response.json({ error: { message: 'bad key' } }, { status: 401 });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: { newsItems: [] } }),
+      }),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
+      { waitUntil() {} }
+    );
+    assert.equal(response.status, 401);
+  });
+  assert.equal(callCount, 1, 'authentication failures must not try another model');
+  assert.equal(kv.calls.some(call => call.op === 'put'), false);
+}
+
+{
+  const kv = makeKv();
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      if (callCount === 1) throw new DOMException('timed out', 'AbortError');
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validV2Brief()) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v2CachePayload() }),
+      }),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.model, 'gemini-3.1-flash-lite');
+    assert.equal(body.meta.attemptCount, 2);
+  });
+}
+
+{
+  const kv = makeKv();
+  const invalid = validV2Brief();
+  invalid.btc.bullets[0].evidenceIds = ['market:btc:unknown'];
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      const brief = callCount === 1 ? invalid : validV2Brief();
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(brief) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v2CachePayload() }),
+      }),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 200);
+    assert.equal(body.meta.attemptCount, 2);
+    assert.equal(body.meta.validation.type, 'evidence');
+    assert.equal(body.meta.validation.ok, true);
+  });
+  assert.equal(callCount, 2);
+  assert.equal(kv.calls.some(call => call.op === 'put'), true);
+}
+
+{
+  const kv = makeKv();
+  const invalid = validV2Brief();
+  invalid.eth.bullets[0].evidenceIds = ['market:btc:current'];
+  let callCount = 0;
+  await withGlobals({
+    fetch: async () => {
+      callCount += 1;
+      return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(invalid) }] } }] });
+    },
+  }, async () => {
+    const response = await worker.fetch(
+      new Request('https://worker.test/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v2CachePayload() }),
+      }),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv },
+      { waitUntil() {} }
+    );
+    const body = await jsonResponse(response);
+    assert.equal(response.status, 422);
+    assert.equal(body.error.message, 'Generated brief failed evidence validation. Refresh to retry.');
+    assert.equal(body.error.evidenceViolations.some(violation => violation.reason === 'cross_asset_evidence'), true);
+  });
+  assert.equal(callCount, 2);
+  assert.equal(kv.calls.some(call => call.op === 'put'), false);
 }
 
 {
@@ -163,8 +961,9 @@ async function jsonResponse(response) {
       {
         ALLOWED_ORIGINS: 'https://blitzio.github.io',
         GEMINI_API_KEY: 'test-key',
-        GEMINI_MODEL: 'gemini-3-flash-preview',
-        GEMINI_FALLBACK_MODEL: 'gemini-3-flash-preview',
+        GEMINI_MODEL: 'gemini-3.5-flash',
+        GEMINI_FALLBACK_MODEL: 'gemini-3.5-flash',
+        BRIEF_PIPELINE_VERSION: 'v1',
         BRIEF_CACHE: kv,
       },
       { waitUntil() {} }
@@ -191,7 +990,18 @@ async function jsonResponse(response) {
     caches: { default: makeCache() },
     fetch: async (url) => {
       fetchCalls.push(String(url));
-      if (String(url).includes('query1.finance.yahoo.com')) {
+      if (String(url).includes('/v8/finance/chart/')) {
+        return Response.json({
+          chart: {
+            result: [{
+              timestamp: [1, 2, 3, 4, 5, 6],
+              meta: { regularMarketPrice: 100, regularMarketPreviousClose: 99 },
+              indicators: { quote: [{ close: [90, 92, 94, 96, 98, 100] }] },
+            }],
+          },
+        });
+      }
+      if (String(url).includes('/v7/finance/quote')) {
         return Response.json({
           quoteResponse: {
             result: [{
@@ -202,7 +1012,10 @@ async function jsonResponse(response) {
         });
       }
       if (String(url).includes('newyorkfed.org')) {
-        return Response.json({ refRates: [{ percentRate: '3.50', effectiveDt: '2026-05-01' }] });
+        return Response.json({ refRates: [
+          { percentRate: '3.50', effectiveDt: '2026-05-01' },
+          { percentRate: '3.75', effectiveDt: '2026-04-30' },
+        ] });
       }
       if (String(url).includes('api.bls.gov')) {
         return Response.json({
@@ -210,7 +1023,9 @@ async function jsonResponse(response) {
             series: [{
               data: [
                 { year: '2026', period: 'M04', periodName: 'April', value: '320' },
+                { year: '2026', period: 'M03', periodName: 'March', value: '315' },
                 { year: '2025', period: 'M04', periodName: 'April', value: '310' },
+                { year: '2025', period: 'M03', periodName: 'March', value: '308' },
               ],
             }],
           },
@@ -219,7 +1034,16 @@ async function jsonResponse(response) {
       if (String(url).includes('alternative.me')) {
         return Response.json({ data: [{ value: '55', value_classification: 'Neutral' }] });
       }
-      if (String(url).includes('stablecoins.llama.fi')) {
+      if (String(url).includes('stablecoincharts/all')) {
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        return Response.json([
+          { date: nowSeconds - 31 * 86400, totalCirculating: { peggedUSD: 100 } },
+          { date: nowSeconds - 30 * 86400, totalCirculating: { peggedUSD: 100 } },
+          { date: nowSeconds - 7 * 86400, totalCirculating: { peggedUSD: 110 } },
+          { date: nowSeconds, totalCirculating: { peggedUSD: 121 } },
+        ]);
+      }
+      if (String(url).includes('stablecoins?')) {
         return Response.json({
           peggedAssets: [
             { symbol: 'USDT', circulating: { peggedUSD: 100_000_000_000 } },
@@ -227,10 +1051,30 @@ async function jsonResponse(response) {
           ],
         });
       }
+      if (String(url).includes('theblock.co')) {
+        return new Response('not found', { status: 404 });
+      }
+      if (String(url).includes('decrypt.co')) {
+        return new Response(`<?xml version="1.0"?><rss><channel>
+          <item><title>Old Bitcoin story</title><link>https://example.com/old-btc</link><description>BTC old news.</description><pubDate>Mon, 01 Jan 2024 00:00:00 GMT</pubDate></item>
+        </channel></rss>`, { headers: { 'Content-Type': 'application/xml' } });
+      }
+      if (String(url).includes('news.google.com') && String(url).includes('Ethereum')) {
+        return new Response(`<?xml version="1.0"?><rss><channel>
+          <item><title>Ethereum staking demand rises</title><link>https://example.com/eth/staking</link><description>ETH staking flows accelerated.</description><pubDate>${recentPubDate}</pubDate></item>
+          <item><title>Ethereum scaling activity expands</title><link>https://example.com/eth/scaling</link><description>Ethereum rollup activity grew.</description><pubDate>${recentPubDate}</pubDate></item>
+        </channel></rss>`, { headers: { 'Content-Type': 'application/xml' } });
+      }
+      if (String(url).includes('news.google.com') && String(url).includes('Chainlink')) {
+        return new Response(`<?xml version="1.0"?><rss><channel>
+          <item><title>Chainlink CCIP adoption expands</title><link>https://example.com/link/ccip</link><description>LINK oracle usage grew.</description><pubDate>${recentPubDate}</pubDate></item>
+          <item><title>Chainlink data services expand</title><link>https://example.com/link/data</link><description>Chainlink integrations increased.</description><pubDate>${recentPubDate}</pubDate></item>
+        </channel></rss>`, { headers: { 'Content-Type': 'application/xml' } });
+      }
       const feedKey = encodeURIComponent(String(url).slice(0, 80));
       return new Response(`<?xml version="1.0"?><rss><channel>
-        <item><title>Bitcoin ETF demand rises</title><link>https://example.com/${feedKey}/btc</link><description>BTC ETF flows accelerated.</description><pubDate>${recentPubDate}</pubDate></item>
-        <item><title>Chainlink CCIP adoption expands</title><link>https://example.com/${feedKey}/link</link><description>Chainlink oracle usage grew.</description><pubDate>${recentPubDate}</pubDate></item>
+        <item><title>Bitcoin ETF demand rises ${feedKey}</title><link>https://example.com/${feedKey}/btc</link><description>BTC ETF flows accelerated.</description><pubDate>${recentPubDate}</pubDate></item>
+        <item><title>Chainlink CCIP adoption expands ${feedKey}</title><link>https://example.com/${feedKey}/link</link><description>Chainlink oracle usage grew.</description><pubDate>${recentPubDate}</pubDate></item>
       </channel></rss>`, { headers: { 'Content-Type': 'application/xml' } });
     },
   }, async () => {
@@ -243,8 +1087,11 @@ async function jsonResponse(response) {
     const body = await jsonResponse(response);
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('Cache-Control'), 'public, max-age=60');
-    assert.equal(body.ok, true);
+    assert.equal(body.ok, true, JSON.stringify(body));
     assert.equal(typeof body.timestamp, 'string');
+    assert.equal(body.checks.market.ok, true);
+    assert.equal(body.checks.market.provider, 'yahoo-finance');
+    assert.equal(body.checks.market.degraded, true);
     assert.equal(body.checks.macro.ok, true);
     assert.deepEqual(body.checks.macro.unavailableFields, []);
     assert.equal(body.checks.news.ok, true);
@@ -252,10 +1099,41 @@ async function jsonResponse(response) {
     assert.equal(body.checks.news.assetMentionCounts.btc > 0, true);
     assert.equal(body.checks.news.assetMentionCounts.link > 0, true);
     assert.equal(body.checks.news.avgContentChars > 0, true);
+    assert.equal(body.checks.news.degraded, true);
+    assert.equal(Array.isArray(body.checks.news.sources), true);
+    assert.equal(
+      body.checks.news.sources.some(source => source.sourceId === 'the-block' && source.status === 404 && source.error === 'http'),
+      true
+    );
+    assert.equal(
+      body.checks.news.sources.some(source => source.sourceId === 'decrypt' && source.parsedCount > 0 && source.freshCount === 0 && source.error === 'stale'),
+      true
+    );
     assert.equal(body.checks.briefCache.cached, true);
     assert.equal(typeof body.checks.briefCache.ageSeconds, 'number');
 
+    const macroResponse = await worker.fetch(
+      new Request('https://worker.test/macro?nocache=1'),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io' },
+      { waitUntil(promise) { pendingWork.push(promise); } }
+    );
+    const macroBody = await jsonResponse(macroResponse);
+    assert.equal(macroBody.sp500.change5dPct, 11.111111111111);
+    assert.equal(macroBody.fedRate.change, -0.25);
+    assert.equal(macroBody.fedRate.direction, 'falling');
+    assert.equal(macroBody.cpi.direction, 'rising');
+    assert.equal(macroBody.stablecoins.change7dPct, 10);
+    assert.equal(macroBody.stablecoins.change30dPct, 21);
+
     await Promise.all(pendingWork);
+    const newsResponse = await worker.fetch(
+      new Request('https://worker.test/news?nocache=1'),
+      { ALLOWED_ORIGINS: 'https://blitzio.github.io', BRIEF_CACHE: kv },
+      { waitUntil(promise) { pendingWork.push(promise); } }
+    );
+    assert.equal(newsResponse.status, 200);
+    assert.equal(Array.isArray(await jsonResponse(newsResponse)), true, '/news must preserve its array response');
+
     const fetchCountAfterFirstHealth = fetchCalls.length;
     const cachedResponse = await worker.fetch(
       new Request('https://worker.test/health'),

@@ -1,17 +1,175 @@
 import assert from 'node:assert/strict';
 import {
   buildPromptNewsItems,
+  canonicalNewsUrl,
   inferAssetMentions,
+  normalizedHeadlineKey,
   selectTopNewsItems,
   sanitizeNewsDescription,
   summarizeNewsSourceHealth,
 } from '../src/news.js';
 import {
+  buildEvidenceIndex,
+  isRetryableGeminiStatus,
   parseGeminiBriefJson,
   normalizeCitationMarkers,
   resolveModelFallbacks,
+  resolvePipelineVersion,
   validateBriefCitations,
+  validateBriefEvidence,
 } from '../src/gemini.js';
+import * as geminiModule from '../src/gemini.js';
+
+assert.equal(typeof geminiModule.resolveGenerationDeadlineMs, 'function');
+assert.equal(geminiModule.resolveGenerationDeadlineMs('v3'), 150_000);
+assert.equal(geminiModule.resolveGenerationDeadlineMs('v2'), 90_000);
+
+{
+  const evidenceIndex = buildEvidenceIndex({
+    newsItems: [
+      { title: 'Bitcoin ETF demand rises', description: 'BTC ETF inflows increased.', source: 'CoinDesk', topic: 'general' },
+      { title: 'Global liquidity conditions shift', description: 'Rates and liquidity moved.', source: 'FT', topic: 'macro' },
+    ],
+    prices: {
+      bitcoin: { current_price: 100, price_change_percentage_24h: 1, price_change_percentage_7d_in_currency: 2 },
+      ethereum: { current_price: 50 },
+      chainlink: { current_price: 10 },
+    },
+    marketSignals: {
+      btc: { rangePosition30d: 0.5, support: 90, resistance: 110 },
+      eth: { rangePosition30d: 0.4 },
+      link: { volumeTrend: 0.2 },
+    },
+    macro: { sp500: { pct: 1.2, change5dPct: 2.5 }, stablecoins: { change7dPct: 1.1 } },
+  });
+
+  assert.equal(evidenceIndex.has('news:1'), true);
+  assert.equal(evidenceIndex.has('market:btc:rangePosition'), true);
+  assert.equal(evidenceIndex.has('market:link:volumeTrend'), true);
+  assert.equal(evidenceIndex.has('macro:sp500:change1d'), true);
+  assert.equal(evidenceIndex.has('macro:stablecoins:change7d'), true);
+  assert.equal(buildEvidenceIndex({ macro: { cpi: { yoy: 'N/A' } } }).has('macro:cpi:current'), false);
+
+  const valid = validateBriefEvidence({
+    btc: { bullets: [{ label: 'Flows', text: 'ETF demand improved [1].', evidenceIds: ['news:1', 'market:btc:rangePosition'], confidence: 'high' }] },
+    eth: { bullets: [{ label: 'Range', text: 'ETH remains mid-range.', evidenceIds: ['market:eth:rangePosition'], confidence: 'medium' }] },
+    link: { bullets: [{ label: 'Volume', text: 'Volume expanded.', evidenceIds: ['market:link:volumeTrend'], confidence: 'low' }] },
+    macro: { bullets: [{ label: 'Risk', text: 'Equities improved.', evidenceIds: ['macro:sp500:change1d'], confidence: 'medium' }] },
+    threats: [{ label: 'Liquidity', text: 'Liquidity is shifting.', evidenceIds: ['news:2'], confidence: 'low' }],
+    watch: [{ label: 'Supply', text: 'Watch stablecoin supply.', evidenceIds: ['macro:stablecoins:change7d'], confidence: 'high' }],
+  }, evidenceIndex);
+  assert.equal(valid.ok, true);
+
+  const unknown = validateBriefEvidence({
+    btc: { bullets: [{ label: 'Bad', text: 'Unknown.', evidenceIds: ['market:btc:unknown'], confidence: 'high' }] },
+  }, evidenceIndex);
+  assert.equal(unknown.violations.some(violation => violation.reason === 'unknown_evidence'), true);
+
+  const crossed = validateBriefEvidence({
+    btc: { bullets: [{ label: 'Bad', text: 'Wrong asset.', evidenceIds: ['market:eth:rangePosition'], confidence: 'high' }] },
+  }, evidenceIndex);
+  assert.equal(crossed.violations.some(violation => violation.reason === 'cross_asset_evidence'), true);
+
+  const confidence = validateBriefEvidence({
+    btc: { bullets: [{ label: 'Bad', text: 'Invalid confidence.', evidenceIds: ['news:1'], confidence: 'certain' }] },
+  }, evidenceIndex);
+  assert.equal(confidence.violations.some(violation => violation.reason === 'invalid_confidence'), true);
+
+  const v1 = validateBriefCitations({
+    btc: { bullets: [{ label: 'Live', text: 'Live market data: BTC price is above support.' }] },
+  }, []);
+  assert.equal(v1.ok, true);
+}
+
+{
+  assert.equal(
+    canonicalNewsUrl('https://example.com/story?utm_source=rss&utm_medium=feed&id=7#section'),
+    'https://example.com/story?id=7'
+  );
+  assert.equal(
+    normalizedHeadlineKey('Bitcoin ETF Demand Rises - CoinDesk'),
+    'bitcoin etf demand rises'
+  );
+}
+
+{
+  const now = Date.now();
+  const selected = selectTopNewsItems([
+    ...Array.from({ length: 7 }, (_, i) => ({
+      title: `Bitcoin institutional item ${i}`,
+      url: `https://coindesk.com/${i}?utm_source=rss`,
+      description: 'Bitcoin BTC institutional demand increased.',
+      pubDate: new Date(now - i * 1000).toUTCString(),
+      source: 'CoinDesk',
+      sourceId: 'coindesk',
+      sourceTier: 'editorial',
+      topic: 'general',
+    })),
+    ...Array.from({ length: 6 }, (_, i) => ({
+      title: `Macro item ${i}`,
+      url: `https://macro.example/${i}`,
+      description: 'Stocks and rates moved.',
+      pubDate: new Date(now - i * 1000).toUTCString(),
+      source: `Macro ${i % 2}`,
+      sourceId: `macro-${i % 2}`,
+      sourceTier: 'macro',
+      topic: 'macro',
+    })),
+  ], 20);
+
+  assert.equal(selected.filter(item => item.sourceId === 'coindesk').length, 4);
+  assert.equal(selected.filter(item => item.assetMentions.length === 0).length, 5);
+}
+
+{
+  const now = Date.now();
+  const selected = selectTopNewsItems([
+    {
+      title: 'Ethereum staking demand rises - Aggregator',
+      url: 'https://aggregator.example/eth-story',
+      description: 'Ethereum ETH staking demand increased.',
+      pubDate: new Date(now).toUTCString(),
+      source: 'Google News ETH',
+      sourceId: 'google-news-eth',
+      sourceTier: 'discovery',
+      topic: 'eth',
+    },
+    {
+      title: 'Ethereum staking demand rises - Direct Publisher',
+      url: 'https://publisher.example/eth-story?utm_source=rss',
+      description: 'Ethereum ETH staking demand increased.',
+      pubDate: new Date(now - 60_000).toUTCString(),
+      source: 'Direct Publisher',
+      sourceId: 'direct-publisher',
+      sourceTier: 'editorial',
+      topic: 'general',
+    },
+    {
+      title: 'Bitcoin ETF demand rises',
+      url: 'https://publisher.example/btc?utm_source=rss',
+      description: 'Bitcoin BTC ETF demand increased.',
+      pubDate: new Date(now - 120_000).toUTCString(),
+      source: 'Direct Publisher',
+      sourceId: 'direct-publisher',
+      sourceTier: 'editorial',
+      topic: 'general',
+    },
+    {
+      title: 'Bitcoin ETF demand rises',
+      url: 'https://publisher.example/btc?utm_medium=feed',
+      description: 'Bitcoin BTC ETF demand increased.',
+      pubDate: new Date(now - 180_000).toUTCString(),
+      source: 'Direct Publisher',
+      sourceId: 'direct-publisher',
+      sourceTier: 'editorial',
+      topic: 'general',
+    },
+  ], 20);
+
+  assert.equal(selected.some(item => item.sourceTier === 'editorial' && item.assetMentions.includes('eth')), true);
+  assert.equal(selected.some(item => item.sourceTier === 'discovery' && item.assetMentions.includes('eth')), false);
+  assert.equal(selected.filter(item => item.title === 'Bitcoin ETF demand rises').length, 1);
+}
 
 {
   assert.equal(
@@ -45,8 +203,20 @@ import {
 }
 
 {
-  assert.deepEqual(resolveModelFallbacks({ GEMINI_MODEL: 'gemini-3-flash-preview' }), ['gemini-3-flash-preview', 'gemini-2.5-flash']);
-  assert.deepEqual(resolveModelFallbacks({ GEMINI_MODEL: 'gemini-2.5-flash' }), ['gemini-2.5-flash']);
+  assert.deepEqual(resolveModelFallbacks({}), ['gemini-3.5-flash', 'gemini-3.1-flash-lite']);
+  assert.deepEqual(
+    resolveModelFallbacks({ GEMINI_MODEL: 'custom-model', GEMINI_FALLBACK_MODEL: 'fallback-model' }),
+    ['custom-model', 'fallback-model']
+  );
+  assert.equal(isRetryableGeminiStatus(404), true);
+  assert.equal(isRetryableGeminiStatus(429), true);
+  assert.equal(isRetryableGeminiStatus(503), true);
+  assert.equal(isRetryableGeminiStatus(400), false);
+  assert.equal(isRetryableGeminiStatus(401), false);
+assert.equal(resolvePipelineVersion({}), 'v2');
+assert.equal(resolvePipelineVersion({ BRIEF_PIPELINE_VERSION: 'v1' }), 'v1');
+assert.equal(resolvePipelineVersion({ BRIEF_PIPELINE_VERSION: 'v3' }), 'v3');
+assert.equal(resolvePipelineVersion({ BRIEF_PIPELINE_VERSION: 'unexpected' }), 'v2');
 }
 
 {
