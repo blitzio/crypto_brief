@@ -961,7 +961,7 @@ export default {
           };
         };
 
-        const maxGenerationAttempts = pipelineVersion === 'v3' ? 4 : 2;
+        const maxGenerationAttempts = pipelineVersion === 'v3' ? 5 : 2;
         for (let correctionAttempt = 0; correctionAttempt < maxGenerationAttempts; correctionAttempt++) {
           const candidateModels = correctionAttempt === 0 ? models : [selectedModel];
           const modelResult = await requestGemini(candidateModels.filter(Boolean));
@@ -1039,7 +1039,7 @@ export default {
                 .map(v => `${String(v.section || v.asset || 'json').toUpperCase()} bullet ${v.bulletIndex + 1}: ${v.reason}${v.evidenceId ? ` (${v.evidenceId})` : ''}${v.docId ? ` on doc [${v.docId}]` : ''}`)
                 .join('; ');
           const correctionText = pipelineVersion === 'v3'
-            ? `The previous PDB v3 JSON failed validation: ${feedback}. Return the full corrected JSON only, using known evidence IDs and the required analytical depth.`
+            ? `The previous PDB v3 JSON failed validation: ${feedback}. Return the full corrected JSON only. Expand fields marked section_too_thin or item_too_thin to meet or exceed every stated minimum. Condense fields marked section_too_long to their stated maximum. Remove unsupported numeric claims while preserving supported evidence and claims. Do not shorten fields that already pass or are not flagged. Keep the complete brief within 1,500-2,200 useful words.`
             : pipelineVersion === 'v2'
               ? `The previous JSON failed evidence validation: ${feedback}. Return the full corrected JSON only. Every bullet must use known evidenceIds from the provided list, matching the asset where applicable, and confidence must be high, medium, or low.`
               : `The previous JSON failed citation validation: ${feedback}. Return the full corrected JSON only. Asset bullets may cite only docs whose ASSET_TAGS include that asset. If no matching source supports an asset point, use exact live market data from the prompt and label it "Live market data:"; cover price action, relative strength, liquidity/volume, and support/resistance. Do not write broad uncited model inference.`;

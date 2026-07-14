@@ -687,12 +687,15 @@ function yahooCryptoChart(base = 100) {
     );
     const body = await jsonResponse(response);
     assert.equal(response.status, 422);
-    assert.equal(calls.length, 4);
+    assert.equal(calls.length, 5);
     assert.match(calls[1].body.contents.at(-1).parts[0].text, /executive\.bottomLine: section_too_thin/);
     assert.match(calls[1].body.contents.at(-1).parts[0].text, /brief: section_too_thin/);
     assert.match(calls[1].body.contents.at(-1).parts[0].text, /unsupported_numeric_claim/);
     assert.match(calls[1].body.contents.at(-1).parts[0].text, /\$999,999/);
     assert.match(calls[1].body.contents.at(-1).parts[0].text, /\$888,888/);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /meet or exceed every stated minimum/);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /Condense fields marked section_too_long/);
+    assert.match(calls[1].body.contents.at(-1).parts[0].text, /Do not shorten fields that already pass/);
     assert.equal(body.error.qualityViolations.length > 0, true);
     assert.equal(body.meta.validation.type, 'pdb-v3');
   });
@@ -799,7 +802,7 @@ function yahooCryptoChart(base = 100) {
     );
     const body = await jsonResponse(response);
     assert.equal(response.status, 422);
-    assert.equal(calls.length, 5);
+    assert.equal(calls.length, 6);
     assert.equal(body.meta.model, 'gemini-3.1-flash-lite');
   });
   assert.equal(kv.calls.some(call => call.op === 'put'), false);
