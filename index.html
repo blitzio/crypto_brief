@@ -49,10 +49,12 @@ body{background:radial-gradient(circle at top,#16202b 0,#101720 34%,#0b1118 100%
 /* ── LOADING ── */
 #loading{display:flex;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
 #loading.hidden{display:none;}
+#loading.error .spinner{display:none;}
 .spinner{width:42px;height:42px;border:2px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .9s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .load-title{font-size:1.15rem;font-weight:600;color:var(--text);letter-spacing:-.01em;}
 .load-sub{font-size:.9rem;color:var(--muted);font-family:var(--font);letter-spacing:.01em;text-align:center;max-width:420px;line-height:1.6;}
+.load-retry{margin-top:4px;}
 .refresh-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
 .refresh-status{max-width:310px;color:var(--muted);font:600 .68rem/1.35 var(--font);text-align:right;}
 
@@ -321,6 +323,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   <div class="spinner"></div>
   <div class="load-title">Crypto Daily Brief</div>
   <div class="load-sub" id="load-sub">Fetching live market data…</div>
+  <button class="accent-btn load-retry" id="load-retry-btn" type="button" onclick="run(true)" hidden>↻ Retry Current Brief</button>
 </div>
 
 <div id="brief">
@@ -603,6 +606,13 @@ function parseBriefJson(raw) {
 
 function setLoadStatus(message = '') {
   document.getElementById('load-sub').textContent = message;
+}
+
+function setLoadingErrorState(isError) {
+  const loading = document.getElementById('loading');
+  const retryButton = document.getElementById('load-retry-btn');
+  if (loading) loading.classList.toggle('error', isError);
+  if (retryButton) retryButton.hidden = !isError;
 }
 
 function setRefreshStatus(message = '') {
@@ -1235,6 +1245,7 @@ async function run(forceRefresh = false) {
   const loadingElement = document.getElementById('loading');
   const refreshButton = document.getElementById('refresh-btn');
   const hadActiveBrief = briefElement.classList.contains('active');
+  setLoadingErrorState(false);
   if (!hadActiveBrief) loadingElement.classList.remove('hidden');
   if (refreshButton) refreshButton.disabled = true;
 
@@ -1294,7 +1305,13 @@ async function run(forceRefresh = false) {
 
   } catch (err) {
     console.error(err);
-    setRefreshStatus('❌ ' + err.message + ' — refresh to retry.');
+    const detail = err?.message || 'Unknown error';
+    if (hadActiveBrief) {
+      setRefreshStatus('❌ ' + detail + ' — refresh to retry.');
+    } else {
+      setRefreshStatus('❌ Could not generate a current brief. ' + detail);
+      setLoadingErrorState(true);
+    }
   } finally {
     refreshInFlight = false;
     if (refreshButton) refreshButton.disabled = false;

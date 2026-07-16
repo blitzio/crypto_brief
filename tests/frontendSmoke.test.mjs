@@ -120,6 +120,31 @@ assert.equal(
   false,
   'startup must not retain the stale-render branch'
 );
+assert.match(
+  html,
+  /<button class="accent-btn load-retry" id="load-retry-btn" type="button" onclick="run\(true\)" hidden>↻ Retry Current Brief<\/button>/,
+  'an empty or expired cache failure should expose a visible forced-refresh Retry control'
+);
+assert.ok(
+  html.includes('#loading.error .spinner{display:none;}'),
+  'a terminal loading error should stop the spinner'
+);
+assert.ok(
+  scriptMatch[1].includes('function setLoadingErrorState(isError)'),
+  'loading error state should be centralized'
+);
+assert.ok(
+  scriptMatch[1].includes('setLoadingErrorState(false);'),
+  'each retry should restore the normal loading state'
+);
+assert.ok(
+  scriptMatch[1].includes('setLoadingErrorState(true);'),
+  'a no-brief generation failure should enter terminal error state'
+);
+assert.ok(
+  scriptMatch[1].includes('Could not generate a current brief.'),
+  'the terminal error should clearly say that no current brief is available'
+);
 assert.ok(scriptMatch[1].includes('DATA_TIMEOUT_MS = 15000'), 'data requests should have a 15 second deadline');
 assert.ok(scriptMatch[1].includes('GEMINI_TIMEOUT_MS = 165000'), 'Gemini requests should allow the 150 second PDB v3 deadline');
 assert.ok(scriptMatch[1].includes('evidenceIds'), 'v2 prompts should request explicit evidence identifiers');
