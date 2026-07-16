@@ -16,6 +16,7 @@ The product requirement is now explicit: an expired brief must never be shown on
 4. If generation fails and no fresh brief is visible, stop the loading animation and show a clear error with a visible Retry control.
 5. Preserve the existing cache record and stale-recovery route without exposing stale content in the public UI.
 6. Keep the change narrow, reversible, and covered by a regression test.
+7. Update user and operator documentation so it no longer instructs the browser to render stale content.
 
 ## Non-goals
 
@@ -83,4 +84,4 @@ The completed change must prove:
 
 ## Delivery Safety
 
-Implementation will start from the currently deployed `origin/main` commit on an isolated branch. The fix will be limited to `index.html` and `tests/frontendSmoke.test.mjs` unless a failing test demonstrates that another file is required. Publishing and production deployment remain separate from local implementation and verification.
+Implementation will start from the currently deployed `origin/main` commit on an isolated branch. Product behavior changes are limited to `index.html` and `tests/frontendSmoke.test.mjs`; `README.md` and `docs/OPERATIONS.md` will be updated to describe the corrected public behavior. `worker.js` and its routes remain unchanged unless a failing test demonstrates that another file is required. Publishing and production deployment remain separate from local implementation and verification.
