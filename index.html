@@ -1242,10 +1242,10 @@ async function run(forceRefresh = false) {
     if (!shouldForceRefresh) {
       setRefreshStatus('Checking for cached brief…');
       try {
-        const cacheRes  = await fetchWithTimeout(WORKER_URL + '/brief?allowStale=1', { cache: 'no-store' }, DATA_TIMEOUT_MS);
+        const cacheRes  = await fetchWithTimeout(WORKER_URL + '/brief', { cache: 'no-store' }, DATA_TIMEOUT_MS);
         const cacheData = await cacheRes.json();
-        if (cacheData.cached && cacheData.brief) {
-          console.log(`[cache] ${cacheData.fresh === false ? 'stale fallback' : 'hit'}: rendering cached brief`);
+        if (cacheData.cached && cacheData.fresh === true && cacheData.brief) {
+          console.log('[cache] fresh hit: rendering cached brief');
           setRefreshStatus('Loading cached brief…');
           try {
             renderBrief(
@@ -1260,19 +1260,16 @@ async function run(forceRefresh = false) {
             console.error('[cache] render failed for cached brief:', renderErr);
             throw renderErr;
           }
-          if (cacheData.fresh !== false) {
-            setRefreshStatus('Refreshing live market data…');
-            try {
-              await refreshMarketSummary(cacheData.brief);
-            } catch (marketError) {
-              console.warn('[market] live summary refresh failed; retaining cached values', marketError);
-            }
-            setRefreshStatus();
-            return;
+          setRefreshStatus('Refreshing live market data…');
+          try {
+            await refreshMarketSummary(cacheData.brief);
+          } catch (marketError) {
+            console.warn('[market] live summary refresh failed; retaining cached values', marketError);
           }
-          setRefreshStatus('Showing the last brief while refreshing live data…');
+          setRefreshStatus();
+          return;
         }
-        if (!cacheData.cached) console.log(`[cache] miss: ${cacheData.reason || 'no usable cached brief'}`);
+        console.log(`[cache] miss: ${cacheData.reason || 'no usable fresh cached brief'}`);
       } catch (e) { console.warn('[cache] miss: cache check failed', e); }
     }
 
