@@ -13,7 +13,7 @@ The product requirement is now explicit: an expired brief must never be shown on
 1. Preserve the existing one-hour freshness threshold.
 2. Render a cached brief on startup only when the Worker reports it as fresh.
 3. Keep expired analysis hidden while a replacement is generated.
-4. If generation fails and no fresh brief is visible, show a clear error and a visible Retry control.
+4. If generation fails and no fresh brief is visible, stop the loading animation and show a clear error with a visible Retry control.
 5. Preserve the existing cache record and stale-recovery route without exposing stale content in the public UI.
 6. Keep the change narrow, reversible, and covered by a regression test.
 
@@ -33,7 +33,7 @@ The public startup path will request `GET /brief` without `allowStale=1`.
 ### Fresh cache hit
 
 1. The Worker returns the cached envelope with `cached: true` and `fresh: true`.
-2. The browser renders the brief immediately.
+2. The browser requires `fresh === true` before rendering the brief, providing a second guard against stale analysis.
 3. The browser refreshes the live market summary through the existing independent path.
 4. No Gemini generation is started.
 
@@ -48,8 +48,8 @@ The public startup path will request `GET /brief` without `allowStale=1`.
 ### Generation failure
 
 1. No expired payload is fetched or rendered as a fallback.
-2. The loading state displays `Could not generate a current brief` together with the existing error detail where available.
-3. A visible Retry button calls the existing forced-refresh path.
+2. The loading state stops its spinner and displays `Could not generate a current brief` together with the existing error detail where available.
+3. A visible Retry button calls the existing forced-refresh path and restores the normal loading state for the new attempt.
 4. The page continues to show no analysis until a current brief succeeds.
 
 ## Manual Refresh
@@ -75,10 +75,11 @@ The completed change must prove:
 
 1. Startup requests the fresh-only `/brief` route.
 2. The public script contains no stale opt-in request.
-3. The loading state contains a Retry control for empty/stale-cache generation failures.
-4. Retry uses the existing forced-refresh path.
-5. Existing Worker route tests still prove the default route rejects stale records while the opt-in route remains compatible.
-6. The complete test suite and Cloudflare dry build pass.
+3. Cached content renders only when `fresh === true`.
+4. The loading state contains a Retry control for empty/stale-cache generation failures.
+5. A terminal error stops the spinner, while Retry restores the normal loading state and uses the existing forced-refresh path.
+6. Existing Worker route tests still prove the default route rejects stale records while the opt-in route remains compatible.
+7. The complete test suite and Cloudflare dry build pass.
 
 ## Delivery Safety
 
