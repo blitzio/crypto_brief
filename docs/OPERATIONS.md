@@ -35,7 +35,7 @@ curl "https://crypto-brief-proxy.blitzio.workers.dev/brief"
 curl "https://crypto-brief-proxy.blitzio.workers.dev/brief?allowStale=1"
 ```
 
-`/brief` accepts only fresh records. `/brief?allowStale=1` may return a retained record with `fresh: false` and `reason: "stale"`; the browser renders it while refreshing.
+`/brief` accepts only fresh records and is the only cache route used by the public browser. `/brief?allowStale=1` is an operator-only recovery diagnostic that may return a retained record with `fresh: false` and `reason: "stale"`; the public page never requests or renders that expired record.
 
 ## Direct Feed Diagnostics
 

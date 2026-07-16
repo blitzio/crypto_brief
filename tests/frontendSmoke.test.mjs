@@ -102,7 +102,49 @@ assert.ok(scriptMatch[1].includes('function parseBriefJson'), 'front-end JSON pa
 assert.ok(scriptMatch[1].includes('function setLoadStatus'), 'loading status updates should stay centralized');
 assert.ok(scriptMatch[1].includes('function fetchWithTimeout'), 'network requests should use a shared timeout helper');
 assert.ok(scriptMatch[1].includes('refreshInFlight'), 'refreshes should be single-flight');
-assert.ok(scriptMatch[1].includes('/brief?allowStale=1'), 'startup should permit a stale cached fallback');
+assert.ok(
+  scriptMatch[1].includes("WORKER_URL + '/brief'"),
+  'startup should request the fresh-only brief route'
+);
+assert.equal(
+  scriptMatch[1].includes('/brief?allowStale=1'),
+  false,
+  'the public page must never opt into stale cached analysis'
+);
+assert.ok(
+  scriptMatch[1].includes('cacheData.cached && cacheData.fresh === true && cacheData.brief'),
+  'cached analysis must render only when the Worker explicitly marks it fresh'
+);
+assert.equal(
+  scriptMatch[1].includes("cacheData.fresh === false ? 'stale fallback'"),
+  false,
+  'startup must not retain the stale-render branch'
+);
+assert.match(
+  html,
+  /<button class="accent-btn load-retry" id="load-retry-btn" type="button" onclick="run\(true\)" hidden>↻ Retry Current Brief<\/button>/,
+  'an empty or expired cache failure should expose a visible forced-refresh Retry control'
+);
+assert.ok(
+  html.includes('#loading.error .spinner{display:none;}'),
+  'a terminal loading error should stop the spinner'
+);
+assert.ok(
+  scriptMatch[1].includes('function setLoadingErrorState(isError)'),
+  'loading error state should be centralized'
+);
+assert.ok(
+  scriptMatch[1].includes('setLoadingErrorState(false);'),
+  'each retry should restore the normal loading state'
+);
+assert.ok(
+  scriptMatch[1].includes('setLoadingErrorState(true);'),
+  'a no-brief generation failure should enter terminal error state'
+);
+assert.ok(
+  scriptMatch[1].includes('Could not generate a current brief.'),
+  'the terminal error should clearly say that no current brief is available'
+);
 assert.ok(scriptMatch[1].includes('DATA_TIMEOUT_MS = 15000'), 'data requests should have a 15 second deadline');
 assert.ok(scriptMatch[1].includes('GEMINI_TIMEOUT_MS = 165000'), 'Gemini requests should allow the 150 second PDB v3 deadline');
 assert.ok(scriptMatch[1].includes('evidenceIds'), 'v2 prompts should request explicit evidence identifiers');
@@ -125,7 +167,7 @@ assert.ok(
   'cached briefs should have an independent live market-summary refresh path'
 );
 assert.ok(
-  /if \(cacheData\.fresh !== false\)[\s\S]*?await refreshMarketSummary\(cacheData\.brief\)/.test(scriptMatch[1]),
+  /if \(cacheData\.cached && cacheData\.fresh === true && cacheData\.brief\)[\s\S]*?await refreshMarketSummary\(cacheData\.brief\)/.test(scriptMatch[1]),
   'a fresh cached brief must refresh the market summary before startup returns'
 );
 assert.ok(

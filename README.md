@@ -37,11 +37,11 @@ GitHub Pages (index.html)
        |- GET /health -> read-only market/macro/news/source/cache diagnostics
        |- POST / -> Gemini 3.5 Flash evidence-validated generation
        |            + server-side KV save
-       |- GET /brief -> serve fresh KV brief; opt-in stale fallback
+       |- GET /brief -> serve fresh KV brief; operator-only stale fallback
        `- POST /brief/save -> admin-token-only manual KV write
 ```
 
-Briefs are fresh for one hour and retained in Cloudflare KV for seven days as an outage fallback. Refreshes are single-flight, time-bounded, and do not hide an already-rendered brief.
+Briefs are fresh for one hour and retained in Cloudflare KV for seven days for bounded operator recovery. An expired startup cache keeps analysis hidden while a current brief is generated. Refreshes are single-flight, time-bounded, and do not hide an already-rendered current brief.
 
 ---
 
@@ -126,10 +126,10 @@ Pricing, free-tier quotas, and model availability can change. Check [Google AI S
 
 ## Caching behaviour
 
-- On page load: requests `/brief?allowStale=1`. A fresh brief returns immediately. A stale brief renders immediately while one automatic refresh continues.
-- `Refresh Brief`: bypasses the brief cache, keeps the current brief visible, and disables duplicate refreshes until the request finishes.
+- On page load: requests `/brief`. A fresh brief returns immediately. If the cache is missing or older than one hour, analysis remains hidden while one automatic refresh generates a current brief; failure shows a Retry control instead of expired analysis.
+- `Refresh Brief`: bypasses the brief cache, keeps a currently valid brief visible, and disables duplicate refreshes until the request finishes.
 - After generation: the Worker saves the generated brief to KV server-side.
-- KV entries remain fresh for one hour and auto-expire after seven days, enabling a bounded stale fallback.
+- KV entries remain fresh for one hour and auto-expire after seven days for bounded operator recovery. The public page never requests or renders an expired entry.
 - The "Brief Generated" timestamp reflects when the brief was actually created, not when the page was loaded.
 - `/market` and `/macro` are edge-cached for 5 minutes; `/news` is cached for 15 minutes.
 - Add `?nocache=1` to `/market`, `/macro`, `/news`, or `/health` to bypass the read cache for diagnostics.
