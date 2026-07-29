@@ -16,6 +16,15 @@ assert.equal(fmtBriefLevel('—'), '—');
 const marketLevelSanitizerMatch = scriptMatch[1].match(/function sanitizeMarketLevels\(prices, rawSignals[\s\S]*?\n\}/);
 assert.ok(marketLevelSanitizerMatch, 'market level sanitizer should be defined');
 const sanitizeMarketLevels = new Function(`${marketLevelSanitizerMatch[0]}; return sanitizeMarketLevels;`)();
+const completePricesMatch = scriptMatch[1].match(/function hasCompletePrices\(prices\) \{[\s\S]*?\n\}/);
+assert.ok(completePricesMatch, 'complete-price validator should be defined');
+const hasCompletePrices = new Function(`${completePricesMatch[0]}; return hasCompletePrices;`)();
+const marketSignalSelectorMatch = scriptMatch[1].match(/function selectMarketSignals\(prices, data[\s\S]*?\n\}/);
+assert.ok(marketSignalSelectorMatch, 'market signal selector should be defined');
+const selectMarketSignals = new Function(
+  'sanitizeMarketLevels',
+  `${marketSignalSelectorMatch[0]}; return selectMarketSignals;`
+)(sanitizeMarketLevels);
 assert.deepEqual(
   sanitizeMarketLevels(
     { bitcoin: { current_price: 100 }, ethereum: { current_price: 50 }, chainlink: { current_price: 10 } },
@@ -152,14 +161,166 @@ assert.ok(scriptMatch[1].includes('confidence'), 'v2 prompts should request evid
 assert.ok(scriptMatch[1].includes('marketSignals'), 'market evidence should be passed through the generation payload');
 const marketFetcherMatch = scriptMatch[1].match(/async function fetchMarketData\(\) \{[\s\S]*?\n\}/);
 assert.ok(marketFetcherMatch, 'market data fetcher should be defined');
-assert.ok(
-  marketFetcherMatch[0].includes('const prices = await fetchDirectPrices()'),
-  'displayed spot prices must come directly from CoinGecko before optional Worker signals'
+const buildFetchMarketData = ({
+  fetchDirectPrices,
+  fetchWithTimeout,
+  sanitizeMarketLevels = (_prices, signals) => signals,
+}) => new Function(
+  'fetchDirectPrices',
+  'fetchWithTimeout',
+  'sanitizeMarketLevels',
+  'hasCompletePrices',
+  'selectMarketSignals',
+  'WORKER_URL',
+  'DATA_TIMEOUT_MS',
+  'console',
+  `${marketFetcherMatch[0]}; return fetchMarketData;`
+)(
+  fetchDirectPrices,
+  fetchWithTimeout,
+  sanitizeMarketLevels,
+  hasCompletePrices,
+  selectMarketSignals,
+  'https://worker.example.test',
+  15000,
+  { warn() {} }
 );
-assert.equal(
-  marketFetcherMatch[0].includes('const prices = data?.prices'),
-  false,
-  'Yahoo-degraded Worker prices must never overwrite direct CoinGecko spot prices'
+const fallbackPrices = {
+  bitcoin: { id: 'bitcoin', current_price: 118000, price_change_percentage_24h: 1.25 },
+  ethereum: { id: 'ethereum', current_price: 3900, price_change_percentage_24h: 2.5 },
+  chainlink: { id: 'chainlink', current_price: 24, price_change_percentage_24h: -0.75 },
+};
+const fallbackSignals = {
+  btc: { support: 112000, resistance: 121000 },
+  eth: { support: 3700, resistance: 4100 },
+  link: { support: 22, resistance: 26 },
+};
+const fetchMarketDataWithWorkerFallback = buildFetchMarketData({
+  fetchDirectPrices: async () => {
+    throw new Error('browser could not reach CoinGecko');
+  },
+  fetchWithTimeout: async () => ({
+    ok: true,
+    json: async () => ({
+      provider: 'yahoo',
+      prices: fallbackPrices,
+      signals: fallbackSignals,
+    }),
+  }),
+});
+assert.deepEqual(
+  await fetchMarketDataWithWorkerFallback(),
+  { prices: fallbackPrices, marketSignals: fallbackSignals },
+  'complete Worker market data should keep the brief running when direct CoinGecko fails'
+);
+const directPrices = {
+  bitcoin: { id: 'bitcoin', current_price: 100 },
+  ethereum: { id: 'ethereum', current_price: 50 },
+  chainlink: { id: 'chainlink', current_price: 10 },
+};
+const fetchMarketDataWithDirectPrices = buildFetchMarketData({
+  fetchDirectPrices: async () => directPrices,
+  fetchWithTimeout: async () => ({
+    ok: true,
+    json: async () => ({
+      provider: 'yahoo',
+      prices: {
+        bitcoin: { id: 'bitcoin', current_price: 999 },
+        ethereum: { id: 'ethereum', current_price: 888 },
+        chainlink: { id: 'chainlink', current_price: 777 },
+      },
+      signals: {
+        btc: { support: 90, resistance: 110 },
+        eth: { support: 45, resistance: 55 },
+        link: { support: 9, resistance: 11 },
+      },
+    }),
+  }),
+  sanitizeMarketLevels,
+});
+assert.deepEqual(
+  await fetchMarketDataWithDirectPrices(),
+  {
+    prices: directPrices,
+    marketSignals: {
+      btc: { support: 90, resistance: 110 },
+      eth: { support: 45, resistance: 55 },
+      link: { support: 9, resistance: 11 },
+    },
+  },
+  'valid direct CoinGecko prices must remain authoritative over degraded Worker spot quotes'
+);
+const fetchMarketDataWithoutCompletePrices = buildFetchMarketData({
+  fetchDirectPrices: async () => {
+    throw new Error('browser could not reach CoinGecko');
+  },
+  fetchWithTimeout: async () => ({
+    ok: true,
+    json: async () => ({
+      provider: 'yahoo',
+      prices: { bitcoin: { id: 'bitcoin', current_price: 118000 } },
+      signals: fallbackSignals,
+    }),
+  }),
+});
+await assert.rejects(
+  fetchMarketDataWithoutCompletePrices(),
+  /Live market data unavailable/,
+  'the page must reject incomplete fallback prices instead of presenting partial market facts'
+);
+const fetchMarketDataWithMalformedPrice = buildFetchMarketData({
+  fetchDirectPrices: async () => {
+    throw new Error('browser could not reach CoinGecko');
+  },
+  fetchWithTimeout: async () => ({
+    ok: true,
+    json: async () => ({
+      provider: 'yahoo-finance',
+      prices: {
+        bitcoin: { id: 'bitcoin', current_price: 118000 },
+        ethereum: { id: 'ethereum', current_price: '3900' },
+        chainlink: { id: 'chainlink', current_price: 24 },
+      },
+      signals: fallbackSignals,
+    }),
+  }),
+});
+await assert.rejects(
+  fetchMarketDataWithMalformedPrice(),
+  /Live market data unavailable/,
+  'fallback prices must be positive finite number primitives rather than coercible strings'
+);
+const mixedProviderSignals = {
+  btc: { support: 90, resistance: 110, range30d: { low: 70, high: 120 } },
+  eth: { support: 45, resistance: 55, range30d: { low: 30, high: 60 } },
+  link: { support: 9, resistance: 11, range30d: { low: 7, high: 12 } },
+};
+const fetchMarketDataWithMixedSignals = buildFetchMarketData({
+  fetchDirectPrices: async () => directPrices,
+  fetchWithTimeout: async () => ({
+    ok: true,
+    json: async () => ({
+      provider: 'coingecko',
+      degraded: false,
+      signalProviders: {
+        btc: 'coingecko',
+        eth: 'yahoo-finance',
+        link: 'coingecko',
+      },
+      prices: directPrices,
+      signals: mixedProviderSignals,
+    }),
+  }),
+  sanitizeMarketLevels,
+});
+assert.deepEqual(
+  (await fetchMarketDataWithMixedSignals()).marketSignals,
+  {
+    btc: { support: 90, resistance: 110 },
+    eth: { support: 45, resistance: 55 },
+    link: { support: 9, resistance: 11 },
+  },
+  'mixed-provider market signals must be reduced to levels validated against authoritative spot prices'
 );
 assert.ok(scriptMatch[1].includes('return { prices, marketSignals }'), 'market fetch should preserve direct prices and expose signals');
 assert.ok(
