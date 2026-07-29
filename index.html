@@ -637,6 +637,13 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = DATA_TIMEOUT_MS) 
 }
 
 // ─── DATA FETCHERS ──────────────────────────────────────────────────
+function hasCompletePrices(prices) {
+  return ['bitcoin', 'ethereum', 'chainlink'].every(id => {
+    const value = prices?.[id]?.current_price;
+    return typeof value === 'number' && Number.isFinite(value) && value > 0;
+  });
+}
+
 async function fetchDirectPrices() {
   const res = await fetchWithTimeout(
     'https://api.coingecko.com/api/v3/coins/markets' +
@@ -649,11 +656,7 @@ async function fetchDirectPrices() {
   if (!res.ok) throw new Error('CoinGecko unavailable — try again shortly.');
   const arr = await res.json();
   const prices = Object.fromEntries((Array.isArray(arr) ? arr : []).filter(c => c?.id).map(c => [c.id, c]));
-  const hasAllPrices = ['bitcoin', 'ethereum', 'chainlink'].every(id => {
-    const value = prices[id]?.current_price;
-    return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
-  });
-  if (!hasAllPrices) throw new Error('CoinGecko response omitted a current asset price.');
+  if (!hasCompletePrices(prices)) throw new Error('CoinGecko response omitted a current asset price.');
   return prices;
 }
 
@@ -670,23 +673,54 @@ function sanitizeMarketLevels(prices, rawSignals = {}) {
   }));
 }
 
-async function fetchMarketData() {
-  const prices = await fetchDirectPrices();
-  let marketSignals = {};
-  try {
-    const response = await fetchWithTimeout(WORKER_URL + '/market', { cache: 'no-store' }, DATA_TIMEOUT_MS);
-    if (!response.ok) throw new Error(`Worker market route returned ${response.status}`);
-    const data = await response.json();
-    if (data?.provider === 'coingecko' && data?.signals && typeof data.signals === 'object') {
-      marketSignals = data.signals;
-    } else if (data?.signals && typeof data.signals === 'object') {
-      marketSignals = sanitizeMarketLevels(prices, data.signals);
-      console.warn(`[market] ignoring ${data?.provider || 'unknown'} spot quotes; using only validated derived levels`);
-    }
-  } catch (error) {
-    console.warn('[market] Worker signals unavailable; keeping direct CoinGecko prices', error);
+function selectMarketSignals(prices, data = {}) {
+  if (!data?.signals || typeof data.signals !== 'object') return {};
+  const onlyCoinGeckoSignals = ['btc', 'eth', 'link'].every(
+    symbol => data?.signalProviders?.[symbol] === 'coingecko'
+  );
+  if (data.provider === 'coingecko' && data.degraded !== true && onlyCoinGeckoSignals) {
+    return data.signals;
   }
-  return { prices, marketSignals };
+  return sanitizeMarketLevels(prices, data.signals);
+}
+
+async function fetchMarketData() {
+  const [directResult, workerResult] = await Promise.allSettled([
+    fetchDirectPrices(),
+    (async () => {
+      const response = await fetchWithTimeout(WORKER_URL + '/market', { cache: 'no-store' }, DATA_TIMEOUT_MS);
+      if (!response.ok) throw new Error(`Worker market route returned ${response.status}`);
+      return response.json();
+    })(),
+  ]);
+
+  if (directResult.status === 'fulfilled') {
+    const prices = directResult.value;
+    let marketSignals = {};
+    if (workerResult.status === 'fulfilled') {
+      const data = workerResult.value;
+      marketSignals = selectMarketSignals(prices, data);
+      if (data?.signals && marketSignals !== data.signals) {
+        console.warn(`[market] ignoring ${data?.provider || 'unknown'} spot quotes; using only validated derived levels`);
+      }
+    } else {
+      console.warn('[market] Worker signals unavailable; keeping direct CoinGecko prices', workerResult.reason);
+    }
+    return { prices, marketSignals };
+  }
+
+  console.warn('[market] direct CoinGecko unavailable; trying Worker market data', directResult.reason);
+  if (workerResult.status === 'fulfilled' && hasCompletePrices(workerResult.value?.prices)) {
+    const data = workerResult.value;
+    const prices = data.prices;
+    const marketSignals = selectMarketSignals(prices, data);
+    return { prices, marketSignals };
+  }
+
+  if (workerResult.status === 'rejected') {
+    console.warn('[market] Worker market data unavailable', workerResult.reason);
+  }
+  throw new Error('Live market data unavailable — try again shortly.');
 }
 
 async function fetchMacro() {
