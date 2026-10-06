@@ -1,6 +1,36 @@
 import assert from 'node:assert/strict';
 import worker from '../worker.js';
 
+// Google checks the backend connection location, not the browser's location.
+{
+  let calls = 0;
+  const kv = makeKv();
+  await withGlobals({
+    fetch: async () => {
+      calls += 1;
+      return Response.json({ error: {
+        code: 400,
+        message: 'User location is not supported for the API use.',
+        status: 'FAILED_PRECONDITION',
+      } }, { status: 400 });
+    },
+  }, async () => {
+    const response = await worker.fetch(new Request('https://worker.test/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }] }),
+    }), { GEMINI_API_KEY: 'test-key', BRIEF_CACHE: kv }, { waitUntil() {} });
+    const body = await response.json();
+    assert.equal(response.status, 503);
+    assert.equal(body.error.code, 'GEMINI_REGION_UNAVAILABLE');
+    assert.match(body.error.message, /brief service's server connection/);
+    assert.equal(body.error.upstreamMessage, 'User location is not supported for the API use.');
+    assert.equal(body.meta.attemptCount, 1);
+    assert.equal(calls, 1, 'changing models cannot repair a backend location restriction');
+    assert.equal(kv.calls.some(call => call.op === 'put'), false, 'failed generation must preserve the cache');
+  });
+}
+
 function makeCache() {
   const store = new Map();
   return {
