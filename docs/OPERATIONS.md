@@ -51,7 +51,7 @@ The active direct editorial sources are CoinDesk, The Block, and Decrypt. DL New
 
 ## Model and Pipeline Configuration
 
-The Worker uses `placement.region: aws:us-east-1` to run near a supported US region instead of selecting execution placement from each visitor's ingress location. Google evaluates the server connection to Gemini, so a location error can occur without a browser VPN. Cloudflare placement is a proximity hint, not a guarantee of a particular outgoing IP.
+The Worker uses `placement.region: aws:ap-southeast-1` to run near Singapore, the primary user's region, instead of selecting execution placement from each visitor's ingress location. Google evaluates the server connection to Gemini, so a location error can occur without a browser VPN. Cloudflare placement is a proximity hint, not a guarantee of a particular outgoing IP. If Singapore connections are rejected, `aws:us-east-1` is a previously verified recovery option.
 
 If Google rejects the server location, generation returns HTTP 503 with `error.code: GEMINI_REGION_UNAVAILABLE`, a server-specific reader message, and the original `upstreamMessage` for diagnosis. It does not retry other models or overwrite the cached brief. Check the `cf-placement` response header after deployment to verify placement, and test actual generation. Reference: https://developers.cloudflare.com/workers/configuration/placement/
 
