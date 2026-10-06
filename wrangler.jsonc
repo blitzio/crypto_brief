@@ -4,7 +4,7 @@
   "main": "worker.js",
   "compatibility_date": "2026-03-26",
   "placement": {
-    "region": "aws:us-east-1"
+    "region": "aws:ap-southeast-1"
   },
   "vars": {
     "GEMINI_MODEL": "gemini-3.5-flash",
