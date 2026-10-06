@@ -980,6 +980,17 @@ export default {
           const candidateModels = correctionAttempt === 0 ? models : [selectedModel];
           const modelResult = await requestGemini(candidateModels.filter(Boolean));
           if (!modelResult.ok) {
+            if ([400, 403].includes(modelResult.status) &&
+                /user location is not supported for the api use/i.test(modelResult.data?.error?.message || '')) {
+              return json({
+                error: {
+                  code: 'GEMINI_REGION_UNAVAILABLE',
+                  message: "Google temporarily blocked the brief service's server connection. Retry the current brief shortly.",
+                  upstreamMessage: modelResult.data.error.message,
+                },
+                meta: responseMeta(modelResult.model),
+              }, 503, { 'Cache-Control': 'no-store' });
+            }
             return json({ ...modelResult.data, meta: responseMeta(modelResult.model) }, modelResult.status);
           }
           selectedModel = modelResult.model;
