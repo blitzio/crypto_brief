@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Crypto Daily Brief — CID-SGT</title>
 <meta name="theme-color" content="#101115"/>
+<meta name="description" content="A daily read on Bitcoin, Ethereum and Chainlink: prices, macro backdrop and live news, with sources."/>
+<meta property="og:title" content="Crypto Daily Brief"/>
+<meta property="og:description" content="A daily read on Bitcoin, Ethereum and Chainlink: prices, macro backdrop and live news, with sources."/>
+<meta property="og:type" content="website"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23101115'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%23b6adf1'/%3E%3C/svg%3E"/>
 <link rel="preload" href="fonts/dm-sans-latin-variable.woff2" as="font" type="font/woff2" crossorigin/>
 <style>
 @font-face{font-family:'DM Sans';src:url('fonts/dm-sans-latin-variable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap;font-synthesis:none;}
@@ -113,6 +118,7 @@ button{font-family:inherit;}
 .confidence-guide summary{width:max-content;cursor:pointer;color:var(--accent);font-weight:600;min-height:28px;}
 .confidence-guide-copy{margin-top:10px;padding:14px 16px;border-left:2px solid var(--accent-line);background:var(--accent-bg);border-radius:0 var(--radius-sm) var(--radius-sm) 0;line-height:1.65;}
 .confidence-guide-copy ul{margin-top:7px;padding-left:18px;}
+.cite{white-space:nowrap;}
 .evidence-list{display:inline-flex;gap:6px;flex-wrap:wrap;align-items:center;}
 .evidence-link,.evidence-chip{display:inline-flex;align-items:center;border:1px solid var(--border2);border-radius:999px;padding:3px 8px;font:500 .68rem/1.2 var(--mono);color:var(--accent);background:var(--accent-bg);text-decoration:none;}
 .evidence-link:hover{border-color:var(--accent);background:rgba(182,173,241,.18);}
@@ -148,7 +154,9 @@ button{font-family:inherit;}
 .p-delta-value.neu{background:var(--neu-bg);}
 .p-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;padding-top:14px;border-top:1px solid var(--border);}
 .p-range{padding-top:2px;}
-.p-range-bar{position:relative;height:4px;border-radius:999px;background:rgba(255,255,255,.12);margin:8px 6px 0;}
+.p-range-track{position:relative;padding-top:22px;margin:0 6px;}
+.p-range-bar{position:relative;height:4px;border-radius:999px;background:rgba(255,255,255,.12);}
+.p-range-price{position:absolute;top:0;white-space:nowrap;font-size:.76rem;font-weight:600;color:var(--soft);font-variant-numeric:tabular-nums lining-nums;}
 .p-range-dot{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(182,173,241,.18);transform:translate(-50%,-50%);}
 .p-range-labels{display:flex;justify-content:space-between;gap:12px;margin-top:12px;font-size:.9rem;font-weight:500;font-variant-numeric:tabular-nums lining-nums;}
 .p-range-labels span:last-child{text-align:right;}
@@ -162,8 +170,6 @@ button{font-family:inherit;}
 /* ── BODY ── */
 .body{display:grid;grid-template-columns:minmax(0,1fr);border-top:1px solid var(--border);}
 .body>.legacy-analysis:not(.full){display:contents;}
-.sec-btc{order:1;}.sec-eth{order:2;}.sec-link{order:3;}.sec-macro{order:4;}
-.body>.full{order:5;}.body>.sources-section{order:6;}.body>.debug-panel{order:7;}
 .sec{padding:34px var(--space-xl);border-bottom:1px solid var(--border);}
 .sec-head{font-size:1.15rem;font-weight:600;letter-spacing:-.02em;color:var(--text);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);}
 ul.ib{list-style:none;}
@@ -255,6 +261,12 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 .footer{border-top:1px solid var(--border);padding:20px var(--space-xl) 22px;display:flex;justify-content:space-between;align-items:center;font-size:.78rem;font-weight:500;color:var(--muted);letter-spacing:.01em;flex-wrap:wrap;gap:8px 16px;}
 .footer .warn{color:var(--neg);opacity:.85;}
 
+.load-skeleton{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:min(720px,100%);margin-top:18px;}
+.load-skeleton span{height:92px;border-radius:var(--radius-sm);border:1px solid var(--border);background:linear-gradient(90deg,var(--surface) 0,var(--surface-2) 50%,var(--surface) 100%);background-size:200% 100%;animation:shimmer 1.6s ease-in-out infinite;}
+@keyframes shimmer{from{background-position:200% 0;}to{background-position:-200% 0;}}
+#loading.error .load-skeleton{display:none;}
+#loading.error .load-sub{color:var(--soft);font-size:1rem;}
+
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}
 }
@@ -312,6 +324,8 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 @media(max-width:480px){
   html{font-size:15.5px;}
   .m-title{font-size:2.15rem;}
+  .load-skeleton{grid-template-columns:1fr;}
+  .load-skeleton span{height:64px;}
   .m-sub{font-size:.95rem;}
   .brief-top{padding:22px 16px 22px;}
   .rbar{margin-top:12px;}
@@ -349,6 +363,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   <div class="spinner"></div>
   <div class="load-title">Crypto Daily Brief</div>
   <div class="load-sub" id="load-sub">Fetching live market data…</div>
+  <div class="load-skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
   <button class="accent-btn load-retry" id="load-retry-btn" type="button" onclick="run(true)" hidden>↻ Retry Current Brief</button>
 </div>
 
@@ -477,29 +492,13 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
       </section>
     </div>
 
-    <div class="col-l legacy-analysis">
-      <div class="sec sec-btc">
-        <div class="sec-head">Bitcoin · BTC</div>
-        <ul class="ib" id="btc-bullets"></ul>
-      </div>
-      <div class="sec sec-eth">
-        <div class="sec-head">Ethereum · ETH</div>
-        <ul class="ib" id="eth-bullets"></ul>
-      </div>
-    </div>
     <div class="legacy-analysis">
       <div class="sec sec-macro">
-        <div class="sec-head">Macro and risks</div>
+        <div class="sec-head">Macro backdrop</div>
         <div class="macro-grid" id="macro-grid"></div>
         <ul class="ib" id="macro-bullets"></ul>
       </div>
-      <div class="sec sec-link">
-        <div class="sec-head">Chainlink · LINK</div>
-        <ul class="ib" id="link-bullets"></ul>
-      </div>
     </div>
-
-    <div class="psep">— END OF PAGE 1 · PAGE 2 FOLLOWS — HANDLE WITH CARE —</div>
 
     <div class="full legacy-analysis">
       <div class="sec-head">Risks and what to watch</div>
@@ -512,6 +511,21 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
           <div class="col-head">Coming up this week</div>
           <ul class="ib" id="legacy-watch"></ul>
         </div>
+      </div>
+    </div>
+
+    <div class="legacy-analysis">
+      <div class="sec sec-btc">
+        <div class="sec-head">Bitcoin · BTC</div>
+        <ul class="ib" id="btc-bullets"></ul>
+      </div>
+      <div class="sec sec-eth">
+        <div class="sec-head">Ethereum · ETH</div>
+        <ul class="ib" id="eth-bullets"></ul>
+      </div>
+      <div class="sec sec-link">
+        <div class="sec-head">Chainlink · LINK</div>
+        <ul class="ib" id="link-bullets"></ul>
       </div>
     </div>
 
@@ -630,6 +644,14 @@ function parseBriefJson(raw) {
   }
 
   return brief;
+}
+
+function friendlyError(detail) {
+  const text = String(detail || '');
+  if (/high demand|overloaded|unavailable|503/i.test(text)) return 'The AI service is busy right now. Please try again in a minute.';
+  if (/timed out/i.test(text)) return 'That took too long. Please try again.';
+  if (/failed to fetch|networkerror|load failed/i.test(text)) return 'The server is unreachable. Check your connection and try again.';
+  return text || 'Something went wrong.';
 }
 
 function setLoadStatus(message = '') {
@@ -923,8 +945,9 @@ function renderRange(id, price, support, resist) {
   }
   const at = Math.min(100, Math.max(0, ((px - lo) / (hi - lo)) * 100));
   el.innerHTML =
-    `<div class="p-range-bar" role="img" aria-label="Price ${fmtPrice(px)} between support ${fmtPrice(lo)} and resistance ${fmtPrice(hi)}">
-       <span class="p-range-dot" style="left:${at.toFixed(1)}%"></span>
+    `<div class="p-range-track" role="img" aria-label="Price ${fmtPrice(px)} between support ${fmtPrice(lo)} and resistance ${fmtPrice(hi)}">
+       <span class="p-range-price" style="left:${at.toFixed(1)}%;transform:translateX(-${at.toFixed(1)}%)">${fmtPrice(px)}</span>
+       <div class="p-range-bar"><span class="p-range-dot" style="left:${at.toFixed(1)}%"></span></div>
      </div>
      <div class="p-range-labels">
        <span><small>Support</small>${fmtPrice(lo)}</span>
@@ -1134,9 +1157,9 @@ function renderEvidence(evidenceIds = []) {
 
 function renderCitationText(text = '') {
   const safeText = escapeHtml(sanitizeVisibleEvidence(text));
-  return safeText.replace(/\[(\d+)\]/g, (match, sourceNumber) => {
+  return safeText.replace(/\[(\d+)\]([.,;:!?)]*)/g, (match, sourceNumber, trail) => {
     const number = Number(sourceNumber);
-    return `<a class="evidence-link" href="#source-${number}" onclick="return openEvidence(event, ${number})" title="Open source ${number}">[${number}]</a>`;
+    return `<span class="cite"><a class="evidence-link" href="#source-${number}" onclick="return openEvidence(event, ${number})" title="Open source ${number}">[${number}]</a>${trail}</span>`;
   });
 }
 
@@ -1384,9 +1407,9 @@ async function run(forceRefresh = false) {
     console.error(err);
     const detail = err?.message || 'Unknown error';
     if (hadActiveBrief) {
-      setRefreshStatus('❌ ' + detail + ' — refresh to retry.');
+      setRefreshStatus(friendlyError(detail) + ' Refresh to retry.');
     } else {
-      setRefreshStatus('❌ Could not generate a current brief. ' + detail);
+      setRefreshStatus('Could not generate a current brief. ' + friendlyError(detail));
       setLoadingErrorState(true);
     }
   } finally {
