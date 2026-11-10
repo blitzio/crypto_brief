@@ -68,11 +68,23 @@ CoinGecko is the primary market provider. If its keyless public endpoint is bloc
 
 If v2 analysis quality or evidence validation causes a production problem, set `BRIEF_PIPELINE_VERSION=v1` and redeploy. This restores the legacy prompt/schema and citation validator while preserving the feed, caching, timeout, model, and market-data reliability fixes. Change it back to `v2` after the issue is understood.
 
+## Yahoo Percentage Moves
+
+Yahoo Finance fields can disagree depending on session state, especially for indices like `^GSPC`. The Worker resolves a 1 day move in this order:
+
+1. The quote endpoint's `regularMarketChangePercent`, when present.
+2. Otherwise the move from `regularMarketPreviousClose`.
+3. If the quote is incomplete, the chart endpoint and its timestamped closes.
+4. If the latest chart close belongs to the current session, the prior close is the baseline, not the duplicate same-day close.
+5. If timestamps are ambiguous, a small drift check decides whether the latest close behaves like a current-session value.
+
+This exists because the S&P 500 once showed 0.00% on a day it had clearly moved.
+
 ## Cache Behavior
 
 - Fresh window: one hour.
 - KV retention: seven days.
-- Initial load: fresh cache returns immediately; stale cache renders immediately and triggers one background refresh.
+- Initial load: a fresh cache returns immediately. An expired or missing cache keeps analysis hidden while one current brief is generated; if that fails, the page shows a plain message and a Retry button. The page never renders an expired brief. Only operators can read stale entries, with `/brief?allowStale=1`.
 - Manual refresh: keeps the rendered brief visible, disables duplicate refreshes, and reports failure next to the button.
 - Browser data deadline: 15 seconds per market/macro/news/cache request.
 - Browser generation deadline: 105 seconds; Worker generation deadline: 90 seconds.
