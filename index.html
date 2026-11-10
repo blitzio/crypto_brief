@@ -71,9 +71,8 @@ button{font-family:inherit;}
 #brief.active .doc{animation:briefReveal .32s ease-out both;}
 @keyframes briefReveal{from{opacity:.25;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 .doc{max-width:960px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative;}
-/* hero: approved horizon imagery (docs/brand/GUIDE.md), kept dark and still */
-.brief-top{position:relative;isolation:isolate;padding:34px var(--space-xl) 170px;display:flex;flex-direction:column;}
-.brief-top::before{content:'';position:absolute;inset:0;z-index:-1;background:url('assets/horizon.webp') center bottom/max(100%,1000px) auto no-repeat,var(--bg);}
+/* masthead */
+.brief-top{padding:34px var(--space-xl) 30px;display:flex;flex-direction:column;border-bottom:1px solid var(--border);}
 .accent-btn{background:var(--accent-bg);border:1px solid var(--accent-line);color:#ddd8fb;font-family:var(--font);font-size:.86rem;font-weight:600;padding:10px 18px;min-height:44px;cursor:pointer;border-radius:999px;transition:background .15s,border-color .15s,color .15s;white-space:nowrap;}
 .accent-btn:hover{background:rgba(182,173,241,.18);border-color:rgba(182,173,241,.55);color:#fff;}
 .accent-btn:active{background:rgba(182,173,241,.24);}
@@ -254,7 +253,6 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 .debug-panel h4{color:var(--accent);letter-spacing:.1em;font-size:.74rem;text-transform:uppercase;margin:0 0 8px;font-family:var(--font);font-weight:600;}
 .debug-panel pre{white-space:pre-wrap;word-break:break-word;color:var(--soft);background:var(--surface);padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:320px;overflow-y:auto;}
 .footer{border-top:1px solid var(--border);padding:20px var(--space-xl) 22px;display:flex;justify-content:space-between;align-items:center;font-size:.78rem;font-weight:500;color:var(--muted);letter-spacing:.01em;flex-wrap:wrap;gap:8px 16px;}
-.footer .credit{flex-basis:100%;font-size:.7rem;font-weight:400;color:var(--faint);line-height:1.6;}
 .footer .warn{color:var(--neg);opacity:.85;}
 
 @media(prefers-reduced-motion:reduce){
@@ -280,7 +278,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   .verdict-grid{grid-template-columns:1fr;}
   .verdict-grid>div{padding:14px 0 0;}
   .verdict-grid>div+div{border-left:none;border-top:1px solid var(--border);padding-left:0;margin-top:14px;}
-  .brief-top{padding-bottom:175px;}
+  .brief-top{padding-bottom:24px;}
   .bottom-line-copy{font-size:1.06rem;}
   .judgment{grid-template-columns:30px minmax(0,1fr);gap:10px;}
   .judgment-title-row{display:block;}
@@ -315,7 +313,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   html{font-size:15.5px;}
   .m-title{font-size:2.15rem;}
   .m-sub{font-size:.95rem;}
-  .brief-top{padding:22px 16px 165px;}
+  .brief-top{padding:22px 16px 22px;}
   .rbar{margin-top:12px;}
   .executive-section,.summary-section{padding:24px 16px 26px;}
   .market-summary-kicker{padding:14px 16px 0;}
@@ -542,7 +540,6 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   <div class="footer">
     <div>Crypto Daily Brief · SGT (UTC+8) · <span id="footer-date">—</span></div>
     <div class="warn">Not financial advice. Information only.</div>
-    <div class="credit">Earth imagery: NASA Blue Marble: Next Generation (Reto Stockli and Robert Simmon, NASA/GSFC), processed by blitzio. No NASA endorsement. Type: DM Sans, SIL OFL.</div>
   </div>
 </div>
 </div>
