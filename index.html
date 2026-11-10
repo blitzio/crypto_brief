@@ -50,7 +50,7 @@ button{font-family:inherit;}
 /* ── WORDMARK ── */
 .wordmark{font-weight:600;letter-spacing:-.06em;line-height:1;color:var(--text);}
 .wordmark .dot{color:var(--accent);}
-.brand-bar{max-width:1120px;margin:0 auto 18px;padding:0 4px;font-size:1.65rem;}
+.brand-bar{max-width:960px;margin:0 auto 18px;padding:0 4px;font-size:1.65rem;}
 
 /* ── LOADING ── */
 #loading{display:flex;min-height:80vh;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
@@ -70,28 +70,36 @@ button{font-family:inherit;}
 #brief.active{display:block;}
 #brief.active .doc{animation:briefReveal .32s ease-out both;}
 @keyframes briefReveal{from{opacity:.25;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
-.doc{max-width:1120px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative;}
-.cbar{background:none;border-top:1px solid var(--border);color:var(--faint);text-align:center;padding:14px;font-size:.7rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;}
-.brief-top{padding:34px var(--space-xl) 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;}
+.doc{max-width:960px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;position:relative;}
+/* hero: approved horizon imagery (docs/brand/GUIDE.md), kept dark and still */
+.brief-top{position:relative;isolation:isolate;padding:34px var(--space-xl) 170px;display:flex;flex-direction:column;}
+.brief-top::before{content:'';position:absolute;inset:0;z-index:-1;background:url('assets/horizon.webp') center bottom/max(100%,1000px) auto no-repeat,var(--bg);}
 .accent-btn{background:var(--accent-bg);border:1px solid var(--accent-line);color:#ddd8fb;font-family:var(--font);font-size:.86rem;font-weight:600;padding:10px 18px;min-height:44px;cursor:pointer;border-radius:999px;transition:background .15s,border-color .15s,color .15s;white-space:nowrap;}
 .accent-btn:hover{background:rgba(182,173,241,.18);border-color:rgba(182,173,241,.55);color:#fff;}
 .accent-btn:active{background:rgba(182,173,241,.24);}
 .accent-btn:disabled{opacity:.5;cursor:progress;}
-.m-title{font-size:2.5rem;font-weight:600;color:var(--text);letter-spacing:-.045em;line-height:1.05;text-wrap:balance;}
-.m-sub{margin-top:12px;font-size:.8rem;font-weight:500;letter-spacing:.12em;color:var(--soft);text-transform:uppercase;}
+.m-title{font-size:2.9rem;font-weight:600;color:var(--text);letter-spacing:-.05em;line-height:1.02;text-wrap:balance;}
+.m-sub{margin-top:12px;font-size:1.02rem;font-weight:400;color:var(--soft);}
 .stamp-label{font-size:.7rem;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;font-weight:600;margin-bottom:6px;}
 .ts-stamp{font-size:.96rem;font-weight:500;color:var(--text);letter-spacing:0;display:block;margin-bottom:2px;font-variant-numeric:tabular-nums lining-nums;}
-.doc > .cbar:first-child{display:none;}
 .rbar{padding:0;background:none;border-bottom:none;order:2;}
 .rbar-info{display:none;}
 .rbar .accent-btn{position:absolute;top:30px;right:var(--space-xl);}
 .masthead{padding:0;border-bottom:none;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:end;order:1;}
 .m-right{text-align:right;font-size:.84rem;color:var(--muted);line-height:1.55;padding-right:156px;}
-.routing{margin-top:22px;padding:14px 0 18px;border-top:1px solid var(--border);display:flex;gap:6px 26px;font-size:.74rem;letter-spacing:.02em;color:var(--faint);flex-wrap:wrap;line-height:1.65;order:3;}
-.routing b{color:var(--muted);font-weight:600;letter-spacing:.08em;}
+.routing{margin-top:22px;padding:14px 0 0;border-top:1px solid var(--border);display:flex;gap:6px 26px;font-size:.78rem;color:var(--muted);flex-wrap:wrap;line-height:1.65;order:3;}
+.routing b{color:var(--soft);font-weight:600;margin-right:4px;}
 
 /* ── PDB V3 EXECUTIVE ── */
-.executive-section{margin:0 calc(var(--space-xl) * -1);padding:30px var(--space-xl) 32px;border-top:1px solid var(--border);background:linear-gradient(180deg,rgba(182,173,241,.05),rgba(182,173,241,0) 70%);order:5;}
+.executive-section,.summary-section{padding:36px var(--space-xl) 38px;border-top:1px solid var(--border);background:linear-gradient(180deg,rgba(182,173,241,.05),rgba(182,173,241,0) 70%);}
+.verdict-lead{max-width:760px;font-size:1.3rem;line-height:1.6;letter-spacing:-.015em;color:var(--text);}
+.verdict-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:28px;border-top:1px solid var(--border);}
+.verdict-grid>div{padding:18px 22px 0 0;min-width:0;}
+.verdict-grid>div+div{border-left:1px solid var(--border);padding-left:22px;}
+.verdict-grid dt{font:600 .7rem/1.2 var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:8px;}
+.verdict-grid .up dt{color:var(--pos);}
+.verdict-grid .down dt{color:var(--neg);}
+.verdict-grid dd{font-size:.94rem;line-height:1.65;color:var(--soft);}
 .executive-label{font:600 .72rem/1 var(--font);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;}
 .bottom-line-copy{max-width:860px;font-size:1.2rem;line-height:1.75;letter-spacing:-.01em;color:var(--text);}
 .analysis-meta{display:flex;align-items:center;gap:9px 12px;flex-wrap:wrap;margin-top:14px;color:var(--faint);font-size:.78rem;}
@@ -119,10 +127,10 @@ button{font-family:inherit;}
 .judgment-implication strong,.judgment-invalidators strong{color:var(--soft);font-weight:600;}
 
 /* ── PRICE STRIP ── */
-.market-summary{margin:0 calc(var(--space-xl) * -1);border-top:1px solid var(--border);background:var(--surface-2);order:4;}
-.market-summary-kicker{padding:16px 24px 0;font-size:.72rem;font-weight:600;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;}
+.market-summary{border-top:1px solid var(--border2);background:var(--surface-2);}
+.market-summary-kicker{padding:18px 24px 0;font-size:.72rem;font-weight:600;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;}
 .price-strip{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,1fr) minmax(0,1fr);margin:0;background:none;}
-.pcard{padding:16px 24px 22px;position:relative;min-width:0;display:grid;gap:16px;}
+.pcard{padding:16px 24px 22px;position:relative;min-width:0;display:grid;gap:16px;align-content:start;}
 .pcard + .pcard{border-left:1px solid var(--border);}
 .p-head{display:flex;align-items:center;min-width:0;}
 .p-sym{display:inline-flex;align-items:center;gap:8px;font-size:.74rem;font-weight:600;letter-spacing:.1em;color:var(--soft);}
@@ -140,19 +148,27 @@ button{font-family:inherit;}
 .p-delta-value.neg{background:var(--neg-bg);}
 .p-delta-value.neu{background:var(--neu-bg);}
 .p-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;padding-top:14px;border-top:1px solid var(--border);}
+.p-range{padding-top:2px;}
+.p-range-bar{position:relative;height:4px;border-radius:999px;background:rgba(255,255,255,.12);margin:8px 6px 0;}
+.p-range-dot{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(182,173,241,.18);transform:translate(-50%,-50%);}
+.p-range-labels{display:flex;justify-content:space-between;gap:12px;margin-top:12px;font-size:.9rem;font-weight:500;font-variant-numeric:tabular-nums lining-nums;}
+.p-range-labels span:last-child{text-align:right;}
+.p-range-labels small{display:block;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:2px;}
+.p-range-note{font-size:.78rem;color:var(--faint);}
 .p-stat{margin:0;min-width:0;}
 .p-stat-label{font-size:.68rem;font-weight:600;letter-spacing:.1em;color:var(--faint);text-transform:uppercase;}
 .p-stat-value{margin-top:3px;font-size:.9rem;font-weight:500;color:var(--text);line-height:1.35;font-variant-numeric:tabular-nums lining-nums;word-break:break-word;}
 .neg{color:var(--neg);}.pos{color:var(--pos);}.neu{color:var(--neu);}
 
 /* ── BODY ── */
-.body{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);}
-.col-l{border-right:1px solid var(--border);}
-.sec{padding:30px 32px;border-bottom:1px solid var(--border);}
-.sec:last-child{border-bottom:none;}
+.body{display:grid;grid-template-columns:minmax(0,1fr);border-top:1px solid var(--border);}
+.body>.legacy-analysis:not(.full){display:contents;}
+.sec-btc{order:1;}.sec-eth{order:2;}.sec-link{order:3;}.sec-macro{order:4;}
+.body>.full{order:5;}.body>.sources-section{order:6;}.body>.debug-panel{order:7;}
+.sec{padding:34px var(--space-xl);border-bottom:1px solid var(--border);}
 .sec-head{font-size:1.15rem;font-weight:600;letter-spacing:-.02em;color:var(--text);margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);}
 ul.ib{list-style:none;}
-ul.ib>li{padding:14px 0;border-bottom:1px solid var(--border);font-size:.98rem;line-height:1.75;color:var(--soft);font-weight:400;}
+ul.ib>li{padding:14px 0;border-bottom:1px solid var(--border);font-size:1rem;line-height:1.75;color:var(--soft);font-weight:400;max-width:72ch;}
 ul.ib>li:last-child{border-bottom:none;}
 ul.ib>li strong{font-weight:600;color:var(--text);}
 
@@ -204,11 +220,6 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 .full .sec-head{margin-bottom:18px;}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
 .col-head{font-size:.84rem;font-weight:600;letter-spacing:.02em;color:var(--soft);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border);}
-.abox{background:var(--surface-2);border:1px solid var(--border);border-left:2px solid var(--accent);padding:24px 26px;margin-top:26px;border-radius:var(--radius-sm);}
-.abox .alabel{font-size:.72rem;font-weight:600;letter-spacing:.12em;color:var(--accent);text-transform:uppercase;margin-bottom:14px;}
-.abox p{font-size:1rem;line-height:1.8;color:var(--text);font-weight:400;margin-bottom:14px;max-width:80ch;}
-.abox p:last-child{margin-bottom:0;}
-.abox strong{font-weight:600;}
 
 /* ── SOURCES ── */
 .sources-section{grid-column:1/-1;border-top:1px solid var(--border);padding:0;background:var(--bg);}
@@ -242,7 +253,8 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 .debug-panel.open{display:block;}
 .debug-panel h4{color:var(--accent);letter-spacing:.1em;font-size:.74rem;text-transform:uppercase;margin:0 0 8px;font-family:var(--font);font-weight:600;}
 .debug-panel pre{white-space:pre-wrap;word-break:break-word;color:var(--soft);background:var(--surface);padding:14px 16px;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:320px;overflow-y:auto;}
-.footer{border-top:1px solid var(--border);padding:18px var(--space-xl);display:flex;justify-content:space-between;align-items:center;font-size:.74rem;font-weight:500;color:var(--faint);letter-spacing:.06em;flex-wrap:wrap;gap:8px;}
+.footer{border-top:1px solid var(--border);padding:20px var(--space-xl) 22px;display:flex;justify-content:space-between;align-items:center;font-size:.78rem;font-weight:500;color:var(--muted);letter-spacing:.01em;flex-wrap:wrap;gap:8px 16px;}
+.footer .credit{flex-basis:100%;font-size:.7rem;font-weight:400;color:var(--faint);line-height:1.6;}
 .footer .warn{color:var(--neg);opacity:.85;}
 
 @media(prefers-reduced-motion:reduce){
@@ -262,9 +274,13 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   .refresh-status{text-align:left;}
   .masthead{grid-template-columns:1fr;gap:14px;}
   .m-right{text-align:left;padding-right:0;}
-  .routing{margin-top:14px;padding-top:12px;gap:6px 16px;}
-  .market-summary{margin-left:-18px;margin-right:-18px;}
-  .executive-section{margin-left:-18px;margin-right:-18px;padding:24px 18px 26px;}
+  .routing{display:none;}
+  .executive-section,.summary-section{padding:26px 18px 28px;}
+  .verdict-lead{font-size:1.15rem;}
+  .verdict-grid{grid-template-columns:1fr;}
+  .verdict-grid>div{padding:14px 0 0;}
+  .verdict-grid>div+div{border-left:none;border-top:1px solid var(--border);padding-left:0;margin-top:14px;}
+  .brief-top{padding-bottom:175px;}
   .bottom-line-copy{font-size:1.06rem;}
   .judgment{grid-template-columns:30px minmax(0,1fr);gap:10px;}
   .judgment-title-row{display:block;}
@@ -297,15 +313,11 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 }
 @media(max-width:480px){
   html{font-size:15.5px;}
-  .m-title{font-size:2rem;}
-  .m-sub{font-size:.72rem;letter-spacing:.1em;}
-  .cbar{font-size:.6rem;letter-spacing:.1em;padding:12px 10px;}
-  .brief-top{padding:22px 16px 0;}
+  .m-title{font-size:2.15rem;}
+  .m-sub{font-size:.95rem;}
+  .brief-top{padding:22px 16px 165px;}
   .rbar{margin-top:12px;}
-  .routing{display:block;line-height:1.7;}
-  .routing div + div{margin-top:4px;}
-  .market-summary{margin-left:-16px;margin-right:-16px;}
-  .executive-section{margin-left:-16px;margin-right:-16px;padding:22px 16px 24px;}
+  .executive-section,.summary-section{padding:24px 16px 26px;}
   .market-summary-kicker{padding:14px 16px 0;}
   .pcard{padding:14px 16px 16px;}
   .p-main{grid-template-columns:1fr;gap:12px;align-items:start;}
@@ -345,8 +357,6 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
 <div id="brief">
 <div class="brand-bar"><span class="wordmark" aria-label="blitzio">blitzio<span class="dot" aria-hidden="true">.</span></span></div>
 <div class="doc">
-  <div class="cbar">Crypto Intelligence Brief · For addressee's eyes only</div>
-
   <div class="brief-top">
   <div class="rbar">
     <div class="rbar-info">
@@ -365,23 +375,24 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   <div class="masthead">
     <div>
       <div class="m-title">Crypto Daily Brief</div>
-      <div class="m-sub">BTC &nbsp;·&nbsp; ETH &nbsp;·&nbsp; LINK &nbsp;·&nbsp; MACRO &nbsp;·&nbsp; LIVE NEWS</div>
+      <div class="m-sub">A daily read on Bitcoin, Ethereum and Chainlink</div>
     </div>
     <div class="m-right">
-      <div class="stamp-label">Brief Generated</div>
+      <div class="stamp-label">Generated</div>
       <span class="ts-stamp" id="brief-generated">—</span>
       <div>SGT (UTC+8)</div>
     </div>
   </div>
 
   <div class="routing">
-    <div><b>CLASS:</b> PROPRIETARY — NOT FOR DISTRIBUTION</div>
-    <div><b>COVERS:</b> BTC · ETH · LINK · MACRO · GEO · REGULATORY</div>
-    <div><b>SOURCES:</b> LIVE — SEE REFERENCES</div>
+    <div><b>Covers</b> BTC · ETH · LINK · macro · regulation</div>
+    <div><b>Sources</b> live news and market feeds, listed at the bottom</div>
+  </div>
+
   </div>
 
   <div class="market-summary">
-    <div class="market-summary-kicker">Market Summary</div>
+    <div class="market-summary-kicker">Prices now</div>
     <div class="price-strip">
       <section class="pcard btc">
         <div class="p-head">
@@ -392,6 +403,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
           <div class="p-deltas" id="btc-deltas"></div>
         </div>
         <dl class="p-stats" id="btc-stats"></dl>
+        <div class="p-range" id="btc-range"></div>
       </section>
       <section class="pcard eth">
         <div class="p-head">
@@ -402,6 +414,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
           <div class="p-deltas" id="eth-deltas"></div>
         </div>
         <dl class="p-stats" id="eth-stats"></dl>
+        <div class="p-range" id="eth-range"></div>
       </section>
       <section class="pcard link">
         <div class="p-head">
@@ -412,6 +425,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
           <div class="p-deltas" id="link-deltas"></div>
         </div>
         <dl class="p-stats" id="link-stats"></dl>
+        <div class="p-range" id="link-range"></div>
       </section>
     </div>
   </div>
@@ -430,11 +444,15 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
         </ul>
       </div>
     </details>
-    <div class="executive-label" style="margin-top:30px;">Key Judgments</div>
+    <div class="executive-label" style="margin-top:30px;">Key takeaways</div>
     <ol class="judgments" id="key-judgments"></ol>
   </section>
 
-  </div>
+
+  <section class="summary-section legacy-analysis" aria-labelledby="summary-heading">
+    <div class="executive-label" id="summary-heading">The short version</div>
+    <div id="verdict-content"></div>
+  </section>
 
   <div class="body">
     <div class="v3-analysis" id="v3-analysis" hidden>
@@ -442,42 +460,42 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
       <section class="pdb-section" id="macro-assessment"></section>
       <section class="pdb-section" id="scenario-outlook"></section>
       <section class="pdb-section">
-        <div class="pdb-section-head"><h2>Threats &amp; Opportunities</h2><span>Asymmetric developments</span></div>
+        <div class="pdb-section-head"><h2>Risks and opportunities</h2><span>What could move the market</span></div>
         <div class="risk-grid">
-          <div><div class="subsection-title">Active threats</div><ul class="analysis-list" id="threats"></ul></div>
-          <div><div class="subsection-title">Potential opportunities</div><ul class="analysis-list" id="opportunities"></ul></div>
+          <div><div class="subsection-title">Risks</div><ul class="analysis-list" id="threats"></ul></div>
+          <div><div class="subsection-title">Opportunities</div><ul class="analysis-list" id="opportunities"></ul></div>
         </div>
       </section>
       <section class="pdb-section">
-        <div class="pdb-section-head"><h2>Forward Watch</h2><span>Observable indicators</span></div>
+        <div class="pdb-section-head"><h2>Coming up</h2><span>What to watch</span></div>
         <div class="watch-grid">
           <div><div class="subsection-title">Next 24 hours</div><ul class="analysis-list" id="watch-24h"></ul></div>
           <div><div class="subsection-title">Next 7 days</div><ul class="analysis-list" id="watch-7d"></ul></div>
         </div>
       </section>
       <section class="pdb-section">
-        <div class="pdb-section-head"><h2>Intelligence Gaps</h2><span>What could change the assessment</span></div>
+        <div class="pdb-section-head"><h2>What we do not know yet</h2><span>What could change the picture</span></div>
         <ul class="analysis-list" id="intelligence-gaps"></ul>
       </section>
     </div>
 
     <div class="col-l legacy-analysis">
-      <div class="sec">
+      <div class="sec sec-btc">
         <div class="sec-head">Bitcoin · BTC</div>
         <ul class="ib" id="btc-bullets"></ul>
       </div>
-      <div class="sec">
+      <div class="sec sec-eth">
         <div class="sec-head">Ethereum · ETH</div>
         <ul class="ib" id="eth-bullets"></ul>
       </div>
     </div>
     <div class="legacy-analysis">
-      <div class="sec">
-        <div class="sec-head">Macro &amp; Threat Landscape</div>
+      <div class="sec sec-macro">
+        <div class="sec-head">Macro and risks</div>
         <div class="macro-grid" id="macro-grid"></div>
         <ul class="ib" id="macro-bullets"></ul>
       </div>
-      <div class="sec">
+      <div class="sec sec-link">
         <div class="sec-head">Chainlink · LINK</div>
         <ul class="ib" id="link-bullets"></ul>
       </div>
@@ -486,31 +504,27 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
     <div class="psep">— END OF PAGE 1 · PAGE 2 FOLLOWS — HANDLE WITH CARE —</div>
 
     <div class="full legacy-analysis">
-      <div class="sec-head">Assessment &amp; Forward Watch</div>
+      <div class="sec-head">Risks and what to watch</div>
       <div class="two-col">
         <div>
-          <div class="col-head">Active Threat Stack</div>
+          <div class="col-head">Risks</div>
           <ul class="ib" id="legacy-threats"></ul>
         </div>
         <div>
-          <div class="col-head">Forward Watch: Next 7 Days</div>
+          <div class="col-head">Coming up this week</div>
           <ul class="ib" id="legacy-watch"></ul>
         </div>
-      </div>
-      <div class="abox">
-        <div class="alabel">Analyst Verdict</div>
-        <div id="verdict-content"></div>
       </div>
     </div>
 
     <details class="sources-section" id="sources-annex">
       <summary class="sources-summary">
-        <span>Intelligence Sources</span>
+        <span>Sources</span>
         <span class="sources-summary-meta"><span id="source-count">0 sources</span><span class="sources-preview" id="sources-preview"></span></span>
       </summary>
       <div class="sources-content">
         <div class="sec-head">
-          Live RSS evidence annex
+          Where this came from
           <button class="debug-toggle" onclick="toggleDebug()">Show raw sources</button>
         </div>
         <div class="sources-grid" id="sources-grid"></div>
@@ -518,7 +532,7 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
     </details>
 
     <div class="debug-panel" id="debug-panel">
-      <h4>Raw News Articles Fed to Gemini</h4>
+      <h4>Raw articles used for this brief</h4>
       <p style="font-size:.76rem;color:var(--muted);margin-bottom:8px;">These are the exact RSS news articles fetched from CoinDesk, The Block, Decrypt, Dow Jones Markets, FT Markets, and other active feeds — passed to Gemini as context for the analysis above.</p>
       <pre id="debug-content">Loading…</pre>
     </div>
@@ -526,10 +540,10 @@ ul.ib>li strong{font-weight:600;color:var(--text);}
   </div><!-- /body -->
 
   <div class="footer">
-    <div>CRYPTO DAILY BRIEF · SGT (UTC+8) · <span id="footer-date">—</span></div>
-    <div class="warn">NOT FINANCIAL ADVICE — INFORMATIONAL ONLY</div>
+    <div>Crypto Daily Brief · SGT (UTC+8) · <span id="footer-date">—</span></div>
+    <div class="warn">Not financial advice. Information only.</div>
+    <div class="credit">Earth imagery: NASA Blue Marble: Next Generation (Reto Stockli and Robert Simmon, NASA/GSFC), processed by blitzio. No NASA endorsement. Type: DM Sans, SIL OFL.</div>
   </div>
-  <div class="cbar">Crypto Intelligence Brief · End of document</div>
 </div>
 </div>
 
@@ -902,6 +916,25 @@ MACRO BULLETS — CRITICAL:
 }
 
 // ─── RENDER HELPERS ─────────────────────────────────────────────────
+function renderRange(id, price, support, resist) {
+  const el = document.getElementById(id + '-range');
+  if (!el) return;
+  const lo = Number(support), hi = Number(resist), px = Number(price);
+  if (!(Number.isFinite(lo) && Number.isFinite(hi) && Number.isFinite(px) && lo > 0 && hi > lo)) {
+    el.innerHTML = '<div class="p-range-note">Support and resistance levels unavailable</div>';
+    return;
+  }
+  const at = Math.min(100, Math.max(0, ((px - lo) / (hi - lo)) * 100));
+  el.innerHTML =
+    `<div class="p-range-bar" role="img" aria-label="Price ${fmtPrice(px)} between support ${fmtPrice(lo)} and resistance ${fmtPrice(hi)}">
+       <span class="p-range-dot" style="left:${at.toFixed(1)}%"></span>
+     </div>
+     <div class="p-range-labels">
+       <span><small>Support</small>${fmtPrice(lo)}</span>
+       <span><small>Resistance</small>${fmtPrice(hi)}</span>
+     </div>`;
+}
+
 function renderCard(id, coin, support, resist) {
   const d24 = coin.price_change_percentage_24h ?? 0;
   const d7  = coin.price_change_percentage_7d_in_currency ?? 0;
@@ -924,14 +957,8 @@ function renderCard(id, coin, support, resist) {
        <dt class="p-stat-label">Vol</dt>
        <dd class="p-stat-value">${fmtCap(coin.total_volume)}</dd>
      </div>
-     <div class="p-stat">
-       <dt class="p-stat-label">Support</dt>
-       <dd class="p-stat-value">${fmtBriefLevel(support)}</dd>
-     </div>
-     <div class="p-stat">
-       <dt class="p-stat-label">Resist</dt>
-       <dd class="p-stat-value">${fmtBriefLevel(resist)}</dd>
-     </div>`;
+     `;
+  renderRange(id, coin.current_price, support, resist);
 }
 
 function renderMarketSummary(prices, marketSignals = {}) {
@@ -1223,10 +1250,12 @@ function renderLegacyBrief(brief, prices, marketSignals, macro, newsItems, gener
   renderBullets('legacy-watch',   brief.watch);
 
   document.getElementById('verdict-content').innerHTML =
-    `<p>${renderCitationText(brief.verdict)}</p>
-     <p><strong>Conviction Ranking:</strong> ${renderCitationText(brief.ranking)}</p>
-     <p><strong>Bull Trigger:</strong> ${renderCitationText(brief.bullTrigger)}<br/>
-        <strong>Bear Trigger:</strong> ${renderCitationText(brief.bearTrigger)}</p>`;
+    `<p class="verdict-lead">${renderCitationText(brief.verdict)}</p>
+     <dl class="verdict-grid">
+       <div><dt>Ranking</dt><dd>${renderCitationText(brief.ranking)}</dd></div>
+       <div class="up"><dt>Turns bullish if</dt><dd>${renderCitationText(brief.bullTrigger)}</dd></div>
+       <div class="down"><dt>Turns bearish if</dt><dd>${renderCitationText(brief.bearTrigger)}</dd></div>
+     </dl>`;
 
   finishBriefRender(newsItems, generatedTime);
 }
