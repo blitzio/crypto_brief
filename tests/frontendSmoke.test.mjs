@@ -364,7 +364,7 @@ assert.ok(html.includes('Confidence measures evidence strength, not market direc
 assert.ok(html.includes('<strong>High:</strong> Multiple reliable and independent facts or signals align.'), 'confidence guide should define high');
 assert.ok(html.includes('<strong>Medium:</strong> Credible evidence supports the assessment, but material uncertainty or mixed signals remain.'), 'confidence guide should define medium');
 assert.ok(html.includes('<strong>Low:</strong> Evidence is limited, indirect, or conflicting.'), 'confidence guide should define low');
-assert.ok(html.includes('.confidence-high{color:var(--blue)'), 'high confidence should use neutral blue rather than bullish green');
+assert.ok(html.includes('.confidence-high{color:var(--accent)'), 'high confidence should use the neutral brand accent rather than bullish green');
 assert.ok(html.includes('.confidence-low{color:var(--muted)'), 'low confidence should use muted gray rather than bearish red');
 assert.ok(scriptMatch[1].includes('renderAnalysisMeta(asset, { showConfidence: false })'), 'asset summaries should suppress repeated badges');
 assert.ok(scriptMatch[1].includes('renderAnalysisMeta(driver, { showConfidence: false })'), 'asset drivers should suppress repeated badges');
