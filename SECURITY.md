@@ -1,31 +1,27 @@
 # Security
 
-## Supported Scope
-
-This project is a small Cloudflare Worker plus GitHub Pages app. The public repository should contain source code, tests, and example configuration only.
+This is a small project: a static page on GitHub Pages and one Cloudflare Worker. The repo holds source code, tests and example configuration only.
 
 ## Secrets
 
-Do not commit real API keys, admin tokens, OAuth files, Cloudflare credentials, or local runtime folders.
-
-Keep these values in Cloudflare Worker secrets or environment variables:
+Keys and tokens live in Cloudflare, never in git:
 
 - `GEMINI_API_KEY`
 - `BRIEF_ADMIN_TOKEN`
+- `COINGECKO_DEMO_API_KEY` (optional)
 
-The repository includes `.env.example` only as a list of names. It must not contain real values.
+`.env.example` lists the names with no values. Do not commit API keys, tokens, OAuth files, Cloudflare credentials or local runtime folders (`.wrangler/`, `node_modules/`, `.env*`, `.dev.vars*`).
 
-## Public Repository Notes
+The Worker's name and address, the allowed Pages origin and the KV binding are not secrets, but they do show how the project is deployed. If you fork it, replace them with your own.
 
-The Worker name, public Worker URL, allowed GitHub Pages origin, and KV namespace binding metadata are not treated as passwords. They may reveal deployment structure, so forks should replace them with their own values.
+`POST /brief/save` is the route for manual writes to the cache. It needs the `X-Brief-Admin-Token` header, and the page never calls it.
 
-## Reporting Issues
+## Reporting a problem
 
-If you find a security issue, do not open a public proof-of-concept with secret values or exploit instructions. Open a GitHub issue with a short description and enough detail to reproduce safely, or contact the repository owner privately if the issue is sensitive.
+If you find a security issue, please report it privately: use **Report a vulnerability** on this repo's Security tab. Please do not post exploit details or real secret values in a public issue.
 
-## Local Checklist Before Sharing
+## Before you push
 
-- Run the tests.
-- Confirm `git status` is clean.
-- Search for accidental keys or tokens before pushing.
-- Keep `.codex/`, `.wrangler/`, `node_modules/`, and `.env` files out of Git.
+- Run `npm test`.
+- Check `git status` and `git diff` for anything you did not mean to include.
+- Search for stray keys or tokens.

@@ -1,7 +1,5 @@
 # Market-First Brief Hierarchy Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Restore the full BTC/ETH/LINK market strip directly below the header, format analytical levels cleanly, and make confidence labels understandable without changing generation, evidence, caching, or validation.
 
 **Architecture:** Keep the single-file frontend and existing render dispatch. Change document order and CSS order for hierarchy, add one display-only formatter for analytical levels, and make supporting confidence badges optional while retaining confidence in the brief data. All behavior changes are protected by the existing frontend smoke test and verified against the cached real PDB v3 brief.
@@ -22,7 +20,7 @@
 
 - Modify: `index.html` — document order, level formatting, confidence disclosure, confidence badge presentation, and styling.
 - Modify: `tests/frontendSmoke.test.mjs` — DOM-order, formatter, confidence-copy, and rendering regression coverage.
-- Modify: `docs/superpowers/specs/2026-07-14-market-first-brief-hierarchy-design.md` — clarify the approved level-formatting rule.
+- Modify: `docs/design-notes/specs/2026-07-14-market-first-brief-hierarchy-design.md` — clarify the approved level-formatting rule.
 
 ---
 
@@ -317,7 +315,7 @@ git commit -m "feat: clarify intelligence confidence"
 **Files:**
 - Verify: `index.html`
 - Verify: `tests/*.test.mjs`
-- Verify: `docs/superpowers/specs/2026-07-14-market-first-brief-hierarchy-design.md`
+- Verify: `docs/design-notes/specs/2026-07-14-market-first-brief-hierarchy-design.md`
 
 **Interfaces:**
 - Consumes: Existing local Worker on `http://127.0.0.1:8788` and local frontend on `http://127.0.0.1:8765`.
