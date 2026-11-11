@@ -20,6 +20,6 @@
     "cf:model:gemini35": "wrangler deploy --keep-vars --var GEMINI_MODEL:gemini-3.5-flash"
   },
   "devDependencies": {
-    "wrangler": "4.110.0"
+    "wrangler": "4.158.0"
   }
 }
