@@ -81,6 +81,25 @@ export {
 } from './src/macro.js';
 
 const BRIEF_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
+const MAX_REQUEST_BODY_BYTES = 1_000_000;
+
+// Compare two secrets without stopping at the first difference.
+function safeEqual(a, b) {
+  const encoder = new TextEncoder();
+  const left = encoder.encode(String(a));
+  const right = encoder.encode(String(b));
+  let diff = left.length ^ right.length;
+  const length = Math.max(left.length, right.length);
+  for (let i = 0; i < length; i += 1) diff |= (left[i] ?? 0) ^ (right[i] ?? 0);
+  return diff === 0;
+}
+
+// Reject bodies that announce a size over the limit. A request with no
+// Content-Length header is not checked here.
+function isBodyTooLarge(request, maxBytes = MAX_REQUEST_BODY_BYTES) {
+  const declared = Number(request.headers.get('content-length'));
+  return Number.isFinite(declared) && declared > maxBytes;
+}
 
 function stripArrayCardinality(schema) {
   if (Array.isArray(schema)) return schema.map(stripArrayCardinality);
@@ -771,8 +790,11 @@ export default {
     if (request.method === 'POST' && pathname === '/brief/save') {
       const adminToken = env.BRIEF_ADMIN_TOKEN || '';
       const requestToken = request.headers.get('X-Brief-Admin-Token') || '';
-      if (!adminToken || requestToken !== adminToken) {
+      if (!adminToken || !safeEqual(requestToken, adminToken)) {
         return json({ ok: false, reason: 'Unauthorized' }, 403);
+      }
+      if (isBodyTooLarge(request)) {
+        return json({ ok: false, reason: 'Request body too large' }, 413);
       }
       if (!env.BRIEF_CACHE) {
         console.log('[cache] /brief/save failed: KV not configured');
@@ -797,6 +819,9 @@ export default {
     // ─────────────────────────────────────────────────────────────────
 
     if (request.method === 'POST' && pathname === '/') {
+      if (isBodyTooLarge(request)) {
+        return json({ error: { message: 'Request body too large.' } }, 413);
+      }
       const generationStartedAt = Date.now();
       const pipelineVersion = resolvePipelineVersion(env);
       const generationBudgetMs = resolveGenerationDeadlineMs(pipelineVersion);
