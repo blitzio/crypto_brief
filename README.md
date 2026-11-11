@@ -54,35 +54,17 @@ Gemini is handed exact prices, exact macro values and up to 20 news snippets, ea
 
 ---
 
-## Run your own
+## Setting it up again
 
-You need a Cloudflare account, a Google AI Studio key and a fork of this repo.
+Short version, for rebuilding it or forking it.
 
-1. **Fork** the repo and turn on GitHub Pages (Settings, Pages, branch `main`, root).
-2. **Create a KV namespace** called `BRIEF_CACHE` in Cloudflare and put its ID in `wrangler.jsonc`. The ID in the repo belongs to the original project.
-3. **Set the Worker's variables** in `wrangler.jsonc`, and its secrets in Cloudflare (or with `wrangler secret put`):
+1. Turn on GitHub Pages for `main`, root folder.
+2. Create a Cloudflare KV namespace called `BRIEF_CACHE` and put its ID in `wrangler.jsonc`.
+3. Add the secrets `GEMINI_API_KEY` (required), plus `BRIEF_ADMIN_TOKEN` and `COINGECKO_DEMO_API_KEY` (both optional). Set `ALLOWED_ORIGINS` to your Pages address. The model and pipeline settings are already in `wrangler.jsonc`.
+4. Deploy from the repo with `npm run cf:deploy`. Do not paste `worker.js` into the dashboard, it imports from `src/`.
+5. Set `WORKER_URL` in `index.html` to your Worker's address.
 
-   | Name | What it is |
-   |---|---|
-   | `GEMINI_API_KEY` | Secret. Your Google AI Studio key. |
-   | `BRIEF_ADMIN_TOKEN` | Secret, optional. Only for manual writes to `/brief/save`. |
-   | `COINGECKO_DEMO_API_KEY` | Secret, optional. Makes market requests steadier. |
-   | `ALLOWED_ORIGINS` | Your Pages address, for example `https://you.github.io`. |
-   | `GEMINI_MODEL` | `gemini-3.5-flash` |
-   | `GEMINI_FALLBACK_MODEL` | `gemini-3.1-flash-lite` |
-   | `GEMINI_THINKING_LEVEL` | `low`. Also `minimal`, `medium`, `high`. |
-   | `BRIEF_PIPELINE_VERSION` | `v2` |
-
-4. **Deploy the Worker** from the repo, not by pasting `worker.js` into the dashboard (it imports from `src/`):
-
-   ```bash
-   npm install
-   npm run cf:deploy
-   ```
-
-5. **Point the page at your Worker.** In `index.html`, set `WORKER_URL` to your Worker's address, then push.
-
-Keep keys and tokens out of git. `.env.example` lists the names only.
+`.env.example` lists the names only. Keep keys out of git. Health checks, deploys and rollback are in [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
 ---
 
@@ -105,7 +87,7 @@ Gemini's free tier is sometimes busy. When it is, the page says so and you can t
 
 ## Design
 
-The page follows the [blitzio](https://blitzio.com) look: charcoal background, off-white type, one soft violet accent, and DM Sans, served from `fonts/` under the SIL Open Font License. Red and green are kept for market moves, always with an arrow so colour is never the only signal.
+The page follows the blitzio look: charcoal background, off-white type, one soft violet accent, and DM Sans, served from `fonts/` under the SIL Open Font License. Red and green are kept for market moves, always with an arrow so colour is never the only signal.
 
 ---
 
