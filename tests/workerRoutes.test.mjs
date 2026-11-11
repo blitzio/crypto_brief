@@ -362,6 +362,46 @@ function yahooCryptoChart(base = 100) {
 }
 
 {
+  const adminEnv = { ALLOWED_ORIGINS: 'https://blitzio.github.io', BRIEF_ADMIN_TOKEN: 'right-token!!' };
+  const save = (token) => worker.fetch(
+    new Request('https://worker.test/brief/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Brief-Admin-Token': token },
+      body: JSON.stringify({ brief: {} }),
+    }),
+    adminEnv,
+    { waitUntil() {} }
+  );
+
+  for (const wrongToken of ['wrong-token!!', 'x', 'right-token!!extra', '']) {
+    assert.equal((await save(wrongToken)).status, 403, 'wrong tokens of any length must be refused');
+  }
+
+  const accepted = await jsonResponse(await save('right-token!!'));
+  assert.equal(accepted.reason, 'KV not configured', 'the right token must pass the auth check');
+}
+
+{
+  const env = { ALLOWED_ORIGINS: 'https://blitzio.github.io', BRIEF_ADMIN_TOKEN: 'right-token!!' };
+  for (const path of ['/', '/brief/save']) {
+    const response = await worker.fetch(
+      new Request('https://worker.test' + path, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': '2000000',
+          'X-Brief-Admin-Token': 'right-token!!',
+        },
+        body: '{}',
+      }),
+      env,
+      { waitUntil() {} }
+    );
+    assert.equal(response.status, 413, `${path} must refuse bodies that announce more than 1 MB`);
+  }
+}
+
+{
   const response = await worker.fetch(
     new Request('https://worker.test/version'),
     {
