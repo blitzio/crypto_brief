@@ -106,7 +106,7 @@ src/yahoo.js              Yahoo percentage and previous close helpers
 scripts/                  opt-in read-only feed checks
 tests/                    Worker, evidence, market, macro and page tests
 docs/OPERATIONS.md        health checks, deploys, rollback
-docs/superpowers/         older design notes and plans
+docs/design-notes/         older design notes and plans
 ```
 
 Run the tests with `npm test`. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).

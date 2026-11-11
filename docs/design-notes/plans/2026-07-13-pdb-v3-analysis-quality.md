@@ -1,7 +1,5 @@
 # PDB v3 Analysis Quality Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Deliver a reversible PDB v3 pipeline that produces a genuinely useful eight-to-ten-minute crypto intelligence brief, rejects thin or unsupported output, preserves v1/v2 compatibility, and cannot replace a good cached brief unless every quality gate passes.
 
 **Architecture:** Add an opt-in `v3` path beside the unchanged v1/v2 generation paths. Put the v3 response schema, authoritative prompt builder, word-depth metrics, and evidence validator in a pure Worker-side module. Add bounded model-only news enrichment in a separate module. Render v3 through a version-aware browser path while retaining the current renderer for cached v1/v2 briefs. Keep production on v2 until a real local v3 brief passes human acceptance.
@@ -23,7 +21,7 @@
 - No real Gemini call, GitHub push, production variable change, or deployment occurs without its explicit gate in Tasks 8 and 9.
 - Every behavior change begins with a failing test. Every task ends with its focused tests, the full suite where indicated, and `git diff --check`.
 
-**Design reference:** `docs/superpowers/specs/2026-07-13-pdb-v3-analysis-quality-design.md`
+**Design reference:** `docs/design-notes/specs/2026-07-13-pdb-v3-analysis-quality-design.md`
 
 ---
 

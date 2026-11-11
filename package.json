@@ -1,6 +1,11 @@
 {
   "name": "crypto-brief",
   "version": "1.0.0",
+  "description": "A daily read on Bitcoin, Ethereum and Chainlink. Cloudflare Worker, GitHub Pages, Gemini.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blitzio/crypto_brief.git"
+  },
   "license": "MIT",
   "private": true,
   "type": "module",

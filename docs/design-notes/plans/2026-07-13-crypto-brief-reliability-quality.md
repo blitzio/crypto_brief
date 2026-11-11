@@ -1,7 +1,5 @@
 # Crypto Brief Reliability and Analysis Quality Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Safely modernize Crypto Daily Brief in reversible phases so source failures are observable, refreshes terminate cleanly, and Gemini analysis is grounded in deterministic evidence.
 
 **Architecture:** Preserve `worker.js`, `index.html`, every existing public route, and the cached brief envelope. Add small pure modules for syndication parsing, source configuration, and market calculations; keep network orchestration in the Worker; add v2 evidence fields without removing the renderer's existing `label` and `text` contract.
@@ -18,7 +16,7 @@
 - Every behavior change starts with a failing regression test and every phase ends with the full suite plus `git diff --check`.
 - Production deploy, push, and pull-request creation are outside this plan.
 
-**Design reference:** `docs/superpowers/specs/2026-07-13-crypto-brief-reliability-quality-design.md`
+**Design reference:** `docs/design-notes/specs/2026-07-13-crypto-brief-reliability-quality-design.md`
 
 ---
 

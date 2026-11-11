@@ -1,7 +1,5 @@
 # Production Market Fallback Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Keep the public brief working when the browser cannot reach CoinGecko directly.
 
 **Architecture:** Run the direct CoinGecko request and Worker market request independently. Prefer complete direct prices, fall back to complete Worker prices, and fail only when neither source supplies BTC, ETH, and LINK.

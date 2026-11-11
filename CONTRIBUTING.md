@@ -1,39 +1,28 @@
 # Contributing
 
-Thanks for improving Crypto Daily Brief. Keep changes small and easy to verify.
+Small, easy-to-check changes are the goal.
 
-## Development Rules
+## Ground rules
 
-- Preserve the existing public routes unless a change explicitly documents a new route.
-- Keep production safety ahead of broad refactors.
-- Add or update tests when changing Worker behavior, citation validation, caching, or data parsing.
-- Do not commit secrets or local machine state.
-- Prefer small pull requests over large mixed cleanups.
+- Production safety comes before cleanup. Anything merged to `main` deploys.
+- Keep public routes and their payloads as they are, unless the change says otherwise and the docs are updated.
+- Add or update tests when you change Worker behaviour, evidence checks, caching or data parsing.
+- No secrets, keys or local machine state in git. See [SECURITY.md](SECURITY.md).
+- Prefer a few small pull requests over one large one.
 
-## Local Checks
-
-Use the test script when `npm` is available:
+## Run the checks
 
 ```bash
 npm test
 ```
 
-If `npm` is not available, run the tests directly with Node:
+That runs every test file under `tests/`. To check live news feeds without changing anything, run `npm run check:sources`.
 
-```bash
-node tests/feedParser.test.mjs
-node tests/marketSignals.test.mjs
-node tests/macroSignals.test.mjs
-node tests/selectYahooPreviousClose.test.mjs
-node tests/citationGuards.test.mjs
-node tests/workerRoutes.test.mjs
-node tests/frontendSmoke.test.mjs
-```
+## Before you open a pull request
 
-## Pull Request Checklist
+- `npm test` passes.
+- Briefs with bad citations still never reach the cache.
+- `/brief/save` is still protected by `X-Brief-Admin-Token`.
+- The README or `docs/` match any change to setup or behaviour.
 
-- Tests pass.
-- Public route payloads are unchanged unless intentionally documented.
-- Generated briefs with bad citations do not write to KV.
-- `/brief/save` remains protected by `X-Brief-Admin-Token`.
-- README or docs are updated when setup or behavior changes.
+Health checks, deploys and rollback are in [docs/OPERATIONS.md](docs/OPERATIONS.md).

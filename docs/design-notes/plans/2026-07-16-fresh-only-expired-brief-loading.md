@@ -1,7 +1,5 @@
 # Fresh-Only Expired Brief Loading Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Ensure the public page never renders a brief older than one hour and provides an unambiguous terminal error with Retry when a current brief cannot be generated.
 
 **Architecture:** Keep the Worker cache contract unchanged and correct the browser boundary. Startup will use the Worker’s fresh-only `/brief` route and require `fresh === true` before rendering; the retained stale route remains operator-only. A small loading-state helper will stop the spinner and reveal Retry only when generation fails without an active fresh brief.
