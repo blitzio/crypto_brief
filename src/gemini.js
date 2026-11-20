@@ -262,6 +262,20 @@ export function resolveModelFallbacks(env = {}) {
   return [...new Set([primary, fallback].filter(Boolean))];
 }
 
+// Short description of a failed Gemini request for the Worker logs.
+// It never includes the request URL, and it masks anything that looks like an API key.
+export function describeGeminiFailure(status, data, maxLength = 200) {
+  const raw = data?.error?.message ?? 'no error message';
+  const message = String(raw)
+    .replace(/AIza[0-9A-Za-z_-]{10,}/g, '[redacted key]')
+    .replace(/([?&]key=)[^&\s"']+/gi, '$1[redacted]')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+  const label = data?.error?.status ? ` ${String(data.error.status).slice(0, 40)}` : '';
+  return `HTTP ${status}${label}: ${message}`;
+}
+
 export function isRetryableGeminiStatus(status) {
   return [404, 408, 429, 500, 502, 503, 504].includes(Number(status));
 }

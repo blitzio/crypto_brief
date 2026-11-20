@@ -10,6 +10,7 @@ import {
 } from '../src/news.js';
 import {
   buildEvidenceIndex,
+  describeGeminiFailure,
   isRetryableGeminiStatus,
   parseGeminiBriefJson,
   normalizeCitationMarkers,
@@ -19,6 +20,17 @@ import {
   validateBriefEvidence,
 } from '../src/gemini.js';
 import * as geminiModule from '../src/gemini.js';
+
+{
+  assert.equal(
+    describeGeminiFailure(404, { error: { status: 'NOT_FOUND', message: 'models/x is not found' } }),
+    'HTTP 404 NOT_FOUND: models/x is not found'
+  );
+  assert.equal(describeGeminiFailure(503, {}), 'HTTP 503: no error message');
+  const masked = describeGeminiFailure(400, { error: { message: 'bad request ?key=AIzaSyFAKEFAKEFAKEFAKE123456 and AIzaSyFAKEFAKEFAKEFAKE123456' } });
+  assert.equal(masked.includes('AIza'), false, 'API keys must never reach the logs');
+  assert.equal(describeGeminiFailure(500, { error: { message: 'x'.repeat(500) } }).length < 260, true, 'long messages are shortened');
+}
 
 assert.equal(typeof geminiModule.resolveGenerationDeadlineMs, 'function');
 assert.equal(geminiModule.resolveGenerationDeadlineMs('v3'), 150_000);
