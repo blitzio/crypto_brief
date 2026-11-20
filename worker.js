@@ -8,7 +8,7 @@
  *
  * Secrets required (Settings → Variables and Secrets):
  *   GEMINI_API_KEY  — Google AI Studio key
- *   GEMINI_MODEL    — model name e.g. "gemini-3.5-flash" (update the variable to upgrade)
+ *   GEMINI_MODEL    — model name e.g. "gemini-3.6-flash" (update the variable to upgrade)
  *
  * KV Namespace required (for brief caching):
  *   BRIEF_CACHE — bind a KV namespace called BRIEF_CACHE in Worker settings

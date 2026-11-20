@@ -671,7 +671,7 @@ function yahooCryptoChart(base = 100) {
   await withGlobals({
     fetch: async (url, options) => {
       calls.push({ url: String(url), body: JSON.parse(options.body) });
-      if (String(url).includes('gemini-3.5-flash')) {
+      if (String(url).includes('gemini-3.6-flash')) {
         return Response.json({ error: { message: 'model not found' } }, { status: 404 });
       }
       return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validV2Brief()) }] } }] });
@@ -688,7 +688,7 @@ function yahooCryptoChart(base = 100) {
     );
     const body = await jsonResponse(response);
     assert.equal(response.status, 200);
-    assert.equal(body.meta.model, 'gemini-3.1-flash-lite');
+    assert.equal(body.meta.model, 'gemini-3.5-flash-lite');
     assert.equal(body.meta.attemptCount, 2);
     assert.equal(body.meta.pipelineVersion, 'v2');
     assert.equal(calls[1].body.generationConfig.maxOutputTokens, 8192);
@@ -700,7 +700,7 @@ function yahooCryptoChart(base = 100) {
   const cacheWrite = kv.calls.find(call => call.op === 'put');
   assert.ok(cacheWrite);
   assert.equal(cacheWrite.options.expirationTtl, 7 * 24 * 60 * 60);
-  assert.equal(JSON.parse(cacheWrite.body).meta.model, 'gemini-3.1-flash-lite');
+  assert.equal(JSON.parse(cacheWrite.body).meta.model, 'gemini-3.5-flash-lite');
 }
 
 {
@@ -958,7 +958,7 @@ function yahooCryptoChart(base = 100) {
     );
     const body = await jsonResponse(response);
     assert.equal(response.status, 200);
-    assert.equal(body.meta.model, 'gemini-3.1-flash-lite');
+    assert.equal(body.meta.model, 'gemini-3.5-flash-lite');
     assert.equal(body.meta.attemptCount, 2);
   });
 }
