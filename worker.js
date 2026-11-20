@@ -35,6 +35,7 @@ import {
 } from './src/macro.js';
 import {
   buildEvidenceIndex,
+  describeGeminiFailure,
   isRetryableGeminiStatus,
   listUnavailableMacroFields,
   normalizeBriefCitationMarkers,
@@ -60,6 +61,7 @@ export {
 } from './src/news.js';
 export {
   buildEvidenceIndex,
+  describeGeminiFailure,
   isRetryableGeminiStatus,
   listUnavailableMacroFields,
   normalizeCitationMarkers,
@@ -979,9 +981,11 @@ export default {
               if (geminiRes.ok) return { ok: true, model, data };
 
               lastFailure = { ok: false, model, status: geminiRes.status, data };
+              console.log(`[gemini] ${model} attempt failed: ${describeGeminiFailure(geminiRes.status, data)}`);
               if (!isRetryableGeminiStatus(geminiRes.status)) return lastFailure;
             } catch (error) {
               if (error?.name !== 'AbortError') throw error;
+              console.log(`[gemini] ${model} attempt timed out after ${Math.round(timeoutMs / 1000)}s`);
               lastFailure = {
                 ok: false,
                 model,
