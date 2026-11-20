@@ -55,10 +55,12 @@ The Worker uses `placement.region: aws:ap-southeast-1` to run near Singapore, th
 
 If Google rejects the server location, generation returns HTTP 503 with `error.code: GEMINI_REGION_UNAVAILABLE`, a server-specific reader message, and the original `upstreamMessage` for diagnosis. It does not retry other models or overwrite the cached brief. Check the `cf-placement` response header after deployment to verify placement, and test actual generation. Reference: https://developers.cloudflare.com/workers/configuration/placement/
 
-- `GEMINI_MODEL=gemini-3.5-flash`
-- `GEMINI_FALLBACK_MODEL=gemini-3.1-flash-lite`
+- `GEMINI_MODEL=gemini-3.6-flash`
+- `GEMINI_FALLBACK_MODEL=gemini-3.5-flash-lite`
 - `GEMINI_THINKING_LEVEL=low`
 - `BRIEF_PIPELINE_VERSION=v2`
+
+Model notes (checked 20 November 2026 against Google's model and deprecation pages): name a specific stable model rather than a `-latest` alias, because an alias is swapped to each new release. Google routes the older `gemini-3.5-flash` name to `gemini-3.6-flash`, so the primary is named explicitly here. The previous fallback, `gemini-3.1-flash-lite`, shuts down on 7 May 2027. Before trying any newer model (such as Gemini 4), test it against the real response schema and the validators first; the thinking settings in `worker.js` are only applied to model names starting with `gemini-3`. If a model causes problems, revert this setting to the previous value or another stable model and redeploy.
 
 The Worker retries only model-not-found, timeout, rate-limit, and transient server failures. Authentication, permission, safety, and malformed-request failures return immediately. Generation has a 90-second total budget and at most one validation correction.
 
