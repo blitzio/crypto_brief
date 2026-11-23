@@ -267,7 +267,7 @@ assert.equal(
 }
 
 {
-  assert.deepEqual(resolveModelFallbacks({}), ['gemini-3.6-flash', 'gemini-3.5-flash-lite']);
+  assert.deepEqual(resolveModelFallbacks({}), ['gemini-3.8-flash', 'gemini-3.1-flash-lite']);
   assert.deepEqual(
     resolveModelFallbacks({ GEMINI_MODEL: 'custom-model', GEMINI_FALLBACK_MODEL: 'fallback-model' }),
     ['custom-model', 'fallback-model']
