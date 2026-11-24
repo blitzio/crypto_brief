@@ -7,8 +7,8 @@
     "region": "aws:ap-southeast-1"
   },
   "vars": {
-    "GEMINI_MODEL": "gemini-3.1-flash-lite",
-    "GEMINI_FALLBACK_MODEL": "gemini-3.8-flash",
+    "GEMINI_MODEL": "gemini-4-hydrogen",
+    "GEMINI_FALLBACK_MODEL": "gemini-3.1-flash-lite",
     "GEMINI_THINKING_LEVEL": "low",
     "GEMINI_V3_THINKING_LEVEL": "medium",
     "BRIEF_PIPELINE_VERSION": "v2",
