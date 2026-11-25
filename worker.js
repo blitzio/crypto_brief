@@ -956,8 +956,12 @@ export default {
             const timeoutMs = Math.min(55_000, remainingMs);
             const timeout = setTimeout(() => controller.abort(), timeoutMs);
             const generationConfig = { ...payload.generationConfig };
-            if (/^gemini-3(?:[.-]|$)/i.test(model)) {
-              generationConfig.thinkingConfig = { thinkingLevel };
+            if (/^gemini-[34](?:[.-]|$)/i.test(model)) {
+              // Gemini 4 rejects the "minimal" level, so use the lowest level it accepts.
+              const modelThinkingLevel = thinkingLevel === 'minimal' && /^gemini-4(?:[.-]|$)/i.test(model)
+                ? 'low'
+                : thinkingLevel;
+              generationConfig.thinkingConfig = { thinkingLevel: modelThinkingLevel };
             } else {
               generationConfig.temperature = typeof body.temperature === 'number' ? body.temperature : 0.3;
             }

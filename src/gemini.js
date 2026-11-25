@@ -257,7 +257,7 @@ export function listUnavailableMacroFields(macro = {}) {
 }
 
 export function resolveModelFallbacks(env = {}) {
-  const primary = String(env.GEMINI_MODEL || 'gemini-3.8-flash').trim();
+  const primary = String(env.GEMINI_MODEL || 'gemini-4-hydrogen').trim();
   const fallback = String(env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-lite').trim();
   return [...new Set([primary, fallback].filter(Boolean))];
 }

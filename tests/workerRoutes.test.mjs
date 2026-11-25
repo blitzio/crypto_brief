@@ -671,7 +671,7 @@ function yahooCryptoChart(base = 100) {
   await withGlobals({
     fetch: async (url, options) => {
       calls.push({ url: String(url), body: JSON.parse(options.body) });
-      if (String(url).includes('gemini-3.8-flash')) {
+      if (String(url).includes('gemini-4-hydrogen')) {
         return Response.json({ error: { message: 'model not found' } }, { status: 404 });
       }
       return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validV2Brief()) }] } }] });
@@ -701,6 +701,52 @@ function yahooCryptoChart(base = 100) {
   assert.ok(cacheWrite);
   assert.equal(cacheWrite.options.expirationTtl, 7 * 24 * 60 * 60);
   assert.equal(JSON.parse(cacheWrite.body).meta.model, 'gemini-3.1-flash-lite');
+}
+
+{
+  // Gemini 4 (Hydrogen) takes a thinking level but rejects "minimal" and a temperature setting.
+  // Older models without a thinking level (such as gemini-2.5) still get a temperature.
+  const cases = [
+    { model: 'gemini-4-hydrogen', level: 'low', thinking: 'low', temperature: false },
+    { model: 'gemini-4-hydrogen', level: 'medium', thinking: 'medium', temperature: false },
+    { model: 'gemini-4-hydrogen', level: 'minimal', thinking: 'low', temperature: false },
+    { model: 'gemini-3.1-flash-lite', level: 'minimal', thinking: 'minimal', temperature: false },
+    { model: 'gemini-2.5-flash', level: 'low', thinking: undefined, temperature: true },
+  ];
+  for (const testCase of cases) {
+    const calls = [];
+    await withGlobals({
+      fetch: async (url, options) => {
+        calls.push({ url: String(url), body: JSON.parse(options.body) });
+        return Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(validV2Brief()) }] } }] });
+      },
+    }, async () => {
+      const response = await worker.fetch(
+        new Request('https://worker.test/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v2CachePayload() }),
+        }),
+        {
+          ALLOWED_ORIGINS: 'https://blitzio.github.io',
+          GEMINI_API_KEY: 'test-key',
+          GEMINI_MODEL: testCase.model,
+          GEMINI_FALLBACK_MODEL: 'gemini-3.1-flash-lite',
+          GEMINI_THINKING_LEVEL: testCase.level,
+          BRIEF_CACHE: makeKv(),
+        },
+        { waitUntil() {} }
+      );
+      const body = await jsonResponse(response);
+      const label = `${testCase.model} at thinking level ${testCase.level}`;
+      assert.equal(response.status, 200, label);
+      assert.equal(calls.length, 1, label);
+      assert.ok(calls[0].url.includes(`/models/${testCase.model}:`), label);
+      assert.equal(body.meta.model, testCase.model, label);
+      assert.equal(calls[0].body.generationConfig.thinkingConfig?.thinkingLevel, testCase.thinking, label);
+      assert.equal('temperature' in calls[0].body.generationConfig, testCase.temperature, label);
+    });
+  }
 }
 
 {
