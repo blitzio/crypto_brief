@@ -36,6 +36,7 @@ import {
 import {
   buildEvidenceIndex,
   describeGeminiFailure,
+  describeValidationFailure,
   isRetryableGeminiStatus,
   listUnavailableMacroFields,
   normalizeBriefCitationMarkers,
@@ -62,6 +63,7 @@ export {
 export {
   buildEvidenceIndex,
   describeGeminiFailure,
+  describeValidationFailure,
   isRetryableGeminiStatus,
   listUnavailableMacroFields,
   normalizeCitationMarkers,
@@ -1042,6 +1044,7 @@ export default {
               ok: false,
               violations: [{ asset: 'json', bulletIndex: -1, reason: 'invalid_json', text: parseErr.message }],
             };
+              console.log(`[validation] ${selectedModel} attempt ${correctionAttempt + 1}/${maxGenerationAttempts} failed: ${describeValidationFailure(validationCheck.violations)}`);
             payload.contents.push(
               { role: 'model', parts: [{ text: contentText }] },
               {
@@ -1059,6 +1062,7 @@ export default {
               ? validateBriefEvidence(parsedBrief, evidenceIndex)
               : validateBriefCitations(parsedBrief, body.cachePayload?.newsItems || []);
           if (validationCheck.ok) break;
+          console.log(`[validation] ${selectedModel} attempt ${correctionAttempt + 1}/${maxGenerationAttempts} failed: ${describeValidationFailure(validationCheck.violations)}`);
 
           const feedback = pipelineVersion === 'v3'
             ? (() => {
