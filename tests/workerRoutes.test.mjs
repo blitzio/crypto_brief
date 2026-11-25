@@ -984,6 +984,59 @@ function yahooCryptoChart(base = 100) {
 }
 
 {
+  // When a brief fails its checks, the Worker log says which model, which attempt and why,
+  // but never repeats the model's own text.
+  const cases = [
+    {
+      name: 'unknown evidence',
+      modelText: () => {
+        const bad = validV2Brief();
+        bad.btc.bullets[0].evidenceIds = ['news:999'];
+        bad.btc.bullets[0].text = 'SECRET-MODEL-TEXT';
+        return JSON.stringify(bad);
+      },
+      expected: 'btc bullet 1: unknown_evidence (news:999)',
+    },
+    { name: 'invalid JSON', modelText: () => 'SECRET-MODEL-TEXT is not json', expected: 'json: invalid_json' },
+  ];
+  for (const testCase of cases) {
+    const lines = [];
+    const originalLog = console.log;
+    console.log = (...args) => lines.push(args.join(' '));
+    try {
+      await withGlobals({
+        fetch: async () => Response.json({ candidates: [{ content: { parts: [{ text: testCase.modelText() }] } }] }),
+      }, async () => {
+        const response = await worker.fetch(
+          new Request('https://worker.test/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: [{ role: 'user', content: 'Generate brief' }], cachePayload: v2CachePayload() }),
+          }),
+          {
+            ALLOWED_ORIGINS: 'https://blitzio.github.io',
+            GEMINI_API_KEY: 'test-key',
+            GEMINI_MODEL: 'gemini-4-hydrogen',
+            GEMINI_FALLBACK_MODEL: 'gemini-3.1-flash-lite',
+            BRIEF_CACHE: makeKv(),
+          },
+          { waitUntil() {} }
+        );
+        assert.equal(response.status, 422, testCase.name);
+      });
+    } finally {
+      console.log = originalLog;
+    }
+    const validationLines = lines.filter(line => line.startsWith('[validation]'));
+    assert.equal(validationLines.length, 2, testCase.name);
+    assert.ok(validationLines[0].startsWith('[validation] gemini-4-hydrogen attempt 1/2 failed: 1 problem: '), validationLines[0]);
+    assert.ok(validationLines[0].endsWith(testCase.expected), validationLines[0]);
+    assert.ok(validationLines[1].startsWith('[validation] gemini-4-hydrogen attempt 2/2 failed: '), validationLines[1]);
+    assert.equal(lines.some(line => line.includes('SECRET-MODEL-TEXT')), false, 'model text must not reach the logs');
+  }
+}
+
+{
   const kv = makeKv();
   let callCount = 0;
   await withGlobals({

@@ -11,6 +11,7 @@ import {
 import {
   buildEvidenceIndex,
   describeGeminiFailure,
+  describeValidationFailure,
   isRetryableGeminiStatus,
   parseGeminiBriefJson,
   normalizeCitationMarkers,
@@ -30,6 +31,25 @@ import * as geminiModule from '../src/gemini.js';
   const masked = describeGeminiFailure(400, { error: { message: 'bad request ?key=AIzaSyFAKEFAKEFAKEFAKE123456 and AIzaSyFAKEFAKEFAKEFAKE123456' } });
   assert.equal(masked.includes('AIza'), false, 'API keys must never reach the logs');
   assert.equal(describeGeminiFailure(500, { error: { message: 'x'.repeat(500) } }).length < 260, true, 'long messages are shortened');
+}
+
+{
+  assert.equal(
+    describeValidationFailure([{ section: 'btc', bulletIndex: 0, evidenceId: 'news:999', reason: 'unknown_evidence', text: 'SECRET MODEL TEXT' }]),
+    '1 problem: btc bullet 1: unknown_evidence (news:999)'
+  );
+  assert.equal(
+    describeValidationFailure([{ asset: 'eth', bulletIndex: 2, docId: 7, reason: 'asset_not_mentioned' }, { path: 'brief', reason: 'section_too_thin' }]),
+    '2 problems: eth bullet 3: asset_not_mentioned (doc 7); brief: section_too_thin'
+  );
+  assert.equal(
+    describeValidationFailure([{ asset: 'json', bulletIndex: -1, reason: 'invalid_json', text: 'Unexpected token' }]),
+    '1 problem: json: invalid_json'
+  );
+  const many = Array.from({ length: 9 }, (_, index) => ({ section: 'macro', bulletIndex: index, reason: 'missing_evidence' }));
+  assert.match(describeValidationFailure(many), /^9 problems: .*\(\+3 more\)$/);
+  assert.equal(describeValidationFailure(many).length <= 300, true, 'long lists are shortened');
+  assert.equal(describeValidationFailure(undefined), '0 problems: ');
 }
 
 assert.equal(typeof geminiModule.resolveGenerationDeadlineMs, 'function');

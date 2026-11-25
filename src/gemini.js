@@ -276,6 +276,22 @@ export function describeGeminiFailure(status, data, maxLength = 200) {
   return `HTTP ${status}${label}: ${message}`;
 }
 
+// Short description of why a generated brief failed its checks, for the Worker logs.
+// It lists the section, bullet number and reason only, never the text the model wrote.
+export function describeValidationFailure(violations, maxItems = 6, maxLength = 300) {
+  const list = Array.isArray(violations) ? violations : [];
+  const shown = list.slice(0, maxItems).map((violation) => {
+    const where = String(violation?.path || violation?.section || violation?.asset || 'json');
+    const bullet = Number.isInteger(violation?.bulletIndex) && violation.bulletIndex >= 0 ? ` bullet ${violation.bulletIndex + 1}` : '';
+    const extra = violation?.evidenceId ? ` (${violation.evidenceId})` : violation?.docId ? ` (doc ${violation.docId})` : '';
+    return `${where}${bullet}: ${violation?.reason ?? 'unknown'}${extra}`;
+  });
+  const more = list.length > maxItems ? ` (+${list.length - maxItems} more)` : '';
+  return `${list.length} problem${list.length === 1 ? '' : 's'}: ${shown.join('; ')}${more}`
+    .replace(/\s+/g, ' ')
+    .slice(0, maxLength);
+}
+
 export function isRetryableGeminiStatus(status) {
   return [404, 408, 429, 500, 502, 503, 504].includes(Number(status));
 }
